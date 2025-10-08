@@ -17,12 +17,14 @@ public partial class MainWindow : Window
     private readonly ServiceManagementViewModel _serviceViewModel;
     private readonly RemoteServerViewModel _remoteServerViewModel;
     private readonly INotificationService _notificationService;
+    private readonly PreFlightCheckService _preFlightCheckService;
 
     public MainWindow(
         DashboardViewModel dashboardViewModel,
         ServiceManagementViewModel serviceViewModel,
         RemoteServerViewModel remoteServerViewModel,
-        INotificationService notificationService)
+        INotificationService notificationService,
+        PreFlightCheckService preFlightCheckService)
     {
         InitializeComponent();
         
@@ -30,6 +32,7 @@ public partial class MainWindow : Window
         _serviceViewModel = serviceViewModel;
         _remoteServerViewModel = remoteServerViewModel;
         _notificationService = notificationService;
+        _preFlightCheckService = preFlightCheckService;
         
         // Bind NotificationHost
         NotificationHost.ItemsSource = _notificationService.Notifications;
@@ -176,10 +179,25 @@ public partial class MainWindow : Window
 
     private async void StartServiceButton_Click(object sender, RoutedEventArgs e)
     {
-        await _serviceViewModel.StartServiceCommand.ExecuteAsync(null);
-        await RefreshStatusAsync();
-        _dashboardViewModel.AddActivity("Service started", ViewModels.ActivityType.Success);
-        _notificationService.ShowSuccess("Service started successfully");
+        // Run pre-flight checks
+        var result = await _preFlightCheckService.RunAllChecksAsync();
+        
+        var dialog = new PreFlightCheckDialog(result)
+        {
+            Owner = this
+        };
+        
+        if (dialog.ShowDialog() == true && dialog.ShouldProceed)
+        {
+            await _serviceViewModel.StartServiceCommand.ExecuteAsync(null);
+            await RefreshStatusAsync();
+            _dashboardViewModel.AddActivity("Service started", ViewModels.ActivityType.Success);
+            _notificationService.ShowSuccess("Service started successfully");
+        }
+        else
+        {
+            _notificationService.ShowInfo("Service start cancelled");
+        }
     }
 
     private async void StopServiceButton_Click(object sender, RoutedEventArgs e)

@@ -14,6 +14,7 @@ public partial class RemoteServerViewModel : ObservableObject
 {
     private readonly IRemoteServerProvider _remoteServerProvider;
     private readonly ILogger<RemoteServerViewModel> _logger;
+    private readonly PowerShellRemotingService _psRemoting;
 
     // Connection Settings
     [ObservableProperty] private bool _isLocalMode = true;
@@ -36,10 +37,12 @@ public partial class RemoteServerViewModel : ObservableObject
 
     public RemoteServerViewModel(
         IRemoteServerProvider remoteServerProvider,
-        ILogger<RemoteServerViewModel> logger)
+        ILogger<RemoteServerViewModel> logger,
+        PowerShellRemotingService psRemoting)
     {
         _remoteServerProvider = remoteServerProvider;
         _logger = logger;
+        _psRemoting = psRemoting;
     }
 
     partial void OnIsLocalModeChanged(bool value)
@@ -122,8 +125,23 @@ public partial class RemoteServerViewModel : ObservableObject
             }
             AddLog("");
 
-            // Test 4: Installation Check
-            AddLog("4️⃣ Checking for ZL File Relay installation...");
+            // Test 4: WinRM / PowerShell Remoting
+            AddLog("4️⃣ Testing WinRM / PowerShell Remoting...");
+            var winrmResult = await _psRemoting.TestWinRMConnectionAsync(ServerName);
+            if (!winrmResult)
+            {
+                AddLog("⚠️ WinRM not available (some features will be limited)");
+                AddLog("   For full remote management, enable WinRM:");
+                AddLog("   Run on remote server: Enable-PSRemoting -Force");
+            }
+            else
+            {
+                AddLog("✅ WinRM is available and accessible");
+            }
+            AddLog("");
+
+            // Test 5: Installation Check
+            AddLog("5️⃣ Checking for ZL File Relay installation...");
             var installResult = await CheckInstallationAsync(ServerName);
             if (!installResult)
             {
@@ -136,7 +154,15 @@ public partial class RemoteServerViewModel : ObservableObject
             AddLog("");
 
             AddLog("━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━");
-            AddLog("✅ Connection test successful!");
+            if (winrmResult)
+            {
+                AddLog("✅ Connection test successful! Full remote management available.");
+            }
+            else
+            {
+                AddLog("⚠️  Connection test completed with warnings.");
+                AddLog("   Basic operations work, but some features require WinRM.");
+            }
             AddLog("Ready to connect to remote server.");
             CanConnect = true;
         }

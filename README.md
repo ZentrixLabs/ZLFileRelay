@@ -69,10 +69,9 @@ ZL File Relay is a unified enterprise solution for secure, automated file transf
 ## Quick Start
 
 ### System Requirements
-- Windows Server 2016 or later (2019+ recommended)
-- .NET 8.0 Runtime
+- Windows Server 2019 or later (2022 recommended)
+- .NET 8.0 Runtime (included in self-contained deployment)
 - ASP.NET Core 8.0 Runtime (for web portal)
-- IIS 10.0+ (for web portal)
 - Administrative privileges for installation
 
 ### Installation
@@ -214,8 +213,20 @@ dotnet test
 - [Installation Guide](docs/INSTALLATION.md)
 - [Configuration Reference](docs/CONFIGURATION.md)
 - [Deployment Guide](docs/DEPLOYMENT.md)
+- [Remote Management Guide](docs/REMOTE_MANAGEMENT.md) ⚠️
+- [WinRM Setup Guide](docs/WINRM_SETUP.md) ⚠️
 - [Troubleshooting](docs/TROUBLESHOOTING.md)
-- [API Reference](docs/API.md)
+
+### ⚠️ Remote Management Requirement
+
+If you plan to manage remote servers (e.g., Windows Server Core), **WinRM must be enabled** on target servers:
+
+```powershell
+# Run on target server as Administrator:
+Enable-PSRemoting -Force
+```
+
+See [WinRM Setup Guide](docs/WINRM_SETUP.md) for full details. Most enterprise environments already have WinRM enabled via Group Policy.
 
 ## Support
 

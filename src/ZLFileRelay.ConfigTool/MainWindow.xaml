@@ -196,7 +196,30 @@
                     <StackPanel Margin="20">
                         <TextBlock Text="File Transfer Configuration" 
                                    Style="{StaticResource TitleTextBlockStyle}"
-                                   Margin="0,0,0,20"/>
+                                   Margin="0,0,0,10"/>
+                        
+                        <!-- Contextual Help -->
+                        <Expander Header="ℹ️ Configuration best practices" Margin="0,0,0,20" IsExpanded="False">
+                            <Border Background="#FFF8F0" BorderBrush="#FFD700" BorderThickness="1" CornerRadius="4" Padding="15">
+                                <StackPanel>
+                                    <TextBlock TextWrapping="Wrap" FontWeight="SemiBold" Margin="0,0,0,10">
+                                        Recommended Settings
+                                    </TextBlock>
+                                    <TextBlock TextWrapping="Wrap" Margin="0,0,0,5">
+                                        <Bold>Watch Directory:</Bold> The folder where files are monitored for transfer. Place files here to transfer them.
+                                    </TextBlock>
+                                    <TextBlock TextWrapping="Wrap" Margin="0,0,0,5">
+                                        <Bold>Archive Directory:</Bold> Successfully transferred files are moved here for record-keeping.
+                                    </TextBlock>
+                                    <TextBlock TextWrapping="Wrap" Margin="0,0,0,10">
+                                        <Bold>Transfer Method:</Bold> Choose SSH for secure remote transfers or SMB for network shares.
+                                    </TextBlock>
+                                    <TextBlock TextWrapping="Wrap" Foreground="Gray" FontSize="11">
+                                        💡 Tip: Enable "Archive after transfer" instead of "Delete after transfer" to maintain transfer history.
+                                    </TextBlock>
+                                </StackPanel>
+                            </Border>
+                        </Expander>
                         
                         <!-- Transfer Method -->
                         <ui:SimpleStackPanel Spacing="10" Margin="0,0,0,20">
@@ -359,13 +382,42 @@
                 </ScrollViewer>
             </TabItem>
 
-            <!-- Web Portal Settings Tab -->
-            <TabItem Header="Web Portal">
+            <!-- SSH Settings Tab (second Web Portal is actually SSH) -->
+            <TabItem Header="SSH / Transfer">
                 <ScrollViewer VerticalScrollBarVisibility="Auto">
                     <StackPanel Margin="20">
-                        <TextBlock Text="Web Portal Settings" 
+                        <TextBlock Text="SSH/SCP Configuration" 
                                    Style="{StaticResource TitleTextBlockStyle}"
-                                   Margin="0,0,0,20"/>
+                                   Margin="0,0,0,10"/>
+                        
+                        <!-- Contextual Help -->
+                        <Expander Header="ℹ️ How do I set up SSH?" Margin="0,0,0,20" IsExpanded="False">
+                            <Border Background="#F0F8FF" BorderBrush="#B0C4DE" BorderThickness="1" CornerRadius="4" Padding="15">
+                                <StackPanel>
+                                    <TextBlock TextWrapping="Wrap" FontWeight="SemiBold" Margin="0,0,0,10">
+                                        Quick Start Guide: SSH Key Authentication
+                                    </TextBlock>
+                                    <TextBlock TextWrapping="Wrap" Margin="0,0,0,5">
+                                        <Bold>Step 1:</Bold> Click "Generate Key Pair" below to create a new SSH key pair.
+                                    </TextBlock>
+                                    <TextBlock TextWrapping="Wrap" Margin="0,0,0,5">
+                                        <Bold>Step 2:</Bold> Copy the public key that appears in the log.
+                                    </TextBlock>
+                                    <TextBlock TextWrapping="Wrap" Margin="0,0,0,5">
+                                        <Bold>Step 3:</Bold> Add the public key to your remote server's ~/.ssh/authorized_keys file.
+                                    </TextBlock>
+                                    <TextBlock TextWrapping="Wrap" Margin="0,0,0,5">
+                                        <Bold>Step 4:</Bold> Enter your SSH host, port, username, and destination path below.
+                                    </TextBlock>
+                                    <TextBlock TextWrapping="Wrap" Margin="0,0,0,10">
+                                        <Bold>Step 5:</Bold> Click "Test SSH Connection" to verify everything works.
+                                    </TextBlock>
+                                    <TextBlock TextWrapping="Wrap" Foreground="Gray" FontSize="11">
+                                        💡 Tip: ED25519 keys provide strong security and are recommended for SSH authentication.
+                                    </TextBlock>
+                                </StackPanel>
+                            </Border>
+                        </Expander>
                         
                         <!-- Connection Settings -->
                         <ui:SimpleStackPanel Spacing="10" Margin="0,0,0,20">
@@ -500,7 +552,36 @@
                     <StackPanel Margin="20">
                         <TextBlock Text="Service Account Management" 
                                    Style="{StaticResource TitleTextBlockStyle}"
-                                   Margin="0,0,0,20"/>
+                                   Margin="0,0,0,10"/>
+                        
+                        <!-- Contextual Help -->
+                        <Expander Header="ℹ️ Why do I need a service account?" Margin="0,0,0,20" IsExpanded="False">
+                            <Border Background="#F0FFF0" BorderBrush="#90EE90" BorderThickness="1" CornerRadius="4" Padding="15">
+                                <StackPanel>
+                                    <TextBlock TextWrapping="Wrap" FontWeight="SemiBold" Margin="0,0,0,10">
+                                        About Service Accounts
+                                    </TextBlock>
+                                    <TextBlock TextWrapping="Wrap" Margin="0,0,0,10">
+                                        Windows services run under a specific user account. The default "LocalSystem" account may not have access to network shares or specific folders.
+                                    </TextBlock>
+                                    <TextBlock TextWrapping="Wrap" FontWeight="SemiBold" Margin="0,0,0,5">
+                                        When to change the service account:
+                                    </TextBlock>
+                                    <TextBlock TextWrapping="Wrap" Margin="15,0,0,5">
+                                        • Need to access network shares (SMB/CIFS transfers)
+                                    </TextBlock>
+                                    <TextBlock TextWrapping="Wrap" Margin="15,0,0,5">
+                                        • Need to access folders with specific permissions
+                                    </TextBlock>
+                                    <TextBlock TextWrapping="Wrap" Margin="15,0,0,10">
+                                        • Require domain authentication
+                                    </TextBlock>
+                                    <TextBlock TextWrapping="Wrap" Foreground="DarkOrange" FontSize="11">
+                                        ⚠️ Important: The service account needs "Log on as a service" rights and write permissions to all configured directories.
+                                    </TextBlock>
+                                </StackPanel>
+                            </Border>
+                        </Expander>
                         
                         <!-- Current Account Info -->
                         <ui:SimpleStackPanel Spacing="10" Margin="0,0,0,20">

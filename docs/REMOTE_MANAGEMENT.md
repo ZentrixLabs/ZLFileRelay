@@ -98,12 +98,43 @@ This installs:
 - Firewall must allow:
   - **SMB (TCP 445)** - For file share access
   - **RPC (TCP 135 + dynamic ports)** - For service control
+  - **⚠️ WinRM (TCP 5985/5986)** - For PowerShell Remoting (REQUIRED for full features)
+
+### WinRM Requirement ⚠️
+
+**WinRM (Windows Remote Management) is REQUIRED for full remote management capabilities.**
+
+**To enable WinRM on target servers:**
+```powershell
+# Run on each target server (requires Admin):
+Enable-PSRemoting -Force
+
+# Verify WinRM is running:
+Test-WSMan
+
+# Configure firewall (if not auto-configured):
+Enable-NetFirewallRule -DisplayName "Windows Remote Management (HTTP-In)"
+```
+
+**What works WITHOUT WinRM:**
+- ✅ Service Start/Stop
+- ✅ Service Install/Uninstall
+- ✅ Configuration file changes
+- ✅ Service status monitoring
+
+**What REQUIRES WinRM:**
+- ❌ Grant "Logon as Service" rights
+- ❌ Advanced permission management
+- ❌ Some security operations
+
+**Note:** Most enterprise environments already have WinRM enabled via Group Policy. If not, you must enable it before deploying ConfigTool for remote management.
 
 ### User Permissions
 You must be running ConfigTool with an account that has:
 - **Administrator** privileges on the remote server
 - **Network access** to administrative shares (\\\\server\\c$)
 - **Service control** permissions on remote server
+- **⚠️ PowerShell Remoting** permissions (member of Remote Management Users or Administrators)
 
 ### Best Practice
 Use a domain account with administrative rights on the target server.
@@ -112,30 +143,29 @@ Use a domain account with administrative rights on the target server.
 
 ##  Remote Features
 
-### ✅ Fully Supported (Remote Mode)
+### ✅ Fully Supported (Remote Mode with WinRM)
 
-| Feature | Status | Notes |
-|---------|--------|-------|
-| Configuration Management | ✅ Supported | Read/write via UNC path |
-| Service Control (Start/Stop) | ✅ Supported | Via remote Service Controller |
-| Service Install/Uninstall | ✅ Supported | Requires admin rights |
-| Service Account Management | ✅ Supported | Via remote sc.exe |
-| SSH Connection Testing | ✅ Supported | Already tests remote SSH servers |
-| Web Portal Configuration | ✅ Supported | Updates remote config file |
-| View Service Status | ✅ Supported | Real-time remote status |
+| Feature | Status | Requirements | Notes |
+|---------|--------|--------------|-------|
+| Configuration Management | ✅ Supported | SMB | Read/write via UNC path |
+| Service Control (Start/Stop) | ✅ Supported | RPC | Via remote Service Controller |
+| Service Install/Uninstall | ✅ Supported | RPC + Admin | Requires admin rights |
+| Service Account Changes | ✅ Supported | RPC | Via remote sc.exe |
+| **Grant "Logon as Service"** | ✅ Supported | **WinRM** | Via PowerShell Remoting |
+| SSH Connection Testing | ✅ Supported | SMB | Already tests remote SSH servers |
+| Web Portal Configuration | ✅ Supported | SMB | Updates remote config file |
+| View Service Status | ✅ Supported | RPC | Real-time remote status |
 
-### ⚠️ Limited Support (Remote Mode)
+### ⚠️ Without WinRM
 
-| Feature | Status | Notes |
-|---------|--------|-------|
-| SSH Key Generation | ⚠️ Limited | Must be done on the server |
-| Grant "Logon as Service" | ⚠️ Limited | Requires PowerShell Remoting |
-| Folder Permissions | ⚠️ Limited | Requires PowerShell Remoting |
+If WinRM is NOT enabled, these features will not work remotely:
 
-**Workaround:** For limited features:
-1. Generate SSH keys on the server directly using PowerShell
-2. Or: Use PowerShell Remoting if enabled
-3. Or: Use ConfigTool locally via RDP session
+| Feature | Status | Workaround |
+|---------|--------|------------|
+| Grant "Logon as Service" | ❌ Not Available | Run on server: `ntrights +r SeServiceLogonRight -u "DOMAIN\user"` |
+| Advanced Permission Management | ❌ Not Available | Use RDP or local ConfigTool session |
+
+**All other features work without WinRM via SMB/RPC.**
 
 ---
 

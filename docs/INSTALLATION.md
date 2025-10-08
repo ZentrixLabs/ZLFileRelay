@@ -3,11 +3,11 @@
 ## System Requirements
 
 ### Minimum Requirements
-- Windows Server 2016 or later (Windows Server 2019 or 2022 recommended)
+- Windows Server 2019 or later (Windows Server 2022 recommended)
 - 2 GB RAM
 - 500 MB disk space for application
 - Additional disk space for file transfers
-- .NET 8.0 Runtime
+- .NET 8.0 Runtime (included in self-contained deployment)
 - ASP.NET Core 8.0 Runtime (for web portal)
 
 ### Required Software

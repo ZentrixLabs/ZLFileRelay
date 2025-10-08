@@ -1,0 +1,167 @@
+<Window x:Class="ZLFileRelay.ConfigTool.Views.PreFlightCheckDialog"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:ui="http://schemas.modernwpf.com/2019"
+        xmlns:local="clr-namespace:ZLFileRelay.ConfigTool.Views"
+        xmlns:converters="clr-namespace:ZLFileRelay.ConfigTool.Converters"
+        ui:WindowHelper.UseModernWindowStyle="True"
+        Title="Pre-Flight Check" 
+        Height="600" 
+        Width="700"
+        WindowStartupLocation="CenterOwner"
+        ResizeMode="CanResize">
+    <Window.Resources>
+        <converters:StringToVisibilityConverter x:Key="StringToVisibilityConverter"/>
+    </Window.Resources>
+    <Grid>
+        <Grid.RowDefinitions>
+            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="*"/>
+            <RowDefinition Height="Auto"/>
+        </Grid.RowDefinitions>
+        
+        <!-- Header -->
+        <Border Grid.Row="0" 
+                Background="{DynamicResource SystemControlBackgroundAccentBrush}" 
+                Padding="20">
+            <StackPanel>
+                <TextBlock Text="Pre-Flight System Check" 
+                           FontSize="20" 
+                           FontWeight="Bold"
+                           Foreground="White"/>
+                <TextBlock x:Name="SummaryText"
+                           Text="Validating system before starting service..."
+                           FontSize="14"
+                           Foreground="White"
+                           Margin="0,5,0,0"/>
+            </StackPanel>
+        </Border>
+        
+        <!-- Check Results -->
+        <ScrollViewer Grid.Row="1" VerticalScrollBarVisibility="Auto">
+            <ItemsControl x:Name="ChecksItemsControl" Margin="20">
+                <ItemsControl.ItemTemplate>
+                    <DataTemplate>
+                        <Border BorderBrush="{DynamicResource SystemControlForegroundBaseLowBrush}"
+                                BorderThickness="1"
+                                CornerRadius="4"
+                                Padding="15"
+                                Margin="0,0,0,10">
+                            <Grid>
+                                <Grid.RowDefinitions>
+                                    <RowDefinition Height="Auto"/>
+                                    <RowDefinition Height="Auto"/>
+                                    <RowDefinition Height="Auto"/>
+                                </Grid.RowDefinitions>
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="Auto"/>
+                                    <ColumnDefinition Width="*"/>
+                                    <ColumnDefinition Width="Auto"/>
+                                </Grid.ColumnDefinitions>
+                                
+                                <!-- Status Icon -->
+                                <TextBlock Grid.Row="0" Grid.Column="0"
+                                           FontFamily="Segoe MDL2 Assets"
+                                           Text="{Binding StatusIcon}"
+                                           Foreground="{Binding StatusColor}"
+                                           FontSize="24"
+                                           VerticalAlignment="Top"
+                                           Margin="0,0,15,0"/>
+                                
+                                <!-- Check Name and Message -->
+                                <StackPanel Grid.Row="0" Grid.Column="1">
+                                    <TextBlock Text="{Binding Name}" 
+                                               FontWeight="SemiBold"
+                                               FontSize="14"/>
+                                    <TextBlock Text="{Binding Message}" 
+                                               Foreground="{Binding StatusColor}"
+                                               Margin="0,2,0,0"/>
+                                </StackPanel>
+                                
+                                <!-- Auto-Fix Button -->
+                                <Button Grid.Row="0" Grid.Column="2"
+                                        Content="Fix"
+                                        Click="AutoFixButton_Click"
+                                        Tag="{Binding}"
+                                        Style="{StaticResource SecondaryButton}"
+                                        Padding="15,6"
+                                        Height="28"
+                                        VerticalAlignment="Top">
+                                    <Button.Visibility>
+                                        <Binding Path="CanAutoFix">
+                                            <Binding.Converter>
+                                                <BooleanToVisibilityConverter/>
+                                            </Binding.Converter>
+                                        </Binding>
+                                    </Button.Visibility>
+                                </Button>
+                                
+                                <!-- Details (Expandable) -->
+                                <Expander Grid.Row="1" Grid.Column="0" Grid.ColumnSpan="3"
+                                          Header="Details"
+                                          Margin="0,10,0,0"
+                                          IsExpanded="False">
+                                    <Expander.Visibility>
+                                        <Binding Path="Details" Converter="{StaticResource StringToVisibilityConverter}"/>
+                                    </Expander.Visibility>
+                                    <TextBlock Text="{Binding Details}"
+                                               TextWrapping="Wrap"
+                                               FontFamily="Consolas"
+                                               FontSize="11"
+                                               Background="#F5F5F5"
+                                               Padding="10"
+                                               Margin="0,5,0,0"/>
+                                </Expander>
+                            </Grid>
+                        </Border>
+                    </DataTemplate>
+                </ItemsControl.ItemTemplate>
+            </ItemsControl>
+        </ScrollViewer>
+        
+        <!-- Action Buttons -->
+        <Border Grid.Row="2" 
+                BorderBrush="{DynamicResource SystemControlForegroundBaseLowBrush}"
+                BorderThickness="0,1,0,0"
+                Padding="20"
+                Background="{DynamicResource SystemControlPageBackgroundChromeLowBrush}">
+            <Grid>
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="*"/>
+                    <ColumnDefinition Width="Auto"/>
+                </Grid.ColumnDefinitions>
+                
+                <!-- Status Summary -->
+                <StackPanel Grid.Column="0" VerticalAlignment="Center" Orientation="Horizontal">
+                    <TextBlock x:Name="StatusIcon"
+                               FontFamily="Segoe MDL2 Assets"
+                               FontSize="20"
+                               VerticalAlignment="Center"
+                               Margin="0,0,10,0"/>
+                    <TextBlock x:Name="StatusSummary"
+                               Text="All checks passed"
+                               VerticalAlignment="Center"
+                               FontSize="14"/>
+                </StackPanel>
+                
+                <!-- Action Buttons -->
+                <StackPanel Grid.Column="1" Orientation="Horizontal">
+                    <Button x:Name="ProceedButton"
+                            Content="Start Service"
+                            Click="ProceedButton_Click"
+                            Style="{StaticResource PrimaryButton}"
+                            Width="130"
+                            Height="36"
+                            Margin="0,0,10,0"/>
+                    <Button x:Name="CancelButton"
+                            Content="Cancel"
+                            Click="CancelButton_Click"
+                            Style="{StaticResource SecondaryButton}"
+                            Width="100"
+                            Height="36"/>
+                </StackPanel>
+            </Grid>
+        </Border>
+    </Grid>
+</Window>
+

@@ -50,9 +50,11 @@ public partial class App : Application
                 services.AddSingleton<ServiceManager>();
                 services.AddSingleton<SshKeyGenerator>();
                 services.AddSingleton<ConnectionTester>();
+                services.AddSingleton<PowerShellRemotingService>();
                 services.AddSingleton<ServiceAccountManager>();
                 services.AddSingleton<PermissionManager>();
                 services.AddSingleton<INotificationService, NotificationService>();
+                services.AddSingleton<PreFlightCheckService>();
 
                 // ViewModels
                 services.AddTransient<MainViewModel>();

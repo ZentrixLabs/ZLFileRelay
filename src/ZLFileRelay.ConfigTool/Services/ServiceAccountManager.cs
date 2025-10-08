@@ -13,14 +13,17 @@ public class ServiceAccountManager
 {
     private readonly ILogger<ServiceAccountManager> _logger;
     private readonly IRemoteServerProvider _remoteServerProvider;
+    private readonly PowerShellRemotingService _psRemoting;
     private const string ServiceName = "ZLFileRelay";
 
     public ServiceAccountManager(
         ILogger<ServiceAccountManager> logger,
-        IRemoteServerProvider remoteServerProvider)
+        IRemoteServerProvider remoteServerProvider,
+        PowerShellRemotingService psRemoting)
     {
         _logger = logger;
         _remoteServerProvider = remoteServerProvider;
+        _psRemoting = psRemoting;
     }
 
     private string GetScTarget()
@@ -115,79 +118,90 @@ public class ServiceAccountManager
     {
         try
         {
-            // Use ntrights.exe or PowerShell to grant logon as service right
+            // PowerShell script to grant "Log on as a service" right
             var psScript = $@"
-                $tempPath = '{Path.GetTempPath()}GrantLogonAsService.ps1'
-                @'
-                param($UserName)
-                $sidstr = $null
-                try {{
-                    $ntprincipal = new-object System.Security.Principal.NTAccount ""$UserName""
-                    $sid = $ntprincipal.Translate([System.Security.Principal.SecurityIdentifier])
-                    $sidstr = $sid.Value.ToString()
-                }} catch {{
-                    $sidstr = $null
-                }}
-                Write-Host ""Account: "" + $UserName
-                Write-Host ""Account SID: "" + $sidstr
-                $tmp = [System.IO.Path]::GetTempFileName()
-                secedit.exe /export /cfg ""$tmp""
-                $c = Get-Content -Path $tmp
-                $currentSetting = """"
-                foreach($s in $c) {{
-                    if( $s -like ""SeServiceLogonRight*"") {{
-                        $x = $s.split(""="",  [System.StringSplitOptions]::RemoveEmptyEntries)
-                        $currentSetting = $x[1].Trim()
-                    }}
-                }}
-                if( $currentSetting -notlike ""*$sidstr*"" ) {{
-                    Write-Host ""Modify Setting ""SeServiceLogonRight""""
-                    if( [string]::IsNullOrEmpty($currentSetting) ) {{
-                        $currentSetting = ""*$sidstr""
-                    }} else {{
-                        $currentSetting = ""*$sidstr,$currentSetting""
-                    }}
-                    $outfile = @""
-                [Unicode]
-                Unicode=yes
-                [Version]
-                signature=""`$CHICAGO`$""
-                Revision=1
-                [Privilege Rights]
-                SeServiceLogonRight = $currentSetting
-                ""@
-                    $tmp2 = [System.IO.Path]::GetTempFileName()
-                    $outfile | Set-Content -Path $tmp2 -Encoding Unicode -Force
-                    secedit.exe /configure /db ""secedit.sdb"" /cfg ""$tmp2"" /areas USER_RIGHTS
-                    Remove-Item -Path $tmp2 -Force
-                }} else {{
-                    Write-Host ""Account already has SeServiceLogonRight""
-                }}
-                Remove-Item -Path $tmp -Force
-'@ | Out-File -FilePath $tempPath -Encoding UTF8
-                powershell.exe -ExecutionPolicy Bypass -File $tempPath -UserName '{username}'
-                Remove-Item $tempPath -Force
-            ";
+param($UserName)
 
-            var startInfo = new ProcessStartInfo
+$sidstr = $null
+try {{
+    $ntprincipal = new-object System.Security.Principal.NTAccount $UserName
+    $sid = $ntprincipal.Translate([System.Security.Principal.SecurityIdentifier])
+    $sidstr = $sid.Value.ToString()
+}} catch {{
+    Write-Error ""Failed to resolve SID for user: $UserName""
+    exit 1
+}}
+
+Write-Output ""Account: $UserName""
+Write-Output ""Account SID: $sidstr""
+
+# Export current security policy
+$tmp = [System.IO.Path]::GetTempFileName()
+secedit.exe /export /cfg ""$tmp"" | Out-Null
+
+# Read current settings
+$c = Get-Content -Path $tmp
+$currentSetting = """"
+foreach($s in $c) {{
+    if($s -like ""SeServiceLogonRight*"") {{
+        $x = $s.split(""="", [System.StringSplitOptions]::RemoveEmptyEntries)
+        $currentSetting = $x[1].Trim()
+    }}
+}}
+
+# Check if user already has the right
+if($currentSetting -notlike ""*$sidstr*"") {{
+    Write-Output ""Granting SeServiceLogonRight...""
+    
+    if([string]::IsNullOrEmpty($currentSetting)) {{
+        $currentSetting = ""*$sidstr""
+    }} else {{
+        $currentSetting = ""*$sidstr,$currentSetting""
+    }}
+    
+    # Create security database configuration
+    $outfile = @""
+[Unicode]
+Unicode=yes
+[Version]
+signature=""$$CHICAGO$$""
+Revision=1
+[Privilege Rights]
+SeServiceLogonRight = $currentSetting
+""@
+    
+    $tmp2 = [System.IO.Path]::GetTempFileName()
+    $outfile | Set-Content -Path $tmp2 -Encoding Unicode -Force
+    
+    # Apply configuration
+    secedit.exe /configure /db ""secedit.sdb"" /cfg ""$tmp2"" /areas USER_RIGHTS /quiet
+    
+    Remove-Item -Path $tmp2 -Force
+    Write-Output ""Successfully granted SeServiceLogonRight to $UserName""
+}} else {{
+    Write-Output ""Account already has SeServiceLogonRight""
+}}
+
+Remove-Item -Path $tmp -Force
+exit 0
+";
+
+            // Execute via PowerShell Remoting if remote, otherwise locally
+            var result = await _psRemoting.ExecuteScriptAsync(
+                psScript.Replace("$UserName", $"'{username}'"));
+
+            if (result.Success)
             {
-                FileName = "powershell.exe",
-                Arguments = $"-NoProfile -ExecutionPolicy Bypass -Command \"{psScript}\"",
-                UseShellExecute = false,
-                RedirectStandardOutput = true,
-                RedirectStandardError = true,
-                CreateNoWindow = true,
-                Verb = "runas" // Run as admin
-            };
-
-            using var process = Process.Start(startInfo);
-            if (process == null) return false;
-
-            var output = await process.StandardOutput.ReadToEndAsync();
-            await process.WaitForExitAsync();
-
-            _logger.LogInformation("Grant logon as service output: {Output}", output);
-            return process.ExitCode == 0;
+                _logger.LogInformation("Grant logon as service right succeeded for {User}: {Output}", 
+                    username, result.OutputText);
+                return true;
+            }
+            else
+            {
+                _logger.LogError("Failed to grant logon as service right for {User}: {Errors}", 
+                    username, result.ErrorText);
+                return false;
+            }
         }
         catch (Exception ex)
         {
