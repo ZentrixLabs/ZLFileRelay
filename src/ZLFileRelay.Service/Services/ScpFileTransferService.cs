@@ -324,7 +324,9 @@ namespace ZLFileRelay.Service.Services
                     CreateNoWindow = true
                 };
 
-                _logger.LogDebug("Executing SCP command: scp.exe {Arguments}", scpArgs);
+                // SECURITY FIX (MEDIUM-1): Sanitize command line to avoid exposing private key paths
+                _logger.LogDebug("Executing SCP command: scp.exe {Arguments}", 
+                    LoggingHelper.SanitizeCommandLine(scpArgs));
 
                 using var process = new Process { StartInfo = processInfo };
                 process.Start();
@@ -464,8 +466,32 @@ namespace ZLFileRelay.Service.Services
 
             host = host.Trim();
 
+            // SECURITY FIX (MEDIUM-3): Support IP addresses in addition to hostnames
+            
+            // Try to parse as IP address (IPv4 or IPv6)
+            if (System.Net.IPAddress.TryParse(host, out var ipAddress))
+            {
+                // Valid IP address
+                if (ipAddress.AddressFamily == System.Net.Sockets.AddressFamily.InterNetwork ||
+                    ipAddress.AddressFamily == System.Net.Sockets.AddressFamily.InterNetworkV6)
+                {
+                    return host;
+                }
+                throw new ArgumentException($"Invalid IP address family: {host}");
+            }
+
+            // Validate as hostname/FQDN
+            // Require at least 2 characters for real-world hostnames (single char is unusual)
+            if (host.Length < 2)
+                throw new ArgumentException($"SSH hostname too short: {host}");
+
+            // Valid hostname pattern: letters, digits, hyphens, dots
+            // Segments must be 1-63 characters, total max 253 characters
             if (!Regex.IsMatch(host, @"^[a-zA-Z0-9]([a-zA-Z0-9-]{0,61}[a-zA-Z0-9])?(\.[a-zA-Z0-9]([a-zA-Z0-9-]{0,61}[a-zA-Z0-9])?)*$"))
                 throw new ArgumentException($"Invalid SSH hostname format: {host}");
+
+            if (host.Length > 253)
+                throw new ArgumentException($"SSH hostname too long (max 253 characters): {host}");
 
             return host;
         }

@@ -97,6 +97,26 @@ try
     builder.Services.AddScoped<IFileUploadService, FileUploadService>();
     builder.Services.AddScoped<AuthorizationService>();
 
+    // SECURITY FIX (MEDIUM-4): Add rate limiting for file uploads
+    builder.Services.AddRateLimiter(options =>
+    {
+        options.AddFixedWindowLimiter("upload", limiterOptions =>
+        {
+            limiterOptions.PermitLimit = appConfig.WebPortal.MaxConcurrentUploads;
+            limiterOptions.Window = TimeSpan.FromMinutes(1);
+            limiterOptions.QueueProcessingOrder = System.Threading.RateLimiting.QueueProcessingOrder.OldestFirst;
+            limiterOptions.QueueLimit = 0; // No queuing - reject immediately if limit exceeded
+        });
+
+        options.OnRejected = async (context, cancellationToken) =>
+        {
+            context.HttpContext.Response.StatusCode = StatusCodes.Status429TooManyRequests;
+            await context.HttpContext.Response.WriteAsync(
+                "Too many upload requests. Please wait a moment and try again.", 
+                cancellationToken);
+        };
+    });
+
     // Add Razor Pages
     builder.Services.AddRazorPages();
 
@@ -122,6 +142,9 @@ try
     app.UseStaticFiles();
 
     app.UseRouting();
+
+    // SECURITY FIX (MEDIUM-4): Enable rate limiting middleware
+    app.UseRateLimiter();
 
     // Always add auth middleware (pages have [Authorize] attributes)
     if (OperatingSystem.IsWindows())

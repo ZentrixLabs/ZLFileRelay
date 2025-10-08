@@ -3,6 +3,7 @@ using System.Security.Claims;
 using System.Security.Principal;
 using Microsoft.Extensions.Logging;
 using ZLFileRelay.Core.Models;
+using ZLFileRelay.Core.Services;
 
 namespace ZLFileRelay.WebPortal.Services
 {
@@ -67,8 +68,11 @@ namespace ZLFileRelay.WebPortal.Services
                 }
             }
 
-            _logger.LogDebug("User {User} groups: {Groups}", user.Identity?.Name, string.Join(", ", userGroups));
-            _logger.LogDebug("Allowed groups: {Groups}", string.Join(", ", allowedGroups));
+            // SECURITY FIX (MEDIUM-1): Sanitize group names to avoid exposing full AD structure
+            _logger.LogDebug("User {User} groups: {Groups}", 
+                LoggingHelper.SanitizeUsername(user.Identity?.Name ?? "unknown"), 
+                LoggingHelper.SanitizeGroupList(userGroups));
+            _logger.LogDebug("Allowed groups: {Groups}", LoggingHelper.SanitizeGroupList(allowedGroups));
 
             // Compare case-insensitively
             var matches = userGroups

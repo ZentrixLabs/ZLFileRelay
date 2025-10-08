@@ -2,6 +2,7 @@ using System.Runtime.Versioning;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.RazorPages;
+using Microsoft.AspNetCore.RateLimiting;
 using ZLFileRelay.Core.Interfaces;
 using ZLFileRelay.Core.Models;
 using ZLFileRelay.WebPortal.Services;
@@ -58,6 +59,8 @@ namespace ZLFileRelay.WebPortal.Pages
             return Page();
         }
 
+        [ValidateAntiForgeryToken]
+        [EnableRateLimiting("upload")]
         public async Task<IActionResult> OnPostAsync()
         {
             // Check authorization

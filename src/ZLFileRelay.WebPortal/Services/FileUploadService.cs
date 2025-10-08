@@ -160,16 +160,87 @@ namespace ZLFileRelay.WebPortal.Services
                 return (false, $"File size ({fileSize} bytes) exceeds maximum ({_config.Security.MaxUploadSizeBytes} bytes)");
             }
 
-            // Check file extension
+            // SECURITY FIX (MEDIUM-5): Enhanced file extension validation
+            var extensionValidation = ValidateFileExtension(fileName);
+            if (!extensionValidation.isValid)
+            {
+                return extensionValidation;
+            }
+
+            return (true, null);
+        }
+
+        /// <summary>
+        /// Enhanced file extension validation to prevent bypass attacks.
+        /// Checks for double extensions, alternate data streams, and null bytes.
+        /// </summary>
+        private (bool isValid, string? errorMessage) ValidateFileExtension(string fileName)
+        {
+            // Check for null bytes (directory traversal attempt)
+            if (fileName.Contains('\0'))
+            {
+                _logger.LogWarning("Blocked file upload with null byte in filename: {FileName}", fileName);
+                return (false, "Invalid file name: contains null byte");
+            }
+
+            // Check for NTFS alternate data streams
+            if (fileName.Contains("::") || fileName.Contains(":$DATA"))
+            {
+                _logger.LogWarning("Blocked file upload with alternate data stream: {FileName}", fileName);
+                return (false, "Invalid file name: alternate data streams are not allowed");
+            }
+
+            // Get the primary extension
             var extension = Path.GetExtension(fileName).ToLowerInvariant();
+            
+            // Check for double extension attack (e.g., malicious.txt.exe)
+            var nameWithoutExtension = Path.GetFileNameWithoutExtension(fileName);
+            if (nameWithoutExtension.Contains('.'))
+            {
+                // Extract all extensions
+                var allExtensions = fileName.Split('.')
+                    .Skip(1)  // Skip the actual filename part
+                    .Select(e => "." + e.ToLowerInvariant())
+                    .ToList();
+
+                // Check if any extension in the chain is blocked
+                foreach (var ext in allExtensions)
+                {
+                    if (_config.WebPortal.BlockedFileExtensions.Contains(ext))
+                    {
+                        _logger.LogWarning("Blocked file upload with multiple extensions, found blocked extension '{Extension}' in: {FileName}", 
+                            ext, fileName);
+                        return (false, $"File extension '{ext}' is not allowed (detected in multi-extension filename)");
+                    }
+                }
+
+                // If allowed list is configured, all extensions must be allowed
+                if (_config.WebPortal.AllowedFileExtensions.Any())
+                {
+                    foreach (var ext in allExtensions)
+                    {
+                        if (!_config.WebPortal.AllowedFileExtensions.Contains(ext))
+                        {
+                            _logger.LogWarning("File with multiple extensions contains non-allowed extension '{Extension}': {FileName}", 
+                                ext, fileName);
+                            return (false, $"File extension '{ext}' is not in the allowed list");
+                        }
+                    }
+                }
+            }
+
+            // Standard extension validation
             if (_config.WebPortal.BlockedFileExtensions.Contains(extension))
             {
+                _logger.LogWarning("Blocked file upload with blocked extension '{Extension}': {FileName}", extension, fileName);
                 return (false, $"File extension '{extension}' is not allowed");
             }
 
+            // If allowed list is configured, ensure extension is in it
             if (_config.WebPortal.AllowedFileExtensions.Any() && 
                 !_config.WebPortal.AllowedFileExtensions.Contains(extension))
             {
+                _logger.LogWarning("File upload rejected, extension '{Extension}' not in allowed list: {FileName}", extension, fileName);
                 return (false, $"File extension '{extension}' is not in the allowed list");
             }
 
