@@ -45,13 +45,28 @@
                     <TextBlock Text="Examples: SERVER01, 192.168.1.100, server.domain.com" 
                                Margin="0,-10,0,15" Foreground="Gray" FontSize="11"/>
 
-                    <!-- Credentials (for future use) -->
+                    <!-- Credentials for Remote Management -->
                     <CheckBox Content="Use current Windows credentials" 
                               IsChecked="{Binding UseCurrentCredentials}" 
                               Margin="0,5"/>
                     <TextBlock TextWrapping="Wrap" Margin="0,5,0,10" Foreground="Gray" FontSize="11">
-                        If unchecked, you can provide alternate credentials (not implemented in Phase 1)
+                        Use your current Windows credentials for remote management. 
+                        Note: These are NOT the service account credentials - those are configured separately.
                     </TextBlock>
+                    
+                    <!-- Alternate Admin Credentials (optional) -->
+                    <StackPanel IsEnabled="{Binding UseCurrentCredentials, Converter={StaticResource InverseBoolConverter}}">
+                        <TextBlock Text="Alternate Admin Credentials:" Margin="0,5,0,5" FontWeight="SemiBold"/>
+                        <TextBlock TextWrapping="Wrap" Margin="0,0,0,5" Foreground="Gray" FontSize="11">
+                            Provide administrator credentials if different from your current login.
+                            Do NOT enter service account credentials here.
+                        </TextBlock>
+                        <TextBlock Text="Username:" Margin="0,5,0,2"/>
+                        <TextBox Text="{Binding Username, UpdateSourceTrigger=PropertyChanged}" 
+                                 Height="28" Margin="0,0,0,5"/>
+                        <TextBlock Text="Password:" Margin="0,5,0,2"/>
+                        <PasswordBox x:Name="AdminPasswordBox" Height="28" Margin="0,0,0,10"/>
+                    </StackPanel>
                 </StackPanel>
             </GroupBox>
 

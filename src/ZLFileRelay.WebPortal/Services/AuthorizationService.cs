@@ -89,20 +89,38 @@ namespace ZLFileRelay.WebPortal.Services
 
         public bool IsUserAllowed(ClaimsPrincipal user)
         {
+            // SECURITY FIX (HIGH-2): Validate that at least one authorization method is configured
+            var hasAllowedUsers = _config.WebPortal.AllowedUsers?.Any() ?? false;
+            var hasAllowedGroups = _config.WebPortal.AllowedGroups?.Any() ?? false;
+
+            if (!hasAllowedUsers && !hasAllowedGroups)
+            {
+                _logger.LogError("SECURITY: No authorization rules configured! Both AllowedUsers and AllowedGroups are empty. " +
+                    "Please configure at least one authorization method in appsettings.json. Denying all access.");
+                return false;
+            }
+
             // Check if user is in allowed users list
-            if (_config.WebPortal.AllowedUsers != null && _config.WebPortal.AllowedUsers.Any())
+            if (hasAllowedUsers)
             {
                 var userName = user.Identity?.Name?.ToLowerInvariant();
-                if (userName != null && _config.WebPortal.AllowedUsers
-                    .Any(u => u.ToLowerInvariant() == userName))
+                if (userName != null && _config.WebPortal.AllowedUsers!
+                    .Any(u => u.Equals(userName, StringComparison.OrdinalIgnoreCase)))
                 {
-                    _logger.LogInformation("User {User} authorized via user list", user.Identity?.Name);
+                    _logger.LogInformation("User {User} authorized via explicit user list", user.Identity?.Name);
                     return true;
                 }
             }
 
-            // Check group membership
-            return IsUserInAllowedGroups(user);
+            // Check group membership (if groups are configured)
+            if (hasAllowedGroups)
+            {
+                return IsUserInAllowedGroups(user);
+            }
+
+            // User not in allowed list and no groups to check
+            _logger.LogWarning("User {User} not in allowed users list", user.Identity?.Name);
+            return false;
         }
     }
 }

@@ -20,6 +20,12 @@ public partial class RemoteServerViewModel : ObservableObject
     [ObservableProperty] private bool _isLocalMode = true;
     [ObservableProperty] private bool _isRemoteMode = false;
     [ObservableProperty] private string _serverName = string.Empty;
+    
+    // IMPORTANT: These credentials are for REMOTE MANAGEMENT ONLY
+    // They represent either:
+    //   1. Current user credentials (UseCurrentCredentials = true) - Default
+    //   2. Alternate admin credentials (UseCurrentCredentials = false) - Explicit override
+    // These should NEVER be confused with service account credentials used by the ZLFileRelay service
     [ObservableProperty] private bool _useCurrentCredentials = true;
     [ObservableProperty] private string _username = string.Empty;
     [ObservableProperty] private string _password = string.Empty;
@@ -198,13 +204,39 @@ public partial class RemoteServerViewModel : ObservableObject
                     return;
                 }
 
+                // Validate alternate credentials if not using current credentials
+                if (!UseCurrentCredentials)
+                {
+                    if (string.IsNullOrWhiteSpace(Username))
+                    {
+                        AddLog("❌ Username is required when using alternate credentials");
+                        return;
+                    }
+                    if (string.IsNullOrWhiteSpace(Password))
+                    {
+                        AddLog("❌ Password is required when using alternate credentials");
+                        return;
+                    }
+                }
+
+                // Set the remote server credentials in the provider
+                _remoteServerProvider.SetCredentials(UseCurrentCredentials, Username, Password);
+                
                 // Set the remote server in the provider
                 _remoteServerProvider.SetServer(ServerName, true);
                 
                 IsConnected = true;
                 ConnectionStatus = $"✅ Connected to {ServerName}";
                 StatusIcon = "🌐";
-                AddLog($"✅ Connected to remote server: {ServerName}");
+                
+                if (UseCurrentCredentials)
+                {
+                    AddLog($"✅ Connected to remote server: {ServerName} (using current credentials)");
+                }
+                else
+                {
+                    AddLog($"✅ Connected to remote server: {ServerName} (using alternate credentials: {Username})");
+                }
                 AddLog("All operations will now target the remote server.");
                 
                 // Detect server info

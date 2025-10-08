@@ -144,6 +144,9 @@ namespace ZLFileRelay.Core.Services
 
                 string json = JsonSerializer.Serialize(_credentials);
                 File.WriteAllText(_configPath, json);
+
+                // SECURITY FIX (HIGH-1): Set file permissions to restrict access
+                SetFilePermissions(_configPath);
             }
             catch (Exception ex)
             {
@@ -152,23 +155,73 @@ namespace ZLFileRelay.Core.Services
             }
         }
 
+        /// <summary>
+        /// Sets secure file permissions on the credentials file.
+        /// Only SYSTEM and Administrators can access the file.
+        /// </summary>
+        private void SetFilePermissions(string filePath)
+        {
+            try
+            {
+                if (!OperatingSystem.IsWindows())
+                {
+                    _logger.LogWarning("File permission setting is only supported on Windows");
+                    return;
+                }
+
+                var fileInfo = new FileInfo(filePath);
+                var fileSecurity = fileInfo.GetAccessControl();
+
+                // Remove inheritance and existing permissions
+                fileSecurity.SetAccessRuleProtection(isProtected: true, preserveInheritance: false);
+
+                // Grant SYSTEM full control
+                var systemSid = new System.Security.Principal.SecurityIdentifier(
+                    System.Security.Principal.WellKnownSidType.LocalSystemSid, null);
+                fileSecurity.AddAccessRule(new System.Security.AccessControl.FileSystemAccessRule(
+                    systemSid,
+                    System.Security.AccessControl.FileSystemRights.FullControl,
+                    System.Security.AccessControl.AccessControlType.Allow));
+
+                // Grant Administrators full control
+                var adminsSid = new System.Security.Principal.SecurityIdentifier(
+                    System.Security.Principal.WellKnownSidType.BuiltinAdministratorsSid, null);
+                fileSecurity.AddAccessRule(new System.Security.AccessControl.FileSystemAccessRule(
+                    adminsSid,
+                    System.Security.AccessControl.FileSystemRights.FullControl,
+                    System.Security.AccessControl.AccessControlType.Allow));
+
+                fileInfo.SetAccessControl(fileSecurity);
+                _logger.LogInformation("Set secure file permissions on credentials file: {Path}", filePath);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogWarning(ex, "Failed to set file permissions on {Path}. File is still encrypted but may be accessible to other users.", filePath);
+            }
+        }
+
         private static byte[] ProtectData(string data)
         {
             byte[] dataBytes = Encoding.UTF8.GetBytes(data);
-            return ProtectedData.Protect(dataBytes, null, DataProtectionScope.CurrentUser);
+            // SECURITY FIX (HIGH-1): Use LocalMachine scope instead of CurrentUser
+            // This allows both ConfigTool (Admin) and Service (service account) to access credentials
+            return ProtectedData.Protect(dataBytes, null, DataProtectionScope.LocalMachine);
         }
 
         private static string UnprotectData(byte[] encryptedData)
         {
             try
             {
-                byte[] dataBytes = ProtectedData.Unprotect(encryptedData, null, DataProtectionScope.CurrentUser);
+                // SECURITY FIX (HIGH-1): Use LocalMachine scope instead of CurrentUser
+                byte[] dataBytes = ProtectedData.Unprotect(encryptedData, null, DataProtectionScope.LocalMachine);
                 return Encoding.UTF8.GetString(dataBytes);
             }
             catch (CryptographicException ex)
             {
+                // Provide helpful error message for migration from old CurrentUser encryption
                 throw new CryptographicException(
-                    "Failed to decrypt credentials. Ensure the service is running as the correct user.", ex);
+                    "Failed to decrypt credentials. If you recently upgraded, please re-enter your credentials. " +
+                    "The encryption method has been updated for better security across different user accounts.", ex);
             }
         }
     }

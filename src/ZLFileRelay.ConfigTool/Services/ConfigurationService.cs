@@ -45,10 +45,74 @@ public class ConfigurationService
         {
             // Remote mode - try standard installation path
             var serverName = _remoteServerProvider.ServerName;
+            
+            // SECURITY FIX (HIGH-3): Validate server name to prevent path traversal
+            if (!IsValidServerName(serverName))
+            {
+                _logger.LogError("Invalid server name format: {ServerName}. Server names must be valid hostnames or IP addresses without path traversal characters.", serverName);
+                throw new ArgumentException($"Invalid server name format: {serverName}. Please use a valid hostname or IP address.");
+            }
+            
             _configPath = $@"\\{serverName}\c$\Program Files\ZLFileRelay\appsettings.json";
             
             _logger.LogInformation("Remote mode enabled, using UNC path: {Path}", _configPath);
         }
+    }
+
+    /// <summary>
+    /// Validates that a server name is a valid hostname or IP address.
+    /// Prevents path traversal and injection attacks.
+    /// </summary>
+    private static bool IsValidServerName(string serverName)
+    {
+        if (string.IsNullOrWhiteSpace(serverName))
+            return false;
+
+        // Check for path traversal characters
+        if (serverName.Contains("..") || 
+            serverName.Contains("/") || 
+            serverName.Contains("\\") ||
+            serverName.Contains("$"))
+        {
+            return false;
+        }
+
+        // Check for alternate data streams or special characters
+        if (serverName.Contains(":"))
+        {
+            // Colons are only allowed in IPv6 addresses
+            // If it contains a colon, it must be a valid IPv6 address
+            if (!System.Net.IPAddress.TryParse(serverName, out var ipAddress) ||
+                ipAddress.AddressFamily != System.Net.Sockets.AddressFamily.InterNetworkV6)
+            {
+                return false;
+            }
+            return true;
+        }
+
+        // Try to parse as IPv4 address
+        if (System.Net.IPAddress.TryParse(serverName, out var ipv4Address) &&
+            ipv4Address.AddressFamily == System.Net.Sockets.AddressFamily.InterNetwork)
+        {
+            return true;
+        }
+
+        // Validate as DNS hostname (including NetBIOS names)
+        // Allow: letters, digits, hyphens, dots
+        // Must start with alphanumeric
+        // Segments between dots must be 1-63 characters
+        var hostnamePattern = @"^[a-zA-Z0-9]([a-zA-Z0-9\-]{0,61}[a-zA-Z0-9])?(\.[a-zA-Z0-9]([a-zA-Z0-9\-]{0,61}[a-zA-Z0-9])?)*$";
+        
+        if (System.Text.RegularExpressions.Regex.IsMatch(serverName, hostnamePattern))
+        {
+            // Additional check: hostname should not be longer than 253 characters
+            if (serverName.Length <= 253)
+            {
+                return true;
+            }
+        }
+
+        return false;
     }
 
     public async Task<ZLFileRelayConfiguration> LoadAsync()

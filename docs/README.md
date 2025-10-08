@@ -77,6 +77,13 @@ Start here for common tasks:
 - Troubleshooting remote connections
 - Deployment patterns
 
+**[Credential Management](CREDENTIAL_MANAGEMENT.md)** ⚠️ **Important!**
+- Understanding credential types
+- Remote management credentials
+- Service account credentials
+- Security best practices
+- Troubleshooting credential issues
+
 **[Deployment Quick Reference](DEPLOYMENT_QUICK_REFERENCE.md)**
 - Command cheatsheet
 - Quick configuration snippets
@@ -116,6 +123,7 @@ Start here for common tasks:
 ### Management
 - **Manage services** → [CONFIGTOOL_QUICK_START.md](CONFIGTOOL_QUICK_START.md) → Service Management
 - **Manage remote server** → [REMOTE_MANAGEMENT.md](REMOTE_MANAGEMENT.md)
+- **Understand credentials** → [CREDENTIAL_MANAGEMENT.md](CREDENTIAL_MANAGEMENT.md)
 - **View logs** → Check `C:\FileRelay\logs\`
 - **Troubleshoot** → Check relevant guide's troubleshooting section
 
@@ -151,6 +159,7 @@ Start Here:
 Review:
 ├── DEPLOYMENT.md (security considerations)
 ├── CONFIGURATION.md (security settings)
+├── CREDENTIAL_MANAGEMENT.md (credential security) ⚠️
 └── REMOTE_MANAGEMENT.md (access requirements)
 ```
 

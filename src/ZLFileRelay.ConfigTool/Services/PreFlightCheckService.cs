@@ -370,15 +370,61 @@ public class PreFlightCheckService
     {
         try
         {
-            // Check if any critical ports are in use (this is a basic check)
-            // In a real implementation, you'd check the specific ports the web portal uses
+            var config = _configurationService.CurrentConfiguration;
+            if (config == null || !config.WebPortal.Enabled)
+            {
+                return new PreFlightCheck
+                {
+                    Name = "Port Availability",
+                    Status = CheckStatus.Info,
+                    Message = "Web portal disabled - port check skipped",
+                    Details = "Port availability check is only performed when web portal is enabled."
+                };
+            }
+
+            var httpPort = config.WebPortal.Kestrel.HttpPort;
+            var httpsPort = config.WebPortal.Kestrel.HttpsPort;
+            var enableHttps = config.WebPortal.Kestrel.EnableHttps;
+
+            var issues = new List<string>();
+            var portsToCheck = new List<(int port, string protocol)> { (httpPort, "HTTP") };
             
+            if (enableHttps)
+            {
+                portsToCheck.Add((httpsPort, "HTTPS"));
+            }
+
+            foreach (var (port, protocol) in portsToCheck)
+            {
+                if (!IsPortAvailable(port))
+                {
+                    issues.Add($"{protocol} port {port} is already in use");
+                }
+            }
+
+            if (issues.Count > 0)
+            {
+                return new PreFlightCheck
+                {
+                    Name = "Port Availability",
+                    Status = CheckStatus.Warning,
+                    Message = $"{issues.Count} port(s) in use",
+                    Details = string.Join(Environment.NewLine, issues) + 
+                             Environment.NewLine + 
+                             "The web portal may fail to start if these ports are not released."
+                };
+            }
+
+            var portsChecked = enableHttps 
+                ? $"HTTP ({httpPort}) and HTTPS ({httpsPort})" 
+                : $"HTTP ({httpPort})";
+                
             return new PreFlightCheck
             {
                 Name = "Port Availability",
-                Status = CheckStatus.Info,
-                Message = "Port check not implemented",
-                Details = "Manual verification recommended if web portal is enabled."
+                Status = CheckStatus.Pass,
+                Message = "All required ports are available",
+                Details = $"Checked ports: {portsChecked}"
             };
         }
         catch (Exception ex)
@@ -390,6 +436,28 @@ public class PreFlightCheckService
                 Message = "Failed to check port availability",
                 Details = ex.Message
             };
+        }
+    }
+
+    private bool IsPortAvailable(int port)
+    {
+        try
+        {
+            // Try to bind to the port to see if it's available
+            var listener = new System.Net.Sockets.TcpListener(System.Net.IPAddress.Any, port);
+            listener.Start();
+            listener.Stop();
+            return true;
+        }
+        catch (System.Net.Sockets.SocketException)
+        {
+            // Port is in use
+            return false;
+        }
+        catch
+        {
+            // Other error - assume port might not be available
+            return false;
         }
     }
 
@@ -494,7 +562,8 @@ public class PreFlightCheck
         CheckStatus.Pass => "\uE73E",    // CheckMark
         CheckStatus.Warning => "\uE7BA", // Warning
         CheckStatus.Error => "\uE711",   // ErrorBadge
-        CheckStatus.Info => "\uE946"     // Info
+        CheckStatus.Info => "\uE946",    // Info
+        _ => "\uE946"                    // Default to Info icon
     };
 
     public System.Windows.Media.Brush StatusColor => Status switch
@@ -502,7 +571,8 @@ public class PreFlightCheck
         CheckStatus.Pass => System.Windows.Media.Brushes.Green,
         CheckStatus.Warning => System.Windows.Media.Brushes.Orange,
         CheckStatus.Error => System.Windows.Media.Brushes.Red,
-        CheckStatus.Info => System.Windows.Media.Brushes.DodgerBlue
+        CheckStatus.Info => System.Windows.Media.Brushes.DodgerBlue,
+        _ => System.Windows.Media.Brushes.Gray  // Default to Gray
     };
 }
 

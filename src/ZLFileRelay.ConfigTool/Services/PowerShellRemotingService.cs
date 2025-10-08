@@ -72,7 +72,7 @@ public class PowerShellRemotingService
             var output = new List<string>();
             foreach (var result in results)
             {
-                output.Add(result.ToString());
+                output.Add(result?.ToString() ?? string.Empty);
             }
 
             var errors = new List<string>();
@@ -80,7 +80,7 @@ public class PowerShellRemotingService
             {
                 foreach (var error in pipeline.Error.ReadToEnd())
                 {
-                    errors.Add(error.ToString());
+                    errors.Add(error?.ToString() ?? string.Empty);
                 }
             }
 
@@ -141,7 +141,7 @@ public class PowerShellRemotingService
             var output = new List<string>();
             foreach (var result in results)
             {
-                output.Add(result.ToString());
+                output.Add(result?.ToString() ?? string.Empty);
             }
 
             var errors = new List<string>();
@@ -149,7 +149,7 @@ public class PowerShellRemotingService
             {
                 foreach (var error in powershell.Streams.Error)
                 {
-                    errors.Add(error.ToString());
+                    errors.Add(error?.ToString() ?? string.Empty);
                 }
             }
 
@@ -182,6 +182,35 @@ public class PowerShellRemotingService
             var connectionInfo = new WSManConnectionInfo(
                 new Uri($"http://{serverName}:5985/wsman"));
             
+            // IMPORTANT: Always use current user credentials or explicitly provided admin credentials
+            // NEVER use service account credentials for remote management operations
+            
+            // Check if alternate admin credentials should be used
+            if (!_remoteServerProvider.UseCurrentCredentials && 
+                !string.IsNullOrWhiteSpace(_remoteServerProvider.AlternateUsername) &&
+                !string.IsNullOrWhiteSpace(_remoteServerProvider.AlternatePassword))
+            {
+                // Use alternate admin credentials
+                var securePassword = new System.Security.SecureString();
+                foreach (char c in _remoteServerProvider.AlternatePassword)
+                {
+                    securePassword.AppendChar(c);
+                }
+                securePassword.MakeReadOnly();
+                
+                connectionInfo.Credential = new System.Management.Automation.PSCredential(
+                    _remoteServerProvider.AlternateUsername, 
+                    securePassword);
+                
+                _logger.LogInformation("Using alternate admin credentials for remote connection: {Username}", 
+                    _remoteServerProvider.AlternateUsername);
+            }
+            else
+            {
+                // Use current user credentials (default)
+                _logger.LogInformation("Using current user credentials for remote connection");
+            }
+            
             return RunspaceFactory.CreateRunspace(connectionInfo);
         });
     }
@@ -198,7 +227,7 @@ public class PowerShellRemotingService
             var output = new List<string>();
             foreach (var result in results)
             {
-                output.Add(result.ToString());
+                output.Add(result?.ToString() ?? string.Empty);
             }
 
             var errors = new List<string>();
@@ -206,7 +235,7 @@ public class PowerShellRemotingService
             {
                 foreach (var error in powershell.Streams.Error)
                 {
-                    errors.Add(error.ToString());
+                    errors.Add(error?.ToString() ?? string.Empty);
                 }
             }
 
@@ -249,7 +278,7 @@ public class PowerShellRemotingService
             var output = new List<string>();
             foreach (var result in results)
             {
-                output.Add(result.ToString());
+                output.Add(result?.ToString() ?? string.Empty);
             }
 
             var errors = new List<string>();
@@ -257,7 +286,7 @@ public class PowerShellRemotingService
             {
                 foreach (var error in powershell.Streams.Error)
                 {
-                    errors.Add(error.ToString());
+                    errors.Add(error?.ToString() ?? string.Empty);
                 }
             }
 

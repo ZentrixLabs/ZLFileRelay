@@ -97,6 +97,7 @@ Comprehensive guides for users and administrators:
 #### Advanced Features
 - `REMOTE_MANAGEMENT.md` - Managing remote servers
 - `REMOTE_MANAGEMENT_PLAN.md` - Remote management design
+- `CREDENTIAL_MANAGEMENT.md` - Understanding credential types and security
 - `WEB_PORTAL_CONFIGURATION.md` - Web portal configuration
 
 #### Project Information

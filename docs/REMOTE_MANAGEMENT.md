@@ -4,6 +4,8 @@
 
 The ZL File Relay ConfigTool supports managing both local and remote installations, making it ideal for Windows Server Core deployments where GUI applications cannot run locally.
 
+> **⚠️ Important:** For information about credentials used in remote management, see **[Credential Management Guide](CREDENTIAL_MANAGEMENT.md)**. Remote management credentials are completely separate from service account credentials.
+
 ---
 
 ## 📦 Installation Scenarios
