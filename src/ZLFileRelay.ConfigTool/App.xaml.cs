@@ -52,9 +52,11 @@ public partial class App : Application
                 services.AddSingleton<ConnectionTester>();
                 services.AddSingleton<ServiceAccountManager>();
                 services.AddSingleton<PermissionManager>();
+                services.AddSingleton<INotificationService, NotificationService>();
 
                 // ViewModels
                 services.AddTransient<MainViewModel>();
+                services.AddTransient<DashboardViewModel>();
                 services.AddTransient<RemoteServerViewModel>();
                 services.AddTransient<ServiceManagementViewModel>();
                 services.AddTransient<ConfigurationViewModel>();

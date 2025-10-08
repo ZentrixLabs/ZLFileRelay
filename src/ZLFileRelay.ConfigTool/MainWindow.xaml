@@ -22,6 +22,11 @@
         <!-- Main Content with TabControl -->
         <TabControl Grid.Row="0" Margin="10">
             
+            <!-- Dashboard Tab -->
+            <TabItem Header="Dashboard">
+                <ContentControl x:Name="DashboardContent"/>
+            </TabItem>
+            
             <!-- Service Management Tab -->
             <TabItem Header="Service Management">
                 <ScrollViewer VerticalScrollBarVisibility="Auto">
@@ -239,6 +244,7 @@
                         <Button x:Name="SaveConfigButton"
                                 Style="{StaticResource PrimaryButton}"
                                 Padding="20,10"
+                                Height="38"
                                 HorizontalAlignment="Left">
                             <StackPanel Orientation="Horizontal">
                                 <TextBlock FontFamily="Segoe MDL2 Assets" Text="&#xE74E;" FontSize="16" Margin="0,0,8,0" VerticalAlignment="Center"/>
@@ -328,6 +334,7 @@
                             <Button x:Name="SaveWebConfigButton"
                                     Style="{StaticResource PrimaryButton}"
                                     Padding="20,10"
+                                    Height="38"
                                     Margin="0,0,10,0">
                                 <StackPanel Orientation="Horizontal">
                                     <TextBlock FontFamily="Segoe MDL2 Assets" Text="&#xE74E;" FontSize="16" Margin="0,0,8,0" VerticalAlignment="Center"/>
@@ -336,7 +343,8 @@
                             </Button>
                             <Button x:Name="RestartWebServiceButton"
                                     Style="{StaticResource SecondaryButton}"
-                                    Padding="20,10">
+                                    Padding="20,10"
+                                    Height="38">
                                 <StackPanel Orientation="Horizontal">
                                     <TextBlock FontFamily="Segoe MDL2 Assets" Text="&#xE72C;" FontSize="16" Margin="0,0,8,0" VerticalAlignment="Center"/>
                                     <TextBlock Text="Restart Web Service" VerticalAlignment="Center"/>
@@ -452,6 +460,7 @@
                             <Button x:Name="TestSshButton"
                                     Style="{StaticResource SecondaryButton}"
                                     Padding="20,10"
+                                    Height="38"
                                     HorizontalAlignment="Left">
                                 <StackPanel Orientation="Horizontal">
                                     <TextBlock FontFamily="Segoe MDL2 Assets" Text="&#xEA46;" FontSize="16" Margin="0,0,8,0" VerticalAlignment="Center"/>
@@ -474,6 +483,7 @@
                         <Button x:Name="SaveSshConfigButton"
                                 Style="{StaticResource PrimaryButton}"
                                 Padding="20,10"
+                                Height="38"
                                 HorizontalAlignment="Left">
                             <StackPanel Orientation="Horizontal">
                                 <TextBlock FontFamily="Segoe MDL2 Assets" Text="&#xE74E;" FontSize="16" Margin="0,0,8,0" VerticalAlignment="Center"/>
@@ -682,5 +692,103 @@
                            FontSize="11"/>
             </Grid>
         </Border>
+        
+        <!-- Toast Notifications Overlay -->
+        <ItemsControl x:Name="NotificationHost"
+                      Grid.Row="0"
+                      ItemsSource="{Binding Notifications}"
+                      VerticalAlignment="Top"
+                      HorizontalAlignment="Right"
+                      Margin="20,60,20,0"
+                      IsHitTestVisible="True">
+            <ItemsControl.ItemTemplate>
+                <DataTemplate>
+                    <Border Background="{Binding BackgroundColor}"
+                            CornerRadius="4"
+                            Padding="15,10"
+                            Margin="0,0,0,10"
+                            MinWidth="300"
+                            MaxWidth="400">
+                        <Border.Effect>
+                            <DropShadowEffect Color="Black" 
+                                              Opacity="0.3" 
+                                              BlurRadius="10" 
+                                              ShadowDepth="2" 
+                                              Direction="270"/>
+                        </Border.Effect>
+                        <Border.Style>
+                            <Style TargetType="Border">
+                                <Style.Triggers>
+                                    <DataTrigger Binding="{Binding IsClickable}" Value="True">
+                                        <Setter Property="Cursor" Value="Hand"/>
+                                    </DataTrigger>
+                                </Style.Triggers>
+                            </Style>
+                        </Border.Style>
+                        <Border.InputBindings>
+                            <MouseBinding MouseAction="LeftClick" Command="{Binding ClickCommand}"/>
+                        </Border.InputBindings>
+                        
+                        <Grid>
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="Auto"/>
+                                <ColumnDefinition Width="*"/>
+                                <ColumnDefinition Width="Auto"/>
+                            </Grid.ColumnDefinitions>
+                            
+                            <TextBlock Grid.Column="0"
+                                       FontFamily="Segoe MDL2 Assets"
+                                       Text="{Binding Icon}"
+                                       FontSize="20"
+                                       Foreground="White"
+                                       VerticalAlignment="Center"
+                                       Margin="0,0,10,0"/>
+                            
+                            <TextBlock Grid.Column="1"
+                                       Text="{Binding Message}"
+                                       Foreground="White"
+                                       TextWrapping="Wrap"
+                                       VerticalAlignment="Center"
+                                       FontSize="14"/>
+                            
+                            <Button Grid.Column="2"
+                                    x:Name="CloseNotificationButton"
+                                    Content="×"
+                                    FontSize="20"
+                                    Foreground="White"
+                                    Background="Transparent"
+                                    BorderThickness="0"
+                                    Width="24"
+                                    Height="24"
+                                    Padding="0"
+                                    VerticalAlignment="Top"
+                                    Cursor="Hand"
+                                    Margin="10,0,0,0">
+                                <Button.Style>
+                                    <Style TargetType="Button">
+                                        <Setter Property="Template">
+                                            <Setter.Value>
+                                                <ControlTemplate TargetType="Button">
+                                                    <Border Background="{TemplateBinding Background}"
+                                                            CornerRadius="12">
+                                                        <ContentPresenter HorizontalAlignment="Center"
+                                                                          VerticalAlignment="Center"/>
+                                                    </Border>
+                                                    <ControlTemplate.Triggers>
+                                                        <Trigger Property="IsMouseOver" Value="True">
+                                                            <Setter Property="Background" Value="#40FFFFFF"/>
+                                                        </Trigger>
+                                                    </ControlTemplate.Triggers>
+                                                </ControlTemplate>
+                                            </Setter.Value>
+                                        </Setter>
+                                    </Style>
+                                </Button.Style>
+                            </Button>
+                        </Grid>
+                    </Border>
+                </DataTemplate>
+            </ItemsControl.ItemTemplate>
+        </ItemsControl>
     </Grid>
 </Window>

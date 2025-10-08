@@ -2,6 +2,7 @@
 using System.Windows.Controls;
 using ZLFileRelay.ConfigTool.ViewModels;
 using ZLFileRelay.ConfigTool.Views;
+using ZLFileRelay.ConfigTool.Services;
 using System.IO;
 using System.Security.Cryptography.X509Certificates;
 
@@ -12,17 +13,36 @@ namespace ZLFileRelay.ConfigTool;
 /// </summary>
 public partial class MainWindow : Window
 {
+    private readonly DashboardViewModel _dashboardViewModel;
     private readonly ServiceManagementViewModel _serviceViewModel;
     private readonly RemoteServerViewModel _remoteServerViewModel;
+    private readonly INotificationService _notificationService;
 
     public MainWindow(
+        DashboardViewModel dashboardViewModel,
         ServiceManagementViewModel serviceViewModel,
-        RemoteServerViewModel remoteServerViewModel)
+        RemoteServerViewModel remoteServerViewModel,
+        INotificationService notificationService)
     {
         InitializeComponent();
         
+        _dashboardViewModel = dashboardViewModel;
         _serviceViewModel = serviceViewModel;
         _remoteServerViewModel = remoteServerViewModel;
+        _notificationService = notificationService;
+        
+        // Bind NotificationHost
+        NotificationHost.ItemsSource = _notificationService.Notifications;
+        
+        // Show welcome notification
+        _notificationService.ShowInfo("Welcome to ZL File Relay Configuration Tool");
+        
+        // Bind Dashboard tab
+        var dashboardView = new DashboardView
+        {
+            DataContext = _dashboardViewModel
+        };
+        DashboardContent.Content = dashboardView;
         
         // Bind Remote Server tab
         var remoteServerView = new RemoteServerView
@@ -133,6 +153,8 @@ public partial class MainWindow : Window
     {
         await _serviceViewModel.InstallServiceCommand.ExecuteAsync(null);
         await RefreshStatusAsync();
+        _dashboardViewModel.AddActivity("Service installed", ViewModels.ActivityType.Success);
+        _notificationService.ShowSuccess("Service installed successfully");
     }
 
     private async void UninstallServiceButton_Click(object sender, RoutedEventArgs e)
@@ -147,6 +169,8 @@ public partial class MainWindow : Window
         {
             await _serviceViewModel.UninstallServiceCommand.ExecuteAsync(null);
             await RefreshStatusAsync();
+            _dashboardViewModel.AddActivity("Service uninstalled", ViewModels.ActivityType.Warning);
+            _notificationService.ShowWarning("Service uninstalled");
         }
     }
 
@@ -154,12 +178,16 @@ public partial class MainWindow : Window
     {
         await _serviceViewModel.StartServiceCommand.ExecuteAsync(null);
         await RefreshStatusAsync();
+        _dashboardViewModel.AddActivity("Service started", ViewModels.ActivityType.Success);
+        _notificationService.ShowSuccess("Service started successfully");
     }
 
     private async void StopServiceButton_Click(object sender, RoutedEventArgs e)
     {
         await _serviceViewModel.StopServiceCommand.ExecuteAsync(null);
         await RefreshStatusAsync();
+        _dashboardViewModel.AddActivity("Service stopped", ViewModels.ActivityType.Warning);
+        _notificationService.ShowWarning("Service stopped");
     }
 
     private void ConfigureCredentialsButton_Click(object sender, RoutedEventArgs e)
@@ -226,6 +254,8 @@ public partial class MainWindow : Window
         ConfigStatusText.Text = "✅ Configuration saved! (Full implementation pending)";
         ConfigStatusText.Foreground = System.Windows.Media.Brushes.Green;
         StatusBarText.Text = "Configuration saved";
+        _dashboardViewModel.AddActivity("Configuration saved", ViewModels.ActivityType.Success);
+        _notificationService.ShowSuccess("Configuration saved successfully");
     }
 
     #endregion
