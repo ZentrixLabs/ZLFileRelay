@@ -9,7 +9,13 @@
                 <!-- Request theme can be: Light, Dark, or Default (follows system) -->
                 <ui:ThemeResources RequestedTheme="Light" />
                 <ui:XamlControlsResources />
+                
+                <!-- Custom Button Styles -->
+                <ResourceDictionary Source="Styles/ButtonStyles.xaml"/>
             </ResourceDictionary.MergedDictionaries>
+            
+            <!-- Converters -->
+            <BooleanToVisibilityConverter x:Key="BoolToVisConverter"/>
         </ResourceDictionary>
     </Application.Resources>
 </Application>

@@ -52,8 +52,13 @@
                                                Margin="10,0" />
                                     <Button Grid.Column="2" 
                                             x:Name="RefreshStatusButton" 
-                                            Content="🔄 Refresh" 
-                                            Click="RefreshStatusButton_Click" />
+                                            Click="RefreshStatusButton_Click"
+                                            Style="{StaticResource SecondaryButton}">
+                                        <StackPanel Orientation="Horizontal">
+                                            <TextBlock FontFamily="Segoe MDL2 Assets" Text="&#xE72C;" FontSize="16" Margin="0,0,8,0" VerticalAlignment="Center"/>
+                                            <TextBlock Text="Refresh" VerticalAlignment="Center"/>
+                                        </StackPanel>
+                                    </Button>
                                 </Grid>
                             </Border>
                         </ui:SimpleStackPanel>
@@ -64,26 +69,41 @@
                                        Style="{StaticResource SubtitleTextBlockStyle}"/>
                             <WrapPanel>
                                 <Button x:Name="InstallServiceButton" 
-                                        Content="📦 Install Service" 
                                         Click="InstallServiceButton_Click" 
                                         Margin="0,0,10,10"
-                                        Padding="15,8"/>
+                                        Style="{StaticResource SecondaryButton}">
+                                    <StackPanel Orientation="Horizontal">
+                                        <TextBlock FontFamily="Segoe MDL2 Assets" Text="&#xE896;" FontSize="16" Margin="0,0,8,0" VerticalAlignment="Center"/>
+                                        <TextBlock Text="Install Service" VerticalAlignment="Center"/>
+                                    </StackPanel>
+                                </Button>
                                 <Button x:Name="UninstallServiceButton" 
-                                        Content="🗑️ Uninstall Service" 
                                         Click="UninstallServiceButton_Click" 
                                         Margin="0,0,10,10"
-                                        Padding="15,8"/>
+                                        Style="{StaticResource DestructiveButton}">
+                                    <StackPanel Orientation="Horizontal">
+                                        <TextBlock FontFamily="Segoe MDL2 Assets" Text="&#xE74D;" FontSize="16" Margin="0,0,8,0" VerticalAlignment="Center"/>
+                                        <TextBlock Text="Uninstall Service" VerticalAlignment="Center"/>
+                                    </StackPanel>
+                                </Button>
                                 <Button x:Name="StartServiceButton" 
-                                        Content="▶️ Start Service" 
                                         Click="StartServiceButton_Click" 
-                                        Style="{StaticResource AccentButtonStyle}"
-                                        Margin="0,0,10,10"
-                                        Padding="15,8"/>
+                                        Style="{StaticResource PrimaryButton}"
+                                        Margin="0,0,10,10">
+                                    <StackPanel Orientation="Horizontal">
+                                        <TextBlock FontFamily="Segoe MDL2 Assets" Text="&#xE768;" FontSize="16" Margin="0,0,8,0" VerticalAlignment="Center"/>
+                                        <TextBlock Text="Start Service" VerticalAlignment="Center"/>
+                                    </StackPanel>
+                                </Button>
                                 <Button x:Name="StopServiceButton" 
-                                        Content="⏹️ Stop Service" 
                                         Click="StopServiceButton_Click" 
                                         Margin="0,0,10,10"
-                                        Padding="15,8"/>
+                                        Style="{StaticResource SecondaryButton}">
+                                    <StackPanel Orientation="Horizontal">
+                                        <TextBlock FontFamily="Segoe MDL2 Assets" Text="&#xE71A;" FontSize="16" Margin="0,0,8,0" VerticalAlignment="Center"/>
+                                        <TextBlock Text="Stop Service" VerticalAlignment="Center"/>
+                                    </StackPanel>
+                                </Button>
                             </WrapPanel>
                         </ui:SimpleStackPanel>
 
@@ -111,10 +131,13 @@
                                                Margin="10,0" />
                                     <Button Grid.Column="2" 
                                             x:Name="ConfigureCredentialsButton" 
-                                            Content="🔐 Configure SMB" 
                                             Click="ConfigureCredentialsButton_Click" 
-                                            Style="{StaticResource AccentButtonStyle}"
-                                            Padding="15,8"/>
+                                            Style="{StaticResource PrimaryButton}">
+                                        <StackPanel Orientation="Horizontal">
+                                            <TextBlock FontFamily="Segoe MDL2 Assets" Text="&#xE8D7;" FontSize="16" Margin="0,0,8,0" VerticalAlignment="Center"/>
+                                            <TextBlock Text="Configure SMB" VerticalAlignment="Center"/>
+                                        </StackPanel>
+                                    </Button>
                                 </Grid>
                             </Border>
                         </ui:SimpleStackPanel>
@@ -162,63 +185,502 @@
                 </ScrollViewer>
             </TabItem>
 
-            <!-- Configuration Tab (Placeholder) -->
-            <TabItem Header="Configuration">
-                <ScrollViewer>
+            <!-- Configuration Tab -->
+            <TabItem Header="Configuration Settings">
+                <ScrollViewer VerticalScrollBarVisibility="Auto">
                     <StackPanel Margin="20">
-                        <TextBlock Text="Configuration Editor" 
+                        <TextBlock Text="File Transfer Configuration" 
                                    Style="{StaticResource TitleTextBlockStyle}"
                                    Margin="0,0,0,20"/>
-                        <TextBlock Text="Configuration editing UI will be added here" 
-                                   Foreground="Gray"/>
+                        
+                        <!-- Transfer Method -->
+                        <ui:SimpleStackPanel Spacing="10" Margin="0,0,0,20">
+                            <TextBlock Text="Transfer Method" Style="{StaticResource SubtitleTextBlockStyle}"/>
+                            <RadioButton x:Name="SshRadio" Content="SSH/SCP" IsChecked="True" GroupName="TransferMethod"/>
+                            <RadioButton x:Name="SmbRadio" Content="SMB/CIFS" GroupName="TransferMethod"/>
+                        </ui:SimpleStackPanel>
+
+                        <!-- Directories -->
+                        <ui:SimpleStackPanel Spacing="10" Margin="0,0,0,20">
+                            <TextBlock Text="Directories" Style="{StaticResource SubtitleTextBlockStyle}"/>
+                            
+                            <Grid>
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="Auto"/>
+                                    <ColumnDefinition Width="*"/>
+                                    <ColumnDefinition Width="Auto"/>
+                                </Grid.ColumnDefinitions>
+                                <Grid.RowDefinitions>
+                                    <RowDefinition Height="Auto"/>
+                                    <RowDefinition Height="Auto"/>
+                                </Grid.RowDefinitions>
+                                
+                                <TextBlock Grid.Row="0" Grid.Column="0" Text="Watch Directory:" VerticalAlignment="Center" Margin="0,0,10,5"/>
+                                <TextBox Grid.Row="0" Grid.Column="1" x:Name="WatchDirectoryTextBox" Margin="0,0,5,5"
+                                         ToolTip="The directory where the service monitors for new files to transfer. Files placed here will be automatically transferred to the remote destination."/>
+                                <Button Grid.Row="0" Grid.Column="2" Content="Browse..." Margin="0,0,0,5"/>
+                                
+                                <TextBlock Grid.Row="1" Grid.Column="0" Text="Archive Directory:" VerticalAlignment="Center" Margin="0,0,10,0"/>
+                                <TextBox Grid.Row="1" Grid.Column="1" x:Name="ArchiveDirectoryTextBox"
+                                         ToolTip="Directory where files are moved after successful transfer (if archive option is enabled). Helps maintain transfer history."/>
+                                <Button Grid.Row="1" Grid.Column="2" Content="Browse..."/>
+                            </Grid>
+                        </ui:SimpleStackPanel>
+
+                        <!-- File Handling -->
+                        <ui:SimpleStackPanel Spacing="10" Margin="0,0,0,20">
+                            <TextBlock Text="File Handling" Style="{StaticResource SubtitleTextBlockStyle}"/>
+                            <CheckBox x:Name="ArchiveAfterTransferCheckBox" Content="Archive files after successful transfer"/>
+                            <CheckBox x:Name="DeleteAfterTransferCheckBox" Content="Delete files after successful transfer (not recommended)"/>
+                            <CheckBox x:Name="VerifyTransferCheckBox" Content="Verify file integrity after transfer" IsChecked="True"/>
+                        </ui:SimpleStackPanel>
+
+                        <!-- Save Button -->
+                        <Button x:Name="SaveConfigButton"
+                                Style="{StaticResource PrimaryButton}"
+                                Padding="20,10"
+                                HorizontalAlignment="Left">
+                            <StackPanel Orientation="Horizontal">
+                                <TextBlock FontFamily="Segoe MDL2 Assets" Text="&#xE74E;" FontSize="16" Margin="0,0,8,0" VerticalAlignment="Center"/>
+                                <TextBlock Text="Save Configuration" VerticalAlignment="Center"/>
+                            </StackPanel>
+                        </Button>
+                        
+                        <TextBlock x:Name="ConfigStatusText" 
+                                   Margin="0,10,0,0" 
+                                   Foreground="Green"/>
                     </StackPanel>
                 </ScrollViewer>
             </TabItem>
 
-            <!-- SSH Settings Tab (Placeholder) -->
-            <TabItem Header="SSH Settings">
-                <ScrollViewer>
+            <!-- Web Portal Settings Tab -->
+            <TabItem Header="Web Portal">
+                <ScrollViewer VerticalScrollBarVisibility="Auto">
                     <StackPanel Margin="20">
-                        <TextBlock Text="SSH Configuration" 
+                        <TextBlock Text="Web Portal Settings" 
                                    Style="{StaticResource TitleTextBlockStyle}"
                                    Margin="0,0,0,20"/>
-                        <TextBlock Text="SSH settings UI will be added here" 
-                                   Foreground="Gray"/>
+                        
+                        <!-- Server Configuration -->
+                        <ui:SimpleStackPanel Spacing="10" Margin="0,0,0,20">
+                            <TextBlock Text="Server Configuration" Style="{StaticResource SubtitleTextBlockStyle}"/>
+                            
+                            <Grid>
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="120"/>
+                                    <ColumnDefinition Width="*"/>
+                                </Grid.ColumnDefinitions>
+                                <Grid.RowDefinitions>
+                                    <RowDefinition Height="Auto"/>
+                                    <RowDefinition Height="Auto"/>
+                                    <RowDefinition Height="10"/>
+                                    <RowDefinition Height="Auto"/>
+                                </Grid.RowDefinitions>
+                                
+                                <TextBlock Grid.Row="0" Grid.Column="0" Text="HTTP Port:" VerticalAlignment="Center"/>
+                                <ui:NumberBox Grid.Row="0" Grid.Column="1" x:Name="HttpPortBox" 
+                                              Value="8080" Minimum="1" Maximum="65535" Margin="0,0,0,5"
+                                              ToolTip="Port number for HTTP access to the web portal (default: 8080). Must not conflict with other services."/>
+                                
+                                <TextBlock Grid.Row="1" Grid.Column="0" Text="HTTPS Port:" VerticalAlignment="Center"/>
+                                <ui:NumberBox Grid.Row="1" Grid.Column="1" x:Name="HttpsPortBox" 
+                                              Value="8443" Minimum="1" Maximum="65535"
+                                              ToolTip="Port number for secure HTTPS access (default: 8443). Requires valid SSL certificate."/>
+                                
+                                <CheckBox Grid.Row="3" Grid.Column="0" Grid.ColumnSpan="2" 
+                                          x:Name="EnableHttpsCheckBox" Content="Enable HTTPS"/>
+                            </Grid>
+                        </ui:SimpleStackPanel>
+
+                        <!-- SSL Certificate -->
+                        <ui:SimpleStackPanel Spacing="10" Margin="0,0,0,20">
+                            <TextBlock Text="SSL Certificate (Required for HTTPS)" Style="{StaticResource SubtitleTextBlockStyle}"/>
+                            
+                            <Grid>
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="120"/>
+                                    <ColumnDefinition Width="*"/>
+                                    <ColumnDefinition Width="Auto"/>
+                                </Grid.ColumnDefinitions>
+                                <Grid.RowDefinitions>
+                                    <RowDefinition Height="Auto"/>
+                                    <RowDefinition Height="Auto"/>
+                                    <RowDefinition Height="10"/>
+                                    <RowDefinition Height="Auto"/>
+                                </Grid.RowDefinitions>
+                                
+                                <TextBlock Grid.Row="0" Grid.Column="0" Text="Certificate Path:" VerticalAlignment="Center"/>
+                                <TextBox Grid.Row="0" Grid.Column="1" x:Name="CertPathTextBox" Margin="0,0,5,5"
+                                         ToolTip="Full path to the SSL certificate file (.pfx or .p12 format). Required for HTTPS. Example: C:\Certificates\mysite.pfx"/>
+                                <Button Grid.Row="0" Grid.Column="2" Content="Browse..." x:Name="BrowseCertButton" Margin="0,0,0,5"/>
+                                
+                                <TextBlock Grid.Row="1" Grid.Column="0" Text="Password:" VerticalAlignment="Center"/>
+                                <PasswordBox Grid.Row="1" Grid.Column="1" x:Name="CertPasswordBox"/>
+                                <Button Grid.Row="1" Grid.Column="2" Content="Test Cert" x:Name="TestCertButton"/>
+                                
+                                <TextBlock Grid.Row="3" Grid.Column="0" Grid.ColumnSpan="3" 
+                                           x:Name="CertStatusText" Foreground="Gray"/>
+                            </Grid>
+                        </ui:SimpleStackPanel>
+
+                        <!-- Actions -->
+                        <WrapPanel Margin="0,10,0,0">
+                            <Button x:Name="SaveWebConfigButton"
+                                    Style="{StaticResource PrimaryButton}"
+                                    Padding="20,10"
+                                    Margin="0,0,10,0">
+                                <StackPanel Orientation="Horizontal">
+                                    <TextBlock FontFamily="Segoe MDL2 Assets" Text="&#xE74E;" FontSize="16" Margin="0,0,8,0" VerticalAlignment="Center"/>
+                                    <TextBlock Text="Save Configuration" VerticalAlignment="Center"/>
+                                </StackPanel>
+                            </Button>
+                            <Button x:Name="RestartWebServiceButton"
+                                    Style="{StaticResource SecondaryButton}"
+                                    Padding="20,10">
+                                <StackPanel Orientation="Horizontal">
+                                    <TextBlock FontFamily="Segoe MDL2 Assets" Text="&#xE72C;" FontSize="16" Margin="0,0,8,0" VerticalAlignment="Center"/>
+                                    <TextBlock Text="Restart Web Service" VerticalAlignment="Center"/>
+                                </StackPanel>
+                            </Button>
+                        </WrapPanel>
+                        
+                        <TextBlock x:Name="WebPortalStatusText" 
+                                   Margin="0,10,0,0" 
+                                   TextWrapping="Wrap"/>
                     </StackPanel>
                 </ScrollViewer>
             </TabItem>
 
-            <!-- Service Account Tab (Placeholder) -->
+            <!-- Web Portal Settings Tab -->
+            <TabItem Header="Web Portal">
+                <ScrollViewer VerticalScrollBarVisibility="Auto">
+                    <StackPanel Margin="20">
+                        <TextBlock Text="Web Portal Settings" 
+                                   Style="{StaticResource TitleTextBlockStyle}"
+                                   Margin="0,0,0,20"/>
+                        
+                        <!-- Connection Settings -->
+                        <ui:SimpleStackPanel Spacing="10" Margin="0,0,0,20">
+                            <TextBlock Text="Connection Settings" Style="{StaticResource SubtitleTextBlockStyle}"/>
+                            
+                            <Grid>
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="150"/>
+                                    <ColumnDefinition Width="*"/>
+                                </Grid.ColumnDefinitions>
+                                <Grid.RowDefinitions>
+                                    <RowDefinition Height="Auto"/>
+                                    <RowDefinition Height="Auto"/>
+                                    <RowDefinition Height="Auto"/>
+                                    <RowDefinition Height="Auto"/>
+                                </Grid.RowDefinitions>
+                                
+                                <TextBlock Grid.Row="0" Grid.Column="0" Text="Host:" VerticalAlignment="Center"/>
+                                <TextBox Grid.Row="0" Grid.Column="1" x:Name="SshHostTextBox" Margin="0,0,0,5"
+                                         ToolTip="Hostname or IP address of the remote SSH server. Examples: 192.168.1.100, server.domain.com"/>
+                                
+                                <TextBlock Grid.Row="1" Grid.Column="0" Text="Port:" VerticalAlignment="Center"/>
+                                <ui:NumberBox Grid.Row="1" Grid.Column="1" x:Name="SshPortBox" 
+                                              Value="22" Minimum="1" Maximum="65535" Margin="0,0,0,5"/>
+                                
+                                <TextBlock Grid.Row="2" Grid.Column="0" Text="Username:" VerticalAlignment="Center"/>
+                                <TextBox Grid.Row="2" Grid.Column="1" x:Name="SshUsernameTextBox" Margin="0,0,0,5"
+                                         ToolTip="Username for SSH authentication on the remote server. This user must have the public key in their authorized_keys file."/>
+                                
+                                <TextBlock Grid.Row="3" Grid.Column="0" Text="Destination Path:" VerticalAlignment="Center"/>
+                                <TextBox Grid.Row="3" Grid.Column="1" x:Name="SshDestPathTextBox" 
+                                         Text="/data/incoming"
+                                         ToolTip="Full path on the remote server where files will be transferred. Must exist and be writable by the SSH user. Example: /data/incoming"/>
+                            </Grid>
+                        </ui:SimpleStackPanel>
+
+                        <!-- SSH Key Management -->
+                        <ui:SimpleStackPanel Spacing="10" Margin="0,0,0,20">
+                            <TextBlock Text="SSH Key Authentication" Style="{StaticResource SubtitleTextBlockStyle}"/>
+                            
+                            <Grid>
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="150"/>
+                                    <ColumnDefinition Width="*"/>
+                                    <ColumnDefinition Width="Auto"/>
+                                </Grid.ColumnDefinitions>
+                                <Grid.RowDefinitions>
+                                    <RowDefinition Height="Auto"/>
+                                    <RowDefinition Height="10"/>
+                                    <RowDefinition Height="Auto"/>
+                                </Grid.RowDefinitions>
+                                
+                                <TextBlock Grid.Row="0" Grid.Column="0" Text="Private Key Path:" VerticalAlignment="Center"/>
+                                <TextBox Grid.Row="0" Grid.Column="1" x:Name="SshKeyPathTextBox" Margin="0,0,5,0"
+                                         ToolTip="Path to the SSH private key file for authentication. The corresponding public key must be added to the remote server's authorized_keys file."/>
+                                <Button Grid.Row="0" Grid.Column="2" Content="Browse..." x:Name="BrowseKeyButton"/>
+                                
+                                <StackPanel Grid.Row="2" Grid.Column="0" Grid.ColumnSpan="3" Orientation="Horizontal">
+                                    <Button x:Name="GenerateKeyButton"
+                                            Style="{StaticResource PrimaryButton}"
+                                            Padding="15,8"
+                                            Margin="0,0,10,0">
+                                        <StackPanel Orientation="Horizontal">
+                                            <TextBlock FontFamily="Segoe MDL2 Assets" Text="&#xE192;" FontSize="16" Margin="0,0,8,0" VerticalAlignment="Center"/>
+                                            <TextBlock Text="Generate Key Pair" VerticalAlignment="Center"/>
+                                        </StackPanel>
+                                    </Button>
+                                    <Button x:Name="ViewPublicKeyButton"
+                                            Style="{StaticResource SecondaryButton}"
+                                            Padding="15,8"
+                                            Margin="0,0,10,0">
+                                        <StackPanel Orientation="Horizontal">
+                                            <TextBlock FontFamily="Segoe MDL2 Assets" Text="&#xE890;" FontSize="16" Margin="0,0,8,0" VerticalAlignment="Center"/>
+                                            <TextBlock Text="View Public Key" VerticalAlignment="Center"/>
+                                        </StackPanel>
+                                    </Button>
+                                    <Button x:Name="CopyPublicKeyButton"
+                                            Style="{StaticResource SecondaryButton}"
+                                            Padding="15,8">
+                                        <StackPanel Orientation="Horizontal">
+                                            <TextBlock FontFamily="Segoe MDL2 Assets" Text="&#xE8C8;" FontSize="16" Margin="0,0,8,0" VerticalAlignment="Center"/>
+                                            <TextBlock Text="Copy to Clipboard" VerticalAlignment="Center"/>
+                                        </StackPanel>
+                                    </Button>
+                                </StackPanel>
+                            </Grid>
+                        </ui:SimpleStackPanel>
+
+                        <!-- Connection Test -->
+                        <ui:SimpleStackPanel Spacing="10" Margin="0,0,0,20">
+                            <TextBlock Text="Connection Test" Style="{StaticResource SubtitleTextBlockStyle}"/>
+                            <Button x:Name="TestSshButton"
+                                    Style="{StaticResource SecondaryButton}"
+                                    Padding="20,10"
+                                    HorizontalAlignment="Left">
+                                <StackPanel Orientation="Horizontal">
+                                    <TextBlock FontFamily="Segoe MDL2 Assets" Text="&#xEA46;" FontSize="16" Margin="0,0,8,0" VerticalAlignment="Center"/>
+                                    <TextBlock Text="Test SSH Connection" VerticalAlignment="Center"/>
+                                </StackPanel>
+                            </Button>
+                            <Border BorderBrush="{DynamicResource SystemControlForegroundBaseMediumBrush}" 
+                                    BorderThickness="1" 
+                                    CornerRadius="4"
+                                    Padding="10"
+                                    MinHeight="100">
+                                <TextBlock x:Name="SshTestResultText" 
+                                           TextWrapping="Wrap"
+                                           FontFamily="Consolas"
+                                           Text="Click 'Test SSH Connection' to verify your settings"/>
+                            </Border>
+                        </ui:SimpleStackPanel>
+
+                        <!-- Save Button -->
+                        <Button x:Name="SaveSshConfigButton"
+                                Style="{StaticResource PrimaryButton}"
+                                Padding="20,10"
+                                HorizontalAlignment="Left">
+                            <StackPanel Orientation="Horizontal">
+                                <TextBlock FontFamily="Segoe MDL2 Assets" Text="&#xE74E;" FontSize="16" Margin="0,0,8,0" VerticalAlignment="Center"/>
+                                <TextBlock Text="Save SSH Configuration" VerticalAlignment="Center"/>
+                            </StackPanel>
+                        </Button>
+                    </StackPanel>
+                </ScrollViewer>
+            </TabItem>
+
+            <!-- Service Account Tab -->
             <TabItem Header="Service Account">
-                <ScrollViewer>
+                <ScrollViewer VerticalScrollBarVisibility="Auto">
                     <StackPanel Margin="20">
                         <TextBlock Text="Service Account Management" 
                                    Style="{StaticResource TitleTextBlockStyle}"
                                    Margin="0,0,0,20"/>
-                        <TextBlock Text="Service account management UI will be added here" 
-                                   Foreground="Gray"/>
+                        
+                        <!-- Current Account Info -->
+                        <ui:SimpleStackPanel Spacing="10" Margin="0,0,0,20">
+                            <TextBlock Text="Current Service Account" Style="{StaticResource SubtitleTextBlockStyle}"/>
+                            <Border Background="{DynamicResource SystemControlBackgroundAccentBrush}" 
+                                    CornerRadius="4" 
+                                    Padding="15">
+                                <StackPanel>
+                                    <TextBlock x:Name="CurrentAccountText" 
+                                               Text="LocalSystem" 
+                                               FontWeight="Bold"
+                                               FontSize="16"
+                                               Foreground="White"/>
+                                    <TextBlock x:Name="AccountStatusText" 
+                                               Text="✅ Profile exists | ✅ Has Logon as Service right" 
+                                               Foreground="White"
+                                               Margin="0,5,0,0"/>
+                                </StackPanel>
+                            </Border>
+                        </ui:SimpleStackPanel>
+
+                        <!-- Change Service Account -->
+                        <ui:SimpleStackPanel Spacing="10" Margin="0,0,0,20">
+                            <TextBlock Text="Change Service Account" Style="{StaticResource SubtitleTextBlockStyle}"/>
+                            
+                            <Grid>
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="120"/>
+                                    <ColumnDefinition Width="*"/>
+                                </Grid.ColumnDefinitions>
+                                <Grid.RowDefinitions>
+                                    <RowDefinition Height="Auto"/>
+                                    <RowDefinition Height="Auto"/>
+                                    <RowDefinition Height="Auto"/>
+                                    <RowDefinition Height="10"/>
+                                    <RowDefinition Height="Auto"/>
+                                </Grid.RowDefinitions>
+                                
+                                <TextBlock Grid.Row="0" Grid.Column="0" Text="Domain:" VerticalAlignment="Center"/>
+                                <TextBox Grid.Row="0" Grid.Column="1" x:Name="DomainTextBox" 
+                                         Text="." Margin="0,0,0,5"
+                                         ToolTip="Domain name for the service account. Use '.' for local machine accounts, or specify your Active Directory domain name."/>
+                                
+                                <TextBlock Grid.Row="1" Grid.Column="0" Text="Username:" VerticalAlignment="Center"/>
+                                <TextBox Grid.Row="1" Grid.Column="1" x:Name="ServiceAccountUsernameTextBox" 
+                                         Margin="0,0,0,5"
+                                         ToolTip="Username for the Windows service account. Format: DOMAIN\username or .\username for local accounts. This account needs 'Logon as Service' rights."/>
+                                
+                                <TextBlock Grid.Row="2" Grid.Column="0" Text="Password:" VerticalAlignment="Center"/>
+                                <PasswordBox Grid.Row="2" Grid.Column="1" x:Name="ServiceAccountPasswordBox"/>
+                                
+                                <StackPanel Grid.Row="4" Grid.Column="0" Grid.ColumnSpan="2" Orientation="Horizontal">
+                                    <Button x:Name="ApplyAccountButton"
+                                            Style="{StaticResource PrimaryButton}"
+                                            Padding="15,8"
+                                            Margin="0,0,10,0">
+                                        <StackPanel Orientation="Horizontal">
+                                            <TextBlock FontFamily="Segoe MDL2 Assets" Text="&#xE73E;" FontSize="16" Margin="0,0,8,0" VerticalAlignment="Center"/>
+                                            <TextBlock Text="Apply Account Change" VerticalAlignment="Center"/>
+                                        </StackPanel>
+                                    </Button>
+                                    <Button x:Name="GrantLogonRightsButton"
+                                            Style="{StaticResource SecondaryButton}"
+                                            Padding="15,8">
+                                        <StackPanel Orientation="Horizontal">
+                                            <TextBlock FontFamily="Segoe MDL2 Assets" Text="&#xE785;" FontSize="16" Margin="0,0,8,0" VerticalAlignment="Center"/>
+                                            <TextBlock Text="Grant Logon Rights" VerticalAlignment="Center"/>
+                                        </StackPanel>
+                                    </Button>
+                                </StackPanel>
+                            </Grid>
+                        </ui:SimpleStackPanel>
+
+                        <!-- Permission Management -->
+                        <ui:SimpleStackPanel Spacing="10" Margin="0,0,0,20">
+                            <TextBlock Text="Folder Permissions" Style="{StaticResource SubtitleTextBlockStyle}"/>
+                            <TextBlock Text="Grant the service account permissions to all required folders:" 
+                                       TextWrapping="Wrap"
+                                       Foreground="Gray"
+                                       Margin="0,0,0,10"/>
+                            <WrapPanel>
+                                <Button x:Name="FixUploadPermsButton"
+                                        Style="{StaticResource SecondaryButton}"
+                                        Padding="15,8"
+                                        Margin="0,0,10,10">
+                                    <StackPanel Orientation="Horizontal">
+                                        <TextBlock FontFamily="Segoe MDL2 Assets" Text="&#xE90F;" FontSize="16" Margin="0,0,8,0" VerticalAlignment="Center"/>
+                                        <TextBlock Text="Fix Upload Folder" VerticalAlignment="Center"/>
+                                    </StackPanel>
+                                </Button>
+                                <Button x:Name="FixLogPermsButton"
+                                        Style="{StaticResource SecondaryButton}"
+                                        Padding="15,8"
+                                        Margin="0,0,10,10">
+                                    <StackPanel Orientation="Horizontal">
+                                        <TextBlock FontFamily="Segoe MDL2 Assets" Text="&#xE90F;" FontSize="16" Margin="0,0,8,0" VerticalAlignment="Center"/>
+                                        <TextBlock Text="Fix Log Folder" VerticalAlignment="Center"/>
+                                    </StackPanel>
+                                </Button>
+                                <Button x:Name="FixAllPermsButton"
+                                        Style="{StaticResource PrimaryButton}"
+                                        Padding="15,8"
+                                        Margin="0,0,10,10">
+                                    <StackPanel Orientation="Horizontal">
+                                        <TextBlock FontFamily="Segoe MDL2 Assets" Text="&#xE90F;" FontSize="16" Margin="0,0,8,0" VerticalAlignment="Center"/>
+                                        <TextBlock Text="Fix All Folders" VerticalAlignment="Center"/>
+                                    </StackPanel>
+                                </Button>
+                            </WrapPanel>
+                        </ui:SimpleStackPanel>
+
+                        <!-- Status Log -->
+                        <ui:SimpleStackPanel Spacing="10">
+                            <TextBlock Text="Operations Log" Style="{StaticResource SubtitleTextBlockStyle}"/>
+                            <Border BorderBrush="{DynamicResource SystemControlForegroundBaseMediumBrush}" 
+                                    BorderThickness="1" 
+                                    CornerRadius="4"
+                                    MinHeight="150">
+                                <ScrollViewer VerticalScrollBarVisibility="Auto" Padding="10">
+                                    <TextBlock x:Name="ServiceAccountLogText" 
+                                               TextWrapping="Wrap"
+                                               FontFamily="Consolas"
+                                               FontSize="12"/>
+                                </ScrollViewer>
+                            </Border>
+                        </ui:SimpleStackPanel>
                     </StackPanel>
                 </ScrollViewer>
+            </TabItem>
+
+            <!-- Remote Server / Advanced Tab -->
+            <TabItem Header="Advanced">
+                <ContentControl x:Name="RemoteServerContent"/>
             </TabItem>
 
         </TabControl>
 
         <!-- Status Bar -->
-        <ui:SimpleStackPanel Grid.Row="1" 
-                            Orientation="Horizontal" 
-                            Spacing="10"
-                            Background="{DynamicResource SystemControlBackgroundChromeMediumBrush}"
-                            Height="30">
-            <TextBlock x:Name="StatusBarText" 
-                       Text="Ready" 
-                       VerticalAlignment="Center"
-                       Margin="10,0"/>
-            <TextBlock Text="|" 
-                       VerticalAlignment="Center"
-                       Foreground="Gray"/>
-            <TextBlock Text="ZL File Relay Configuration Tool v1.0" 
-                       VerticalAlignment="Center"
-                       Foreground="Gray"/>
-        </ui:SimpleStackPanel>
+        <Border Grid.Row="1" 
+                Background="{DynamicResource SystemControlBackgroundChromeMediumBrush}"
+                BorderThickness="0,1,0,0"
+                BorderBrush="{DynamicResource SystemControlForegroundBaseLowBrush}">
+            <Grid Height="32" Margin="10,0">
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="Auto"/>
+                    <ColumnDefinition Width="*"/>
+                    <ColumnDefinition Width="Auto"/>
+                </Grid.ColumnDefinitions>
+                
+                <!-- Left: Connection Status -->
+                <StackPanel Grid.Column="0" Orientation="Horizontal" VerticalAlignment="Center">
+                    <TextBlock x:Name="ConnectionModeIcon" 
+                               FontFamily="Segoe MDL2 Assets" 
+                               Text="&#xE80F;" 
+                               FontSize="16" 
+                               VerticalAlignment="Center"
+                               Margin="0,0,5,0"/>
+                    <TextBlock x:Name="ConnectionModeText" 
+                               Text="Local" 
+                               VerticalAlignment="Center"
+                               FontWeight="SemiBold"/>
+                    <TextBlock Text="|" VerticalAlignment="Center" Margin="10,0" Foreground="Gray"/>
+                    
+                    <!-- Service Status -->
+                    <TextBlock x:Name="StatusBarServiceIcon"
+                               FontFamily="Segoe MDL2 Assets" 
+                               Text="&#xF136;" 
+                               FontSize="16" 
+                               VerticalAlignment="Center"
+                               Margin="0,0,5,0"/>
+                    <TextBlock x:Name="StatusBarServiceText" 
+                               Text="Service: Checking..." 
+                               VerticalAlignment="Center"/>
+                </StackPanel>
+                
+                <!-- Center: Messages -->
+                <TextBlock Grid.Column="1" 
+                           x:Name="StatusBarText" 
+                           Text="Ready" 
+                           VerticalAlignment="Center"
+                           Margin="20,0"
+                           TextTrimming="CharacterEllipsis"/>
+                
+                <!-- Right: Version -->
+                <TextBlock Grid.Column="2" 
+                           Text="v1.0.0" 
+                           VerticalAlignment="Center"
+                           Foreground="Gray"
+                           FontSize="11"/>
+            </Grid>
+        </Border>
     </Grid>
 </Window>

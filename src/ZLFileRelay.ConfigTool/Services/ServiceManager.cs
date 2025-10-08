@@ -4,24 +4,46 @@ using System.Security.Principal;
 using System.ServiceProcess;
 using System.Threading.Tasks;
 using Microsoft.Extensions.Logging;
+using ZLFileRelay.ConfigTool.Interfaces;
 
 namespace ZLFileRelay.ConfigTool.Services;
 
 public class ServiceManager
 {
     private readonly ILogger<ServiceManager> _logger;
+    private readonly IRemoteServerProvider _remoteServerProvider;
     private const string ServiceName = "ZLFileRelay";
 
-    public ServiceManager(ILogger<ServiceManager> logger)
+    public ServiceManager(
+        ILogger<ServiceManager> logger,
+        IRemoteServerProvider remoteServerProvider)
     {
         _logger = logger;
+        _remoteServerProvider = remoteServerProvider;
+    }
+
+    private string GetMachineName()
+    {
+        return _remoteServerProvider.IsRemote && !string.IsNullOrWhiteSpace(_remoteServerProvider.ServerName)
+            ? _remoteServerProvider.ServerName
+            : ".";
+    }
+
+    private string GetScTarget()
+    {
+        if (_remoteServerProvider.IsRemote && !string.IsNullOrWhiteSpace(_remoteServerProvider.ServerName))
+        {
+            return $"\\\\{_remoteServerProvider.ServerName} ";
+        }
+        return "";
     }
 
     public Task<ServiceStatus> GetStatusAsync()
     {
         try
         {
-            using var service = new ServiceController(ServiceName);
+            var machineName = GetMachineName();
+            using var service = new ServiceController(ServiceName, machineName);
             var status = service.Status switch
             {
                 ServiceControllerStatus.Running => ServiceStatus.Running,
@@ -46,52 +68,60 @@ public class ServiceManager
         }
     }
 
-    public async Task<bool> StartAsync()
+    public Task<bool> StartAsync()
     {
-        try
+        return Task.Run(() =>
         {
-            using var service = new ServiceController(ServiceName);
-            if (service.Status == ServiceControllerStatus.Running)
+            try
             {
-                _logger.LogInformation("Service is already running");
+                var machineName = GetMachineName();
+                using var service = new ServiceController(ServiceName, machineName);
+                if (service.Status == ServiceControllerStatus.Running)
+                {
+                    _logger.LogInformation("Service is already running on {Machine}", machineName);
+                    return true;
+                }
+
+                service.Start();
+                service.WaitForStatus(ServiceControllerStatus.Running, TimeSpan.FromSeconds(30));
+                
+                _logger.LogInformation("Service started successfully on {Machine}", machineName);
                 return true;
             }
-
-            service.Start();
-            service.WaitForStatus(ServiceControllerStatus.Running, TimeSpan.FromSeconds(30));
-            
-            _logger.LogInformation("Service started successfully");
-            return true;
-        }
-        catch (Exception ex)
-        {
-            _logger.LogError(ex, "Failed to start service");
-            return false;
-        }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Failed to start service on {Machine}", GetMachineName());
+                return false;
+            }
+        });
     }
 
-    public async Task<bool> StopAsync()
+    public Task<bool> StopAsync()
     {
-        try
+        return Task.Run(() =>
         {
-            using var service = new ServiceController(ServiceName);
-            if (service.Status == ServiceControllerStatus.Stopped)
+            try
             {
-                _logger.LogInformation("Service is already stopped");
+                var machineName = GetMachineName();
+                using var service = new ServiceController(ServiceName, machineName);
+                if (service.Status == ServiceControllerStatus.Stopped)
+                {
+                    _logger.LogInformation("Service is already stopped on {Machine}", machineName);
+                    return true;
+                }
+
+                service.Stop();
+                service.WaitForStatus(ServiceControllerStatus.Stopped, TimeSpan.FromSeconds(30));
+                
+                _logger.LogInformation("Service stopped successfully on {Machine}", machineName);
                 return true;
             }
-
-            service.Stop();
-            service.WaitForStatus(ServiceControllerStatus.Stopped, TimeSpan.FromSeconds(30));
-            
-            _logger.LogInformation("Service stopped successfully");
-            return true;
-        }
-        catch (Exception ex)
-        {
-            _logger.LogError(ex, "Failed to stop service");
-            return false;
-        }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Failed to stop service on {Machine}", GetMachineName());
+                return false;
+            }
+        });
     }
 
     public async Task<bool> RestartAsync()
@@ -114,10 +144,11 @@ public class ServiceManager
 
         try
         {
+            var scTarget = GetScTarget();
             var startInfo = new ProcessStartInfo
             {
                 FileName = "sc.exe",
-                Arguments = $"create {ServiceName} binPath=\"{servicePath}\" start=auto DisplayName=\"ZL File Relay Service\"",
+                Arguments = $"{scTarget}create {ServiceName} binPath=\"{servicePath}\" start=auto DisplayName=\"ZL File Relay Service\"",
                 UseShellExecute = false,
                 RedirectStandardOutput = true,
                 RedirectStandardError = true,
@@ -131,17 +162,17 @@ public class ServiceManager
             
             if (process.ExitCode == 0)
             {
-                _logger.LogInformation("Service installed successfully");
+                _logger.LogInformation("Service installed successfully on {Machine}", GetMachineName());
                 return true;
             }
 
             var error = await process.StandardError.ReadToEndAsync();
-            _logger.LogError("Failed to install service: {Error}", error);
+            _logger.LogError("Failed to install service on {Machine}: {Error}", GetMachineName(), error);
             return false;
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "Failed to install service");
+            _logger.LogError(ex, "Failed to install service on {Machine}", GetMachineName());
             return false;
         }
     }
@@ -159,10 +190,11 @@ public class ServiceManager
             // Stop service first if running
             await StopAsync();
 
+            var scTarget = GetScTarget();
             var startInfo = new ProcessStartInfo
             {
                 FileName = "sc.exe",
-                Arguments = $"delete {ServiceName}",
+                Arguments = $"{scTarget}delete {ServiceName}",
                 UseShellExecute = false,
                 RedirectStandardOutput = true,
                 RedirectStandardError = true,
@@ -176,17 +208,17 @@ public class ServiceManager
             
             if (process.ExitCode == 0)
             {
-                _logger.LogInformation("Service uninstalled successfully");
+                _logger.LogInformation("Service uninstalled successfully from {Machine}", GetMachineName());
                 return true;
             }
 
             var error = await process.StandardError.ReadToEndAsync();
-            _logger.LogError("Failed to uninstall service: {Error}", error);
+            _logger.LogError("Failed to uninstall service from {Machine}: {Error}", GetMachineName(), error);
             return false;
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "Failed to uninstall service");
+            _logger.LogError(ex, "Failed to uninstall service from {Machine}", GetMachineName());
             return false;
         }
     }

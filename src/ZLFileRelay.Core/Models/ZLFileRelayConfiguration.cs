@@ -104,6 +104,22 @@ public class WebPortalSettings
     public Dictionary<string, string> UploadLocations { get; set; } = new();
     public bool EnableNotifications { get; set; } = false;
     public string? NotificationEmail { get; set; }
+    
+    // Kestrel Server Settings (for Windows Service deployment)
+    public KestrelSettings Kestrel { get; set; } = new();
+}
+
+/// <summary>
+/// Kestrel web server settings (when running as Windows Service)
+/// </summary>
+public class KestrelSettings
+{
+    public int HttpPort { get; set; } = 8080;
+    public int HttpsPort { get; set; } = 8443;
+    public bool EnableHttps { get; set; } = false;
+    public string? CertificatePath { get; set; }
+    public string? CertificatePassword { get; set; }
+    public bool UseWindowsAuth { get; set; } = true;
 }
 
 /// <summary>

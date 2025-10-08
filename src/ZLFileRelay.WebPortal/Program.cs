@@ -17,6 +17,48 @@ try
 
     var builder = WebApplication.CreateBuilder(args);
 
+    // Load configuration first
+    var appConfig = new ZLFileRelayConfiguration();
+    builder.Configuration.GetSection("ZLFileRelay").Bind(appConfig);
+    builder.Services.AddSingleton(appConfig);
+
+    // Configure as Windows Service (no IIS needed!)
+    if (OperatingSystem.IsWindows())
+    {
+        builder.Services.AddWindowsService(options =>
+        {
+            options.ServiceName = "ZLFileRelay.WebPortal";
+        });
+    }
+
+    // Configure Kestrel to listen on ports from configuration
+    var httpUrl = $"http://*:{appConfig.WebPortal.Kestrel.HttpPort}";
+    var httpsUrl = $"https://*:{appConfig.WebPortal.Kestrel.HttpsPort}";
+    
+    if (appConfig.WebPortal.Kestrel.EnableHttps)
+    {
+        builder.WebHost.UseUrls(httpUrl, httpsUrl);
+        
+        // Configure HTTPS certificate if provided
+        if (!string.IsNullOrWhiteSpace(appConfig.WebPortal.Kestrel.CertificatePath))
+        {
+            builder.WebHost.ConfigureKestrel(options =>
+            {
+                options.ConfigureHttpsDefaults(httpsOptions =>
+                {
+                    httpsOptions.ServerCertificate = new System.Security.Cryptography.X509Certificates.X509Certificate2(
+                        appConfig.WebPortal.Kestrel.CertificatePath,
+                        appConfig.WebPortal.Kestrel.CertificatePassword);
+                });
+            });
+        }
+    }
+    else
+    {
+        // HTTP only
+        builder.WebHost.UseUrls(httpUrl);
+    }
+
     // Configure Serilog
     builder.Host.UseSerilog((context, services, configuration) =>
     {
@@ -30,10 +72,7 @@ try
                 retainedFileCountLimit: 30);
     });
 
-    // Load configuration
-    var appConfig = new ZLFileRelayConfiguration();
-    builder.Configuration.GetSection("ZLFileRelay").Bind(appConfig);
-    builder.Services.AddSingleton(appConfig);
+    // Configuration already loaded above for Kestrel setup
 
     // Add authentication (always add middleware even if not required)
     if (OperatingSystem.IsWindows())

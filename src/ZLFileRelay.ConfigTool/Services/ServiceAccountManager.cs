@@ -5,27 +5,42 @@ using System.Security.Principal;
 using System.ServiceProcess;
 using System.Threading.Tasks;
 using Microsoft.Extensions.Logging;
+using ZLFileRelay.ConfigTool.Interfaces;
 
 namespace ZLFileRelay.ConfigTool.Services;
 
 public class ServiceAccountManager
 {
     private readonly ILogger<ServiceAccountManager> _logger;
+    private readonly IRemoteServerProvider _remoteServerProvider;
     private const string ServiceName = "ZLFileRelay";
 
-    public ServiceAccountManager(ILogger<ServiceAccountManager> logger)
+    public ServiceAccountManager(
+        ILogger<ServiceAccountManager> logger,
+        IRemoteServerProvider remoteServerProvider)
     {
         _logger = logger;
+        _remoteServerProvider = remoteServerProvider;
+    }
+
+    private string GetScTarget()
+    {
+        if (_remoteServerProvider.IsRemote && !string.IsNullOrWhiteSpace(_remoteServerProvider.ServerName))
+        {
+            return $"\\\\{_remoteServerProvider.ServerName} ";
+        }
+        return "";
     }
 
     public async Task<string?> GetCurrentServiceAccountAsync()
     {
         try
         {
+            var scTarget = GetScTarget();
             var startInfo = new ProcessStartInfo
             {
                 FileName = "sc.exe",
-                Arguments = $"qc {ServiceName}",
+                Arguments = $"{scTarget}qc {ServiceName}",
                 UseShellExecute = false,
                 RedirectStandardOutput = true,
                 CreateNoWindow = true
@@ -63,10 +78,11 @@ public class ServiceAccountManager
     {
         try
         {
+            var scTarget = GetScTarget();
             var startInfo = new ProcessStartInfo
             {
                 FileName = "sc.exe",
-                Arguments = $"config {ServiceName} obj= \"{username}\" password= \"{password}\"",
+                Arguments = $"{scTarget}config {ServiceName} obj= \"{username}\" password= \"{password}\"",
                 UseShellExecute = false,
                 RedirectStandardOutput = true,
                 RedirectStandardError = true,

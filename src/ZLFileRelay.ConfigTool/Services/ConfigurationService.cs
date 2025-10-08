@@ -3,19 +3,52 @@ using System.Text.Json;
 using System.Threading.Tasks;
 using Microsoft.Extensions.Logging;
 using ZLFileRelay.Core.Models;
+using ZLFileRelay.ConfigTool.Interfaces;
 
 namespace ZLFileRelay.ConfigTool.Services;
 
 public class ConfigurationService
 {
     private readonly ILogger<ConfigurationService> _logger;
-    private readonly string _configPath;
+    private readonly IRemoteServerProvider _remoteServerProvider;
+    private string _configPath;
     private ZLFileRelayConfiguration? _currentConfiguration;
 
-    public ConfigurationService(ILogger<ConfigurationService> logger)
+    public ConfigurationService(
+        ILogger<ConfigurationService> logger,
+        IRemoteServerProvider remoteServerProvider)
     {
         _logger = logger;
+        _remoteServerProvider = remoteServerProvider;
         _configPath = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "appsettings.json");
+        
+        // Subscribe to server changes
+        _remoteServerProvider.ServerChanged += OnServerChanged;
+        UpdateConfigPath();
+    }
+
+    private void OnServerChanged(object? sender, EventArgs e)
+    {
+        UpdateConfigPath();
+        _logger.LogInformation("Server changed to {Server}, config path updated", 
+            _remoteServerProvider.ServerName ?? "localhost");
+    }
+
+    private void UpdateConfigPath()
+    {
+        if (!_remoteServerProvider.IsRemote || string.IsNullOrWhiteSpace(_remoteServerProvider.ServerName))
+        {
+            // Local mode
+            _configPath = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "appsettings.json");
+        }
+        else
+        {
+            // Remote mode - try standard installation path
+            var serverName = _remoteServerProvider.ServerName;
+            _configPath = $@"\\{serverName}\c$\Program Files\ZLFileRelay\appsettings.json";
+            
+            _logger.LogInformation("Remote mode enabled, using UNC path: {Path}", _configPath);
+        }
     }
 
     public async Task<ZLFileRelayConfiguration> LoadAsync()

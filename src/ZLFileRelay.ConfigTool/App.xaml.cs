@@ -42,6 +42,9 @@ public partial class App : Application
                     return new CredentialProvider(logger, credentialPath);
                 });
 
+                // Remote Server Provider (singleton for shared state)
+                services.AddSingleton<ZLFileRelay.ConfigTool.Interfaces.IRemoteServerProvider, ZLFileRelay.ConfigTool.Services.RemoteServerProvider>();
+
                 // Config Tool Services
                 services.AddSingleton<ConfigurationService>();
                 services.AddSingleton<ServiceManager>();
@@ -52,8 +55,10 @@ public partial class App : Application
 
                 // ViewModels
                 services.AddTransient<MainViewModel>();
+                services.AddTransient<RemoteServerViewModel>();
                 services.AddTransient<ServiceManagementViewModel>();
                 services.AddTransient<ConfigurationViewModel>();
+                services.AddTransient<WebPortalViewModel>();
                 services.AddTransient<SshSettingsViewModel>();
                 services.AddTransient<ServiceAccountViewModel>();
 
@@ -66,6 +71,10 @@ public partial class App : Application
     protected override async void OnStartup(StartupEventArgs e)
     {
         await _host.StartAsync();
+
+        // Load configuration on startup
+        var configService = _host.Services.GetRequiredService<ConfigurationService>();
+        await configService.LoadAsync();
 
         var mainWindow = _host.Services.GetRequiredService<MainWindow>();
         mainWindow.Show();

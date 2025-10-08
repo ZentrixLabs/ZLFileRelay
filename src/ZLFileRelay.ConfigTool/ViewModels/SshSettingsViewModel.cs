@@ -210,6 +210,49 @@ public partial class SshSettingsViewModel : ObservableObject
     }
 
     [RelayCommand]
+    private async Task SaveConfigurationAsync()
+    {
+        try
+        {
+            var config = _configurationService.CurrentConfiguration;
+            if (config == null)
+            {
+                AddSshLog("❌ Configuration not loaded");
+                return;
+            }
+
+            // Update transfer method
+            config.Service.TransferMethod = UseSsh ? "ssh" : "smb";
+
+            // Update SSH settings from UI
+            config.Transfer.Ssh.Host = SshHost;
+            config.Transfer.Ssh.Port = SshPort;
+            config.Transfer.Ssh.Username = SshUsername;
+            config.Transfer.Ssh.PrivateKeyPath = PrivateKeyPath;
+            config.Transfer.Ssh.DestinationPath = RemoteDestinationPath;
+            config.Transfer.Ssh.ConnectionTimeout = ConnectionTimeout;
+            config.Transfer.Ssh.Compression = EnableCompression;
+            config.Transfer.Ssh.StrictHostKeyChecking = StrictHostKeyChecking;
+            config.Transfer.Ssh.TransferTimeout = TransferTimeout;
+
+            var success = await _configurationService.SaveAsync(config);
+            
+            if (success)
+            {
+                AddSshLog("✅ Configuration saved successfully");
+            }
+            else
+            {
+                AddSshLog("❌ Failed to save configuration");
+            }
+        }
+        catch (Exception ex)
+        {
+            AddSshLog($"❌ Error saving configuration: {ex.Message}");
+        }
+    }
+
+    [RelayCommand]
     private void ClearSshLog()
     {
         SshLogMessages.Clear();
