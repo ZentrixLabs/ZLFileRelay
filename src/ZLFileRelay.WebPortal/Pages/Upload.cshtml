@@ -7,7 +7,7 @@
 <div class="container mt-5">
     <div class="card shadow">
         <div class="card-header bg-primary text-white">
-            <h2><i class="bi bi-cloud-upload"></i> @Model.UploadViewModel.SiteName - Secure File Upload</h2>
+            <h2><i class="fa-solid fa-cloud-arrow-up"></i> @Model.UploadViewModel.SiteName - Secure File Upload</h2>
             <p class="mb-0 text-white-50">
                 Authenticated as: <strong>@(User.Identity?.Name ?? "Unknown")</strong>
             </p>
@@ -26,14 +26,14 @@
                            id="fileInput"
                            accept="*/*" />
                     <div class="form-text">
-                        <i class="bi bi-info-circle"></i> You can select multiple files. Hold Ctrl/Cmd to select multiple files. 
+                        <i class="fa-solid fa-circle-info"></i> You can select multiple files. Hold Ctrl/Cmd to select multiple files. 
                         Maximum file size: @FormatBytes(Model.UploadViewModel.MaxFileSizeBytes) per file.
                     </div>
                     <span asp-validation-for="UploadViewModel.Files" class="text-danger"></span>
 
                     <!-- File list preview -->
                     <div id="fileList" class="mt-3" style="display: none;">
-                        <h6><i class="bi bi-file-earmark-text"></i> Selected Files:</h6>
+                        <h6><i class="fa-solid fa-file-lines"></i> Selected Files:</h6>
                         <ul id="selectedFiles" class="list-group"></ul>
                     </div>
                 </div>
@@ -48,7 +48,7 @@
                             </label>
                         </div>
                         <small class="form-text text-muted">
-                            <i class="bi bi-arrow-right-circle"></i> When enabled, files will be automatically transferred by the background service.
+                            <i class="fa-solid fa-circle-arrow-right"></i> When enabled, files will be automatically transferred by the background service.
                         </small>
                     </div>
                 }
@@ -62,7 +62,7 @@
 
                 <div class="d-grid gap-2">
                     <button type="submit" class="btn btn-primary btn-lg" id="uploadButton">
-                        <i class="bi bi-upload"></i>
+                        <i class="fa-solid fa-cloud-arrow-up"></i>
                         <span id="uploadText">Upload Files</span>
                         <span id="uploadSpinner" class="spinner-border spinner-border-sm ms-2" style="display: none;"></span>
                     </button>
@@ -71,10 +71,10 @@
         </div>
         <div class="card-footer text-muted">
             <p class="mb-1">
-                <i class="bi bi-shield-check"></i> <strong>Security:</strong> All files are validated and scanned before processing.
+                <i class="fa-solid fa-shield-check"></i> <strong>Security:</strong> All files are validated and scanned before processing.
             </p>
             <p class="mb-0">
-                <i class="bi bi-envelope"></i> <strong>Questions?</strong> Contact: 
+                <i class="fa-solid fa-envelope"></i> <strong>Questions?</strong> Contact: 
                 <a href="mailto:@Model.UploadViewModel.ContactEmail">@Model.UploadViewModel.ContactEmail</a>
             </p>
         </div>
@@ -86,7 +86,7 @@
     <div class="modal-dialog modal-dialog-centered">
         <div class="modal-content">
             <div class="modal-header">
-                <h5 class="modal-title"><i class="bi bi-cloud-upload"></i> Uploading Files...</h5>
+                <h5 class="modal-title"><i class="fa-solid fa-cloud-arrow-up"></i> Uploading Files...</h5>
             </div>
             <div class="modal-body text-center">
                 <div class="spinner-border text-primary mb-3" role="status" style="width: 3rem; height: 3rem;">

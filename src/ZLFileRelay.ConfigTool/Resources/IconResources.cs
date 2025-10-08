@@ -1,75 +1,84 @@
+using FontAwesome.Sharp;
+
 namespace ZLFileRelay.ConfigTool.Resources;
 
 /// <summary>
-/// Provides centralized icon definitions using Segoe MDL2 Assets.
-/// Reference: https://learn.microsoft.com/en-us/windows/apps/design/style/segoe-fluent-icons-font
+/// Provides centralized icon definitions using Font Awesome icons via FontAwesome.Sharp.
+/// Reference: https://fontawesome.com/icons
 /// </summary>
 public static class IconResources
 {
     // Service Management Icons
-    public static string Refresh => "\uE72C";           // Refresh
-    public static string Download => "\uE896";          // Download (Install)
-    public static string Delete => "\uE74D";            // Delete (Uninstall)
-    public static string Play => "\uE768";              // Play (Start)
-    public static string Stop => "\uE71A";              // Stop
-    public static string StatusCircle => "\uF136";      // StatusCircle
-    public static string Sync => "\uE895";              // Sync
+    public static IconChar Refresh => IconChar.ArrowsRotate;        // Refresh/reload
+    public static IconChar Download => IconChar.Download;            // Download/install
+    public static IconChar Delete => IconChar.TrashCan;              // Delete/uninstall
+    public static IconChar Play => IconChar.Play;                    // Start service
+    public static IconChar Stop => IconChar.Stop;                    // Stop service
+    public static IconChar StatusCircle => IconChar.Circle;          // Status indicator
+    public static IconChar Sync => IconChar.ArrowsRotate;            // Sync
 
     // Configuration Icons
-    public static string Permissions => "\uE8D7";       // Permissions (Configure)
-    public static string Save => "\uE74E";              // Save
-    public static string Settings => "\uE713";          // Settings
-    public static string Folder => "\uE8B7";            // Folder
-    public static string FolderOpen => "\uE838";        // FolderOpen (Browse)
-    public static string Document => "\uE8A5";          // Document
+    public static IconChar Permissions => IconChar.UserShield;       // Permissions/security
+    public static IconChar Save => IconChar.FloppyDisk;              // Save configuration
+    public static IconChar Settings => IconChar.Gear;                // Settings
+    public static IconChar Folder => IconChar.Folder;                // Folder
+    public static IconChar FolderOpen => IconChar.FolderOpen;        // Browse folders
+    public static IconChar Document => IconChar.File;                // Document/file
 
     // SSH & Security Icons
-    public static string Key => "\uE192";               // Key (Generate)
-    public static string View => "\uE890";              // View
-    public static string Copy => "\uE8C8";              // Copy
-    public static string TestBeaker => "\uEA46";        // TestBeaker (Test)
-    public static string Shield => "\uE72E";            // Shield (Security)
-    public static string Certificate => "\uEB95";       // Certificate
+    public static IconChar Key => IconChar.Key;                      // SSH keys
+    public static IconChar View => IconChar.Eye;                     // View/preview
+    public static IconChar Copy => IconChar.Copy;                    // Copy to clipboard
+    public static IconChar TestBeaker => IconChar.Flask;             // Test/validate
+    public static IconChar Shield => IconChar.Shield;                // Security/protection
+    public static IconChar Certificate => IconChar.Certificate;      // SSL certificates
 
     // Network & Connection Icons
-    public static string Globe => "\uE774";             // Globe (Web)
-    public static string CloudUpload => "\uE753";       // CloudUpload
-    public static string Server => "\uE968";            // Server
-    public static string Remote => "\uE968";            // Remote (same as Server)
-    public static string Connect => "\uE703";           // Connect
-    public static string Disconnect => "\uE89F";        // Disconnect
+    public static IconChar Globe => IconChar.Globe;                  // Web/internet
+    public static IconChar CloudUpload => IconChar.CloudArrowUp;     // Upload to cloud
+    public static IconChar Server => IconChar.Server;                // Server
+    public static IconChar Remote => IconChar.NetworkWired;          // Remote connection
+    public static IconChar Connect => IconChar.Plug;                 // Connect
+    public static IconChar Disconnect => IconChar.PlugCircleXmark;   // Disconnect
 
     // User & Account Icons
-    public static string Contact => "\uE77B";           // Contact (User)
-    public static string Admin => "\uE7EF";             // Admin
-    public static string Lock => "\uE72E";              // Lock
-    public static string Unlock => "\uE785";            // Unlock
+    public static IconChar Contact => IconChar.User;                 // User/contact
+    public static IconChar Admin => IconChar.UserTie;                // Administrator
+    public static IconChar Lock => IconChar.Lock;                    // Locked/secure
+    public static IconChar Unlock => IconChar.LockOpen;              // Unlocked
 
     // Status & Feedback Icons
-    public static string CheckMark => "\uE73E";         // CheckMark (Success)
-    public static string Warning => "\uE7BA";           // Warning
-    public static string Error => "\uE783";             // Error
-    public static string Info => "\uE946";              // Info
-    public static string StatusCircleCheckmark => "\uF13E"; // StatusCircleCheckmark
+    public static IconChar CheckMark => IconChar.Check;              // Success/valid
+    public static IconChar Warning => IconChar.TriangleExclamation;  // Warning
+    public static IconChar Error => IconChar.CircleXmark;            // Error
+    public static IconChar Info => IconChar.CircleInfo;              // Information
+    public static IconChar StatusCircleCheckmark => IconChar.CircleCheck; // Active/success
 
     // Action Icons
-    public static string Repair => "\uE90F";            // Repair (Fix)
-    public static string Clear => "\uE894";             // Clear
-    public static string Export => "\uEDE1";            // Export
-    public static string Import => "\uE8B5";            // Import
-    public static string Add => "\uE710";               // Add
-    public static string Remove => "\uE738";            // Remove
-    public static string Edit => "\uE70F";              // Edit
+    public static IconChar Repair => IconChar.Wrench;                // Repair/fix
+    public static IconChar Clear => IconChar.Eraser;                 // Clear
+    public static IconChar Export => IconChar.FileExport;            // Export data
+    public static IconChar Import => IconChar.FileImport;            // Import data
+    public static IconChar Add => IconChar.Plus;                     // Add new
+    public static IconChar Remove => IconChar.Minus;                 // Remove
+    public static IconChar Edit => IconChar.PenToSquare;             // Edit
 
     // Navigation Icons
-    public static string Home => "\uE80F";              // Home (Dashboard)
-    public static string ChevronRight => "\uE76C";      // ChevronRight
-    public static string ChevronDown => "\uE70D";       // ChevronDown
-    public static string More => "\uE712";              // More (...)
-    
-    // Log & Output Icons
-    public static string List => "\uE8FD";              // List
-    public static string Dictionary => "\uE82D";        // Dictionary (Logs)
-    public static string Search => "\uE721";            // Search
-}
+    public static IconChar Home => IconChar.House;                   // Home/dashboard
+    public static IconChar ChevronRight => IconChar.ChevronRight;    // Navigate forward
+    public static IconChar ChevronDown => IconChar.ChevronDown;      // Expand/collapse
+    public static IconChar More => IconChar.EllipsisVertical;        // More options
 
+    // Log & Output Icons
+    public static IconChar List => IconChar.ListUl;                  // List view
+    public static IconChar Dictionary => IconChar.Book;              // Dictionary/logs
+    public static IconChar Search => IconChar.MagnifyingGlass;       // Search
+
+    // Additional useful icons
+    public static IconChar Network => IconChar.NetworkWired;         // Network topology
+    public static IconChar Upload => IconChar.Upload;                // Upload files
+    public static IconChar Database => IconChar.Database;            // Database
+    public static IconChar History => IconChar.ClockRotateLeft;     // History/recent
+    public static IconChar Terminal => IconChar.Terminal;            // Command line
+    public static IconChar Code => IconChar.Code;                    // Code/scripts
+}

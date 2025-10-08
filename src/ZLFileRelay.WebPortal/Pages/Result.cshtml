@@ -10,11 +10,11 @@
             <h2>
                 @if (Model.AllSuccessful)
                 {
-                    <i class="bi bi-check-circle"></i><text> Upload Successful!</text>
+                    <i class="fa-solid fa-circle-check"></i><text> Upload Successful!</text>
                 }
                 else
                 {
-                    <i class="bi bi-exclamation-triangle"></i><text> Upload Completed with Issues</text>
+                    <i class="fa-solid fa-triangle-exclamation"></i><text> Upload Completed with Issues</text>
                 }
             </h2>
         </div>
@@ -23,7 +23,7 @@
                 <strong>Summary:</strong> @Model.SuccessCount of @Model.TotalCount file@(Model.TotalCount == 1 ? "" : "s") uploaded successfully.
             </div>
 
-            <h5><i class="bi bi-list-check"></i> Upload Details:</h5>
+            <h5><i class="fa-solid fa-list-check"></i> Upload Details:</h5>
             <div class="list-group mb-3">
                 @foreach (var result in Model.Results)
                 {
@@ -32,11 +32,11 @@
                             <h6 class="mb-1">
                                 @if (result.Success)
                                 {
-                                    <i class="bi bi-check-circle-fill text-success"></i>
+                                    <i class="fa-solid fa-circle-check text-success"></i>
                                 }
                                 else
                                 {
-                                    <i class="bi bi-x-circle-fill text-danger"></i>
+                                    <i class="fa-solid fa-circle-xmark text-danger"></i>
                                 }
                                 @result.FileName
                             </h6>
@@ -46,14 +46,14 @@
                         {
                             <p class="mb-1">
                                 <small class="text-success">
-                                    <i class="bi bi-folder"></i> Saved to: @result.FilePath
+                                    <i class="fa-solid fa-folder"></i> Saved to: @result.FilePath
                                 </small>
                             </p>
                             @if (result.RequiresTransfer)
                             {
                                 <p class="mb-1">
                                     <small class="text-info">
-                                        <i class="bi bi-arrow-right-circle"></i> Queued for automatic transfer
+                                        <i class="fa-solid fa-circle-arrow-right"></i> Queued for automatic transfer
                                     </small>
                                 </p>
                             }
@@ -62,13 +62,13 @@
                         {
                             <p class="mb-1">
                                 <small class="text-danger">
-                                    <i class="bi bi-exclamation-circle"></i> Error: @result.ErrorMessage
+                                    <i class="fa-solid fa-circle-exclamation"></i> Error: @result.ErrorMessage
                                 </small>
                             </p>
                         }
                         @if (!string.IsNullOrWhiteSpace(result.Notes))
                         {
-                            <p class="mb-0"><small><i class="bi bi-sticky"></i> Notes: @result.Notes</small></p>
+                            <p class="mb-0"><small><i class="fa-solid fa-note-sticky"></i> Notes: @result.Notes</small></p>
                         }
                     </div>
                 }
@@ -76,16 +76,16 @@
 
             <div class="d-grid gap-2">
                 <a asp-page="Upload" class="btn btn-primary btn-lg">
-                    <i class="bi bi-upload"></i> Upload More Files
+                    <i class="fa-solid fa-cloud-arrow-up"></i> Upload More Files
                 </a>
                 <a asp-page="Index" class="btn btn-outline-secondary">
-                    <i class="bi bi-house"></i> Return to Home
+                    <i class="fa-solid fa-house"></i> Return to Home
                 </a>
             </div>
         </div>
         <div class="card-footer text-muted">
             <p class="mb-0">
-                <i class="bi bi-person"></i> Uploaded by: <strong>@Model.Username</strong> at @DateTime.Now.ToString("yyyy-MM-dd HH:mm:ss")
+                <i class="fa-solid fa-user"></i> Uploaded by: <strong>@Model.Username</strong> at @DateTime.Now.ToString("yyyy-MM-dd HH:mm:ss")
             </p>
         </div>
     </div>

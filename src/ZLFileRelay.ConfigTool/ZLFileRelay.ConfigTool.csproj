@@ -6,6 +6,7 @@
 
   <ItemGroup>
     <PackageReference Include="CommunityToolkit.Mvvm" Version="8.2.2" />
+    <PackageReference Include="FontAwesome.Sharp" Version="6.3.0" />
     <PackageReference Include="Microsoft.Extensions.Configuration.Json" Version="8.0.0" />
     <PackageReference Include="Microsoft.Extensions.DependencyInjection" Version="8.0.0" />
     <PackageReference Include="Microsoft.Extensions.Hosting" Version="8.0.0" />
@@ -25,5 +26,14 @@
     <ImplicitUsings>enable</ImplicitUsings>
     <UseWPF>true</UseWPF>
   </PropertyGroup>
+
+  <!-- Font Awesome Pro Font Files (Embedded Resources) -->
+  <ItemGroup>
+    <EmbeddedResource Include="Fonts\Font Awesome 7 Pro-Solid-900.otf" />
+    <EmbeddedResource Include="Fonts\Font Awesome 7 Pro-Regular-400.otf" />
+    <EmbeddedResource Include="Fonts\Font Awesome 7 Pro-Light-300.otf" />
+    <EmbeddedResource Include="Fonts\Font Awesome 7 Brands-Regular-400.otf" />
+    <None Include="Fonts\README.md" />
+  </ItemGroup>
 
 </Project>

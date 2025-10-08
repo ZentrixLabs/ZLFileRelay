@@ -1,0 +1,6 @@
+# Font Awesome Pro files (not committed to git due to license)
+fontawesome/
+
+# Keep this file and the setup instructions
+!.gitignore
+!FONTAWESOME_SETUP.md
