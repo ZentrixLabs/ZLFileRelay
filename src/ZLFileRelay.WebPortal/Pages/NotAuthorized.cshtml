@@ -1,0 +1,39 @@
+@page
+@model ZLFileRelay.WebPortal.Pages.NotAuthorizedModel
+@{
+    ViewData["Title"] = "Not Authorized";
+}
+
+<div class="container mt-5">
+    <div class="card shadow border-danger">
+        <div class="card-header bg-danger text-white">
+            <h2><i class="bi bi-shield-x"></i> Access Denied</h2>
+        </div>
+        <div class="card-body">
+            <div class="alert alert-danger">
+                <h4 class="alert-heading"><i class="bi bi-exclamation-triangle"></i> You are not authorized to access this application</h4>
+                <p>Your account does not have the required permissions to upload files through this portal.</p>
+                <hr>
+                <p class="mb-0">
+                    <strong>Current User:</strong> @(User.Identity?.Name ?? "Unknown")<br>
+                    <strong>Authentication Type:</strong> @(User.Identity?.AuthenticationType ?? "None")
+                </p>
+            </div>
+
+            <h5><i class="bi bi-info-circle"></i> To gain access:</h5>
+            <ol>
+                <li>Verify you are logged in with the correct account</li>
+                <li>Contact your system administrator to request access</li>
+                <li>Ensure your account is a member of one of the allowed groups</li>
+            </ol>
+
+            <div class="alert alert-info">
+                <p class="mb-0">
+                    <i class="bi bi-envelope"></i> <strong>For assistance, contact:</strong> 
+                    <a href="mailto:@Model.ContactEmail">@Model.ContactEmail</a>
+                </p>
+            </div>
+        </div>
+    </div>
+</div>
+

@@ -1,0 +1,217 @@
+@page
+@model ZLFileRelay.WebPortal.Pages.UploadModel
+@{
+    ViewData["Title"] = "File Upload";
+}
+
+<div class="container mt-5">
+    <div class="card shadow">
+        <div class="card-header bg-primary text-white">
+            <h2><i class="bi bi-cloud-upload"></i> @Model.UploadViewModel.SiteName - Secure File Upload</h2>
+            <p class="mb-0 text-white-50">
+                Authenticated as: <strong>@(User.Identity?.Name ?? "Unknown")</strong>
+            </p>
+        </div>
+        <div class="card-body">
+            <form method="post" enctype="multipart/form-data" id="uploadForm">
+                <div asp-validation-summary="All" class="text-danger"></div>
+
+                <div class="mb-3">
+                    <label asp-for="UploadViewModel.Files" class="form-label">Select Files</label>
+                    <input asp-for="UploadViewModel.Files"
+                           type="file"
+                           class="form-control form-control-lg"
+                           multiple
+                           id="fileInput"
+                           accept="*/*" />
+                    <div class="form-text">
+                        <i class="bi bi-info-circle"></i> You can select multiple files. Hold Ctrl/Cmd to select multiple files. 
+                        Maximum file size: @FormatBytes(Model.UploadViewModel.MaxFileSizeBytes) per file.
+                    </div>
+                    <span asp-validation-for="UploadViewModel.Files" class="text-danger"></span>
+
+                    <!-- File list preview -->
+                    <div id="fileList" class="mt-3" style="display: none;">
+                        <h6><i class="bi bi-file-earmark-text"></i> Selected Files:</h6>
+                        <ul id="selectedFiles" class="list-group"></ul>
+                    </div>
+                </div>
+
+                @if (Model.UploadViewModel.ShowTransferOption)
+                {
+                    <div class="mb-3">
+                        <div class="form-check form-switch">
+                            <input asp-for="UploadViewModel.RequiresTransfer" class="form-check-input" />
+                            <label asp-for="UploadViewModel.RequiresTransfer" class="form-check-label">
+                                Queue for Automatic Transfer
+                            </label>
+                        </div>
+                        <small class="form-text text-muted">
+                            <i class="bi bi-arrow-right-circle"></i> When enabled, files will be automatically transferred by the background service.
+                        </small>
+                    </div>
+                }
+
+                <div class="mb-3">
+                    <label asp-for="UploadViewModel.Notes" class="form-label">Notes (Optional)</label>
+                    <textarea asp-for="UploadViewModel.Notes" class="form-control" rows="3"
+                              placeholder="Add any notes about these files (purpose, version, instructions, etc.)..."></textarea>
+                    <span asp-validation-for="UploadViewModel.Notes" class="text-danger"></span>
+                </div>
+
+                <div class="d-grid gap-2">
+                    <button type="submit" class="btn btn-primary btn-lg" id="uploadButton">
+                        <i class="bi bi-upload"></i>
+                        <span id="uploadText">Upload Files</span>
+                        <span id="uploadSpinner" class="spinner-border spinner-border-sm ms-2" style="display: none;"></span>
+                    </button>
+                </div>
+            </form>
+        </div>
+        <div class="card-footer text-muted">
+            <p class="mb-1">
+                <i class="bi bi-shield-check"></i> <strong>Security:</strong> All files are validated and scanned before processing.
+            </p>
+            <p class="mb-0">
+                <i class="bi bi-envelope"></i> <strong>Questions?</strong> Contact: 
+                <a href="mailto:@Model.UploadViewModel.ContactEmail">@Model.UploadViewModel.ContactEmail</a>
+            </p>
+        </div>
+    </div>
+</div>
+
+<!-- Upload Progress Modal -->
+<div class="modal fade" id="uploadModal" tabindex="-1" aria-hidden="true" data-bs-backdrop="static" data-bs-keyboard="false">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title"><i class="bi bi-cloud-upload"></i> Uploading Files...</h5>
+            </div>
+            <div class="modal-body text-center">
+                <div class="spinner-border text-primary mb-3" role="status" style="width: 3rem; height: 3rem;">
+                    <span class="visually-hidden">Loading...</span>
+                </div>
+                <p id="uploadStatus">Processing your files...</p>
+            </div>
+        </div>
+    </div>
+</div>
+
+@section Scripts {
+    <partial name="_ValidationScriptsPartial" />
+    <script>
+        document.getElementById('fileInput').addEventListener('change', function(e) {
+            const fileList = document.getElementById('fileList');
+            const selectedFiles = document.getElementById('selectedFiles');
+            const files = e.target.files;
+            const maxFileSize = @Model.UploadViewModel.MaxFileSizeBytes;
+            let hasOversizedFiles = false;
+            let totalSize = 0;
+
+            if (files.length > 0) {
+                fileList.style.display = 'block';
+                selectedFiles.innerHTML = '';
+
+                for (let i = 0; i < files.length; i++) {
+                    totalSize += files[i].size;
+                    const li = document.createElement('li');
+                    let badgeClass = 'bg-secondary';
+                    let sizeText = formatFileSize(files[i].size);
+                    let icon = '📄';
+
+                    // Check if file is too large
+                    if (files[i].size > maxFileSize) {
+                        badgeClass = 'bg-danger';
+                        sizeText += ' ❌ TOO LARGE';
+                        hasOversizedFiles = true;
+                        icon = '⚠️';
+                    } else if (files[i].size > 2 * 1024 * 1024 * 1024) {
+                        badgeClass = 'bg-warning text-dark';
+                        icon = '📦';
+                    } else if (files[i].size > 1024 * 1024 * 1024) {
+                        badgeClass = 'bg-info';
+                        icon = '📊';
+                    }
+
+                    li.className = 'list-group-item d-flex justify-content-between align-items-center';
+                    li.innerHTML = `
+                        <span>${icon} ${files[i].name}</span>
+                        <span class="badge ${badgeClass} rounded-pill">${sizeText}</span>
+                    `;
+                    selectedFiles.appendChild(li);
+                }
+
+                // Total size summary
+                const totalDiv = document.createElement('div');
+                let totalClass = 'alert-info';
+                if (totalSize > 4 * 1024 * 1024 * 1024) totalClass = 'alert-warning';
+
+                totalDiv.className = `alert ${totalClass} mt-2 mb-0`;
+                totalDiv.innerHTML = `<strong>📊 Total:</strong> ${formatFileSize(totalSize)} (${files.length} file${files.length === 1 ? '' : 's'})`;
+                selectedFiles.appendChild(totalDiv);
+
+                if (hasOversizedFiles) {
+                    const warning = document.createElement('div');
+                    warning.className = 'alert alert-danger mt-2 mb-0';
+                    warning.innerHTML = '<strong>⚠️ Error:</strong> Some files exceed the maximum file size and cannot be uploaded.';
+                    selectedFiles.appendChild(warning);
+                }
+            } else {
+                fileList.style.display = 'none';
+            }
+        });
+
+        function formatFileSize(bytes) {
+            if (bytes === 0) return '0 Bytes';
+            const k = 1024;
+            const sizes = ['Bytes', 'KB', 'MB', 'GB', 'TB'];
+            const i = Math.floor(Math.log(bytes) / Math.log(k));
+            return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i];
+        }
+
+        document.getElementById('uploadForm').addEventListener('submit', function(e) {
+            const files = document.getElementById('fileInput').files;
+            const maxFileSize = @Model.UploadViewModel.MaxFileSizeBytes;
+
+            if (files.length === 0) {
+                e.preventDefault();
+                alert('Please select at least one file to upload.');
+                return;
+            }
+
+            // Validate file sizes
+            for (let i = 0; i < files.length; i++) {
+                if (files[i].size > maxFileSize) {
+                    e.preventDefault();
+                    alert(`File "${files[i].name}" is too large. Maximum file size is ${formatFileSize(maxFileSize)}.`);
+                    return;
+                }
+            }
+
+            // Show upload modal
+            const modal = new bootstrap.Modal(document.getElementById('uploadModal'));
+            modal.show();
+
+            // Update button state
+            document.getElementById('uploadText').textContent = 'Uploading...';
+            document.getElementById('uploadSpinner').style.display = 'inline-block';
+            document.getElementById('uploadButton').disabled = true;
+        });
+    </script>
+}
+
+@functions {
+    private string FormatBytes(long bytes)
+    {
+        string[] sizes = { "B", "KB", "MB", "GB", "TB" };
+        double len = bytes;
+        int order = 0;
+        while (len >= 1024 && order < sizes.Length - 1)
+        {
+            order++;
+            len = len / 1024;
+        }
+        return $"{len:0.##} {sizes[order]}";
+    }
+}
+

@@ -1,0 +1,108 @@
+@page
+@model ZLFileRelay.WebPortal.Pages.ResultModel
+@{
+    ViewData["Title"] = "Upload Results";
+}
+
+<div class="container mt-5">
+    <div class="card shadow">
+        <div class="card-header @(Model.AllSuccessful ? "bg-success" : "bg-warning") text-white">
+            <h2>
+                @if (Model.AllSuccessful)
+                {
+                    <i class="bi bi-check-circle"></i><text> Upload Successful!</text>
+                }
+                else
+                {
+                    <i class="bi bi-exclamation-triangle"></i><text> Upload Completed with Issues</text>
+                }
+            </h2>
+        </div>
+        <div class="card-body">
+            <div class="alert @(Model.AllSuccessful ? "alert-success" : "alert-warning")">
+                <strong>Summary:</strong> @Model.SuccessCount of @Model.TotalCount file@(Model.TotalCount == 1 ? "" : "s") uploaded successfully.
+            </div>
+
+            <h5><i class="bi bi-list-check"></i> Upload Details:</h5>
+            <div class="list-group mb-3">
+                @foreach (var result in Model.Results)
+                {
+                    <div class="list-group-item @(result.Success ? "list-group-item-success" : "list-group-item-danger")">
+                        <div class="d-flex w-100 justify-content-between">
+                            <h6 class="mb-1">
+                                @if (result.Success)
+                                {
+                                    <i class="bi bi-check-circle-fill text-success"></i>
+                                }
+                                else
+                                {
+                                    <i class="bi bi-x-circle-fill text-danger"></i>
+                                }
+                                @result.FileName
+                            </h6>
+                            <small class="text-muted">@FormatBytes(result.FileSize)</small>
+                        </div>
+                        @if (result.Success)
+                        {
+                            <p class="mb-1">
+                                <small class="text-success">
+                                    <i class="bi bi-folder"></i> Saved to: @result.FilePath
+                                </small>
+                            </p>
+                            @if (result.RequiresTransfer)
+                            {
+                                <p class="mb-1">
+                                    <small class="text-info">
+                                        <i class="bi bi-arrow-right-circle"></i> Queued for automatic transfer
+                                    </small>
+                                </p>
+                            }
+                        }
+                        else
+                        {
+                            <p class="mb-1">
+                                <small class="text-danger">
+                                    <i class="bi bi-exclamation-circle"></i> Error: @result.ErrorMessage
+                                </small>
+                            </p>
+                        }
+                        @if (!string.IsNullOrWhiteSpace(result.Notes))
+                        {
+                            <p class="mb-0"><small><i class="bi bi-sticky"></i> Notes: @result.Notes</small></p>
+                        }
+                    </div>
+                }
+            </div>
+
+            <div class="d-grid gap-2">
+                <a asp-page="Upload" class="btn btn-primary btn-lg">
+                    <i class="bi bi-upload"></i> Upload More Files
+                </a>
+                <a asp-page="Index" class="btn btn-outline-secondary">
+                    <i class="bi bi-house"></i> Return to Home
+                </a>
+            </div>
+        </div>
+        <div class="card-footer text-muted">
+            <p class="mb-0">
+                <i class="bi bi-person"></i> Uploaded by: <strong>@Model.Username</strong> at @DateTime.Now.ToString("yyyy-MM-dd HH:mm:ss")
+            </p>
+        </div>
+    </div>
+</div>
+
+@functions {
+    private string FormatBytes(long bytes)
+    {
+        string[] sizes = { "B", "KB", "MB", "GB", "TB" };
+        double len = bytes;
+        int order = 0;
+        while (len >= 1024 && order < sizes.Length - 1)
+        {
+            order++;
+            len = len / 1024;
+        }
+        return $"{len:0.##} {sizes[order]}";
+    }
+}
+

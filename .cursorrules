@@ -1,0 +1,240 @@
+# ZL File Relay - Development Rules
+
+## Product Overview
+**ZL File Relay** (ZentrixLabs File Relay) is a unified enterprise file transfer solution combining:
+1. **Windows Service** - Automated file watching and secure transfer (SSH/SCP, SMB)
+2. **Web Portal** - User-friendly upload interface with Windows Authentication
+3. **Configuration Tool** - WPF GUI for unified configuration and service management
+
+## Core Design Principles
+
+### 1. Everything is Configurable
+- NO hardcoded company names, paths, or environment-specific values
+- All branding (company name, logo, colors) must be configurable
+- All paths must be configurable with sensible defaults
+- Support multiple deployment scenarios out of the box
+
+### 2. Professional Architecture
+- Use proper separation of concerns
+- Shared code goes in `ZLFileRelay.Core`
+- Follow SOLID principles
+- Dependency injection throughout
+- Async/await for all I/O operations
+
+### 3. Modern .NET Practices
+- Service: Target .NET 8.0 (no more .NET Framework unless required)
+- WebPortal: ASP.NET Core 8.0
+- ConfigTool: .NET 8.0 WPF
+- Use latest C# language features
+- Nullable reference types enabled
+
+### 4. Security First
+- Windows DPAPI for credential encryption
+- SSH key authentication preferred over passwords
+- Proper input validation everywhere
+- Audit logging for all security-relevant operations
+- Follow OWASP best practices for web portal
+
+### 5. Production Ready
+- Comprehensive error handling with meaningful messages
+- Structured logging (Serilog) with configurable levels
+- Health checks and monitoring endpoints
+- Graceful degradation when services unavailable
+- Proper cleanup and disposal patterns
+
+### 6. Installation Experience
+- Single Inno Setup installer for all components
+- Optional component selection during install
+- Automated IIS configuration for web portal
+- Automated Windows Service registration
+- Pre-flight checks for dependencies
+- Clear error messages during installation
+
+## Project Structure
+
+```
+ZLFileRelay/
+├── src/
+│   ├── ZLFileRelay.Core/           # Shared library
+│   │   ├── Models/                 # Configuration, domain models
+│   │   ├── Interfaces/             # Service interfaces
+│   │   ├── Services/               # Shared services (logging, validation)
+│   │   └── Constants/              # Application constants
+│   │
+│   ├── ZLFileRelay.Service/        # Windows Service
+│   │   ├── Services/               # File watching, transfer logic
+│   │   ├── Workers/                # Background workers
+│   │   └── Program.cs
+│   │
+│   ├── ZLFileRelay.WebPortal/      # ASP.NET Core Web App
+│   │   ├── Pages/                  # Razor pages
+│   │   ├── Services/               # Upload, auth services
+│   │   ├── wwwroot/                # Static assets
+│   │   └── Program.cs
+│   │
+│   └── ZLFileRelay.ConfigTool/     # WPF Application
+│       ├── Views/                  # XAML views
+│       ├── ViewModels/             # MVVM view models
+│       ├── Services/               # Config management
+│       └── App.xaml
+│
+├── installer/
+│   ├── ZLFileRelay.iss             # Inno Setup script
+│   ├── scripts/                    # PowerShell helper scripts
+│   └── assets/                     # Icons, images
+│
+├── docs/
+│   ├── README.md                   # Main documentation
+│   ├── INSTALLATION.md             # Installation guide
+│   ├── CONFIGURATION.md            # Configuration reference
+│   └── DEPLOYMENT.md               # Deployment scenarios
+│
+├── tests/
+│   ├── ZLFileRelay.Core.Tests/
+│   ├── ZLFileRelay.Service.Tests/
+│   └── ZLFileRelay.WebPortal.Tests/
+│
+└── build/
+    ├── build.ps1                   # Build script
+    └── build-installer.ps1         # Installer build script
+```
+
+## Configuration Schema
+
+All configuration in single `appsettings.json` shared between components:
+
+```json
+{
+  "ZLFileRelay": {
+    "Branding": {
+      "CompanyName": "Your Company",
+      "ProductName": "ZL File Relay",
+      "SiteName": "Site Name",
+      "SupportEmail": "support@example.com",
+      "LogoPath": "Assets/logo.png"
+    },
+    "Paths": {
+      "UploadDirectory": "C:\\FileRelay\\uploads",
+      "LogDirectory": "C:\\FileRelay\\logs",
+      "ConfigDirectory": "C:\\ProgramData\\ZLFileRelay"
+    },
+    "Service": {
+      "Enabled": true,
+      "WatchDirectory": "C:\\FileRelay\\uploads\\transfer",
+      "TransferMethod": "ssh",
+      "RetryAttempts": 3,
+      "RetryDelaySeconds": 30
+    },
+    "WebPortal": {
+      "Enabled": true,
+      "RequireAuthentication": true,
+      "AllowedGroups": [],
+      "MaxFileSizeBytes": 4294967295
+    },
+    "Transfer": {
+      "Ssh": {
+        "Host": "",
+        "Port": 22,
+        "Username": "",
+        "PrivateKeyPath": "",
+        "DestinationPath": ""
+      },
+      "Smb": {
+        "Server": "",
+        "SharePath": "",
+        "UseCredentials": false
+      }
+    }
+  }
+}
+```
+
+## Naming Conventions
+
+- **Solution**: ZLFileRelay.sln
+- **Assemblies**: ZLFileRelay.{Component}.dll
+- **Service Name**: ZLFileRelay
+- **Service Display Name**: ZL File Relay Service
+- **IIS Site**: ZLFileRelay
+- **Install Path**: C:\Program Files\ZLFileRelay
+- **Data Path**: C:\ProgramData\ZLFileRelay
+
+## Technology Stack
+
+- **.NET**: 8.0 (latest LTS)
+- **Web Framework**: ASP.NET Core 8.0 Razor Pages
+- **Desktop Framework**: WPF (.NET 8.0)
+- **Logging**: Serilog
+- **SSH**: SSH.NET library
+- **Testing**: xUnit
+- **Installer**: Inno Setup 6.x
+
+## Code Quality Standards
+
+- Use meaningful variable and method names
+- XML documentation for public APIs
+- Keep methods small and focused (< 50 lines)
+- One class per file
+- Interfaces start with 'I' prefix
+- Async methods end with 'Async' suffix
+- Use pattern matching and modern C# features
+- No magic strings - use constants or configuration
+
+## Git Workflow
+
+- Main branch: `main` (production-ready)
+- Development branch: `develop`
+- Feature branches: `feature/description`
+- Hotfix branches: `hotfix/description`
+- Semantic versioning: MAJOR.MINOR.PATCH
+
+## Migration Strategy
+
+We are migrating from two separate projects:
+1. **DMZFileTransferService/ZLBridge** - Windows Service with SCP/SMB transfer
+2. **DMZUploader** - Web upload portal
+
+**Process:**
+1. Create clean structure (this phase)
+2. Extract and adapt Core models and interfaces
+3. Migrate Service logic with improvements
+4. Migrate WebPortal with rebrand and cleanup
+5. Build unified ConfigTool
+6. Create comprehensive installer
+7. Test end-to-end
+8. Document everything
+
+## Key Improvements Over Legacy
+
+- ✅ Single unified product instead of two separate
+- ✅ Modern .NET 8.0 instead of .NET Framework 4.8
+- ✅ Fully configurable instead of hardcoded values
+- ✅ Shared configuration file
+- ✅ Professional installer with all components
+- ✅ Unified configuration tool
+- ✅ Better error handling and logging
+- ✅ Comprehensive documentation
+- ✅ Multi-site ready
+
+## SSH Implementation Reference
+
+When implementing SSH/SCP functionality, reference the existing SSH handling from:
+- DMZFileTransferService: `ZLBridge/ScpFileTransferService.cs`
+- DMZFileTransferService: `ZLBridge/SshKeyGenerator.cs`
+
+These have proven, working implementations of SSH key authentication and SCP file transfer.
+
+## Installation Requirements
+
+- Windows Server 2016 or later (2019+ recommended)
+- .NET 8.0 Runtime
+- ASP.NET Core 8.0 Runtime (for web portal)
+- IIS 10.0+ (for web portal)
+- Administrative privileges for installation
+
+## Support and Maintenance
+
+- Log files location: Configurable (default: C:\ProgramData\ZLFileRelay\logs)
+- Windows Event Log: Application log with source "ZLFileRelay"
+- Web portal logs: Serilog with daily rolling files
+- Service logs: Serilog with daily rolling files
