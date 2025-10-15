@@ -51,9 +51,17 @@
                             </p>
                             @if (result.RequiresTransfer)
                             {
-                                <p class="mb-1">
+                                <p class="mb-1 transfer-status" data-filename="@result.FileName">
                                     <small class="text-info">
-                                        <i class="fa-solid fa-circle-arrow-right"></i> Queued for automatic transfer
+                                        <i class="fa-solid fa-clock"></i> <span class="status-text">Queued for SCADA transfer...</span>
+                                    </small>
+                                </p>
+                            }
+                            else
+                            {
+                                <p class="mb-1">
+                                    <small class="text-muted">
+                                        <i class="fa-solid fa-server"></i> Saved to DMZ location (no SCADA transfer)
                                     </small>
                                 </p>
                             }
@@ -104,5 +112,98 @@
         }
         return $"{len:0.##} {sizes[order]}";
     }
+}
+
+@section Scripts {
+    <script src="~/lib/signalr/signalr.min.js"></script>
+    <script>
+        // Connect to SignalR hub for real-time transfer status updates
+        const connection = new signalR.HubConnectionBuilder()
+            .withUrl("/hubs/transferstatus")
+            .withAutomaticReconnect()
+            .build();
+
+        connection.on("TransferStatusUpdate", function (status) {
+            console.log("Transfer status update received:", status);
+            updateTransferStatus(status);
+        });
+
+        connection.start()
+            .then(() => {
+                console.log("Connected to transfer status hub");
+            })
+            .catch(err => {
+                console.error("Error connecting to hub:", err);
+            });
+
+        function updateTransferStatus(status) {
+            // Find the status element for this file
+            const statusElements = document.querySelectorAll('.transfer-status');
+            statusElements.forEach(element => {
+                const filename = element.getAttribute('data-filename');
+                
+                // Check if this status update matches this file
+                if (status.fileName === filename) {
+                    const statusText = element.querySelector('.status-text');
+                    const icon = element.querySelector('i');
+                    const small = element.querySelector('small');
+                    
+                    // Update based on status
+                    switch (status.status) {
+                        case 0: // Queued
+                            icon.className = 'fa-solid fa-clock';
+                            small.className = 'text-info';
+                            statusText.textContent = 'Queued for SCADA transfer...';
+                            break;
+                        case 1: // Transferring
+                            icon.className = 'fa-solid fa-spinner fa-spin';
+                            small.className = 'text-primary';
+                            statusText.textContent = 'Transferring to SCADA...';
+                            break;
+                        case 2: // Completed
+                            icon.className = 'fa-solid fa-circle-check';
+                            small.className = 'text-success';
+                            let destText = status.destinationPath || 'SCADA system';
+                            statusText.textContent = `✓ SCADA transfer completed: ${destText}`;
+                            
+                            // Optional: Add a subtle notification sound or visual effect
+                            element.classList.add('animate__animated', 'animate__pulse');
+                            break;
+                        case 3: // Failed
+                            icon.className = 'fa-solid fa-circle-xmark';
+                            small.className = 'text-danger';
+                            let errorMsg = status.errorMessage || 'Unknown error';
+                            statusText.textContent = `SCADA transfer failed: ${errorMsg}`;
+                            break;
+                    }
+                }
+            });
+        }
+
+        // Clean up connection when page unloads
+        window.addEventListener('beforeunload', function () {
+            connection.stop();
+        });
+    </script>
+    
+    <style>
+        .transfer-status {
+            transition: all 0.3s ease;
+        }
+        
+        .animate__animated {
+            animation-duration: 1s;
+        }
+        
+        .animate__pulse {
+            animation-name: pulse;
+        }
+        
+        @@keyframes pulse {
+            0% { transform: scale(1); }
+            50% { transform: scale(1.05); }
+            100% { transform: scale(1); }
+        }
+    </style>
 }
 

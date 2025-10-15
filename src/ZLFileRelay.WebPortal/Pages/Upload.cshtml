@@ -44,11 +44,12 @@
                         <div class="form-check form-switch">
                             <input asp-for="UploadViewModel.RequiresTransfer" class="form-check-input" />
                             <label asp-for="UploadViewModel.RequiresTransfer" class="form-check-label">
-                                Queue for Automatic Transfer
+                                <strong>Send to SCADA</strong>
                             </label>
                         </div>
                         <small class="form-text text-muted">
-                            <i class="fa-solid fa-circle-arrow-right"></i> When enabled, files will be automatically transferred by the background service.
+                            <i class="fa-solid fa-circle-info"></i> <strong>Unchecked:</strong> Files stay in DMZ upload location<br />
+                            <i class="fa-solid fa-circle-arrow-right"></i> <strong>Checked:</strong> Files automatically transferred to SCADA system
                         </small>
                     </div>
                 }

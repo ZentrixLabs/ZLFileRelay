@@ -13,13 +13,16 @@ namespace ZLFileRelay.WebPortal.Services
     {
         private readonly ZLFileRelayConfiguration _config;
         private readonly ILogger<FileUploadService> _logger;
+        private readonly ITransferStatusService? _transferStatusService;
 
         public FileUploadService(
             ZLFileRelayConfiguration config,
-            ILogger<FileUploadService> logger)
+            ILogger<FileUploadService> logger,
+            ITransferStatusService? transferStatusService = null)
         {
             _config = config ?? throw new ArgumentNullException(nameof(config));
             _logger = logger ?? throw new ArgumentNullException(nameof(logger));
+            _transferStatusService = transferStatusService; // Optional for backward compatibility
         }
 
         // IFileUploadService implementation
@@ -40,18 +43,18 @@ namespace ZLFileRelay.WebPortal.Services
                 _logger.LogInformation("Processing file: {FileName} ({FileSize} bytes) for user: {Username}", 
                     fileName, fileStream.Length, uploadedBy);
 
-                // Validate file size
-                if (fileStream.Length > _config.Security.MaxUploadSizeBytes)
-                {
-                    throw new InvalidOperationException(
-                        $"File size ({fileStream.Length} bytes) exceeds maximum allowed size ({_config.Security.MaxUploadSizeBytes} bytes)");
-                }
-
-                // Validate file extension
+                // SECURITY FIX (MEDIUM-2): Validate file extension FIRST (cheaper check, faster rejection)
                 var extension = Path.GetExtension(fileName).ToLowerInvariant();
                 if (_config.WebPortal.BlockedFileExtensions.Contains(extension))
                 {
                     throw new InvalidOperationException($"File extension '{extension}' is blocked for security reasons");
+                }
+
+                // Validate file size (after extension check)
+                if (fileStream.Length > _config.Security.MaxUploadSizeBytes)
+                {
+                    throw new InvalidOperationException(
+                        $"File size ({fileStream.Length} bytes) exceeds maximum allowed size ({_config.Security.MaxUploadSizeBytes} bytes)");
                 }
 
                 // Create user-specific subdirectory
@@ -88,6 +91,21 @@ namespace ZLFileRelay.WebPortal.Services
                 result.Destination = destination;
                 result.RequiresTransfer = requiresTransfer;
                 result.Notes = notes;
+
+                // Register transfer for status tracking if required
+                if (requiresTransfer && _transferStatusService != null)
+                {
+                    try
+                    {
+                        var transferId = await _transferStatusService.RegisterTransferAsync(
+                            filePath, fileName, fileStream.Length, uploadedBy);
+                        _logger.LogDebug("Registered transfer tracking: {TransferId}", transferId);
+                    }
+                    catch (Exception ex)
+                    {
+                        _logger.LogWarning(ex, "Failed to register transfer tracking for {FileName}", fileName);
+                    }
+                }
 
                 return result;
             }
@@ -252,7 +270,10 @@ namespace ZLFileRelay.WebPortal.Services
             string? destination = null, bool requiresTransfer = false, 
             string? notes = null, CancellationToken cancellationToken = default)
         {
-            var dest = destination ?? (_config.WebPortal.EnableUploadToTransfer 
+            // Determine destination based on whether SCADA transfer is required
+            // Default: DMZ upload directory (files stay local)
+            // If requiresTransfer=true: Watch directory (files go to SCADA)
+            var dest = destination ?? (requiresTransfer
                 ? _config.Service.WatchDirectory 
                 : _config.Paths.UploadDirectory);
 

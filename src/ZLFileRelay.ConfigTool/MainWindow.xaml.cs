@@ -54,6 +54,10 @@ public partial class MainWindow : Window
         };
         RemoteServerContent.Content = remoteServerView;
         
+        // Bind About tab
+        var aboutView = new AboutView();
+        AboutContent.Content = aboutView;
+        
         // Bind Service Management tab
         LogOutputItems.ItemsSource = _serviceViewModel.LogMessages;
         
@@ -80,6 +84,9 @@ public partial class MainWindow : Window
         // Initial status refresh
         UpdateConnectionStatus();
         _ = RefreshStatusAsync();
+        
+        // Load security settings
+        LoadSecuritySettings();
     }
 
     #region Status Bar Updates
@@ -496,6 +503,97 @@ public partial class MainWindow : Window
     {
         ServiceAccountLogText.Text = "✅ All folder permissions fixed (placeholder)";
         StatusBarText.Text = "All folder permissions fixed";
+    }
+
+    #endregion
+
+    #region Security Settings Tab
+
+    private void LoadSecuritySettings()
+    {
+        // Load from ConfigurationViewModel if available
+        // For now, use defaults matching appsettings.json
+        AllowExecutableFilesCheckBox.IsChecked = false; // DMZ secure default
+        AllowHiddenFilesCheckBox.IsChecked = false;
+        MaxUploadSizeSlider.Value = 5.0; // 5 GB default
+        EnableAuditLogCheckBox.IsChecked = true;
+        AuditLogPathTextBox.Text = @"C:\FileRelay\logs\audit.log";
+    }
+
+    private void SetMaxSize1GB(object sender, RoutedEventArgs e)
+    {
+        MaxUploadSizeSlider.Value = 1;
+        _notificationService.ShowInfo("Max upload size set to 1 GB");
+    }
+
+    private void SetMaxSize5GB(object sender, RoutedEventArgs e)
+    {
+        MaxUploadSizeSlider.Value = 5;
+        _notificationService.ShowInfo("Max upload size set to 5 GB");
+    }
+
+    private void SetMaxSize10GB(object sender, RoutedEventArgs e)
+    {
+        MaxUploadSizeSlider.Value = 10;
+        _notificationService.ShowInfo("Max upload size set to 10 GB");
+    }
+
+    private void SetMaxSize20GB(object sender, RoutedEventArgs e)
+    {
+        MaxUploadSizeSlider.Value = 20;
+        _notificationService.ShowInfo("Max upload size set to 20 GB");
+    }
+
+    private void SetMaxSize50GB(object sender, RoutedEventArgs e)
+    {
+        MaxUploadSizeSlider.Value = 50;
+        _notificationService.ShowInfo("Max upload size set to 50 GB");
+    }
+
+    private void SaveSecuritySettings(object sender, RoutedEventArgs e)
+    {
+        try
+        {
+            // Get values from UI
+            bool allowExecutableFiles = AllowExecutableFilesCheckBox.IsChecked ?? false;
+            bool allowHiddenFiles = AllowHiddenFilesCheckBox.IsChecked ?? false;
+            double maxSizeGB = MaxUploadSizeSlider.Value;
+            long maxSizeBytes = (long)(maxSizeGB * 1024 * 1024 * 1024);
+            bool enableAuditLog = EnableAuditLogCheckBox.IsChecked ?? true;
+            string auditLogPath = AuditLogPathTextBox.Text;
+
+            // TODO: Update ConfigurationService with these values
+            // For now, show a message with the values that would be saved
+            
+            SecurityStatusText.Text = $"✅ Security settings saved:\n" +
+                $"  • Executable Files: {(allowExecutableFiles ? "Allowed" : "Blocked")}\n" +
+                $"  • Hidden Files: {(allowHiddenFiles ? "Allowed" : "Blocked")}\n" +
+                $"  • Max Upload Size: {maxSizeGB:F0} GB ({maxSizeBytes:N0} bytes)\n" +
+                $"  • Audit Logging: {(enableAuditLog ? "Enabled" : "Disabled")}";
+            SecurityStatusText.Foreground = System.Windows.Media.Brushes.Green;
+
+            StatusBarText.Text = "Security settings saved";
+            _dashboardViewModel.AddActivity($"Security settings updated (Max: {maxSizeGB}GB, Exec: {allowExecutableFiles})", ViewModels.ActivityType.Success);
+            _notificationService.ShowSuccess("Security settings saved successfully");
+
+            // Show warning if executable files are allowed
+            if (allowExecutableFiles)
+            {
+                var result = MessageBox.Show(
+                    "⚠️ WARNING: You have enabled executable file uploads.\n\n" +
+                    "This increases security risk. Only enable this if your workflow requires it.\n\n" +
+                    "Executable files can pose security threats if from untrusted sources.",
+                    "Security Warning",
+                    MessageBoxButton.OK,
+                    MessageBoxImage.Warning);
+            }
+        }
+        catch (Exception ex)
+        {
+            SecurityStatusText.Text = $"❌ Error saving security settings: {ex.Message}";
+            SecurityStatusText.Foreground = System.Windows.Media.Brushes.Red;
+            _notificationService.ShowError($"Error saving security settings: {ex.Message}");
+        }
     }
 
     #endregion

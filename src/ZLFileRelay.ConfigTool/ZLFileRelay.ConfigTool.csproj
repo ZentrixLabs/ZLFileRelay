@@ -36,4 +36,9 @@
     <None Include="Fonts\README.md" />
   </ItemGroup>
 
+  <!-- Branding Assets -->
+  <ItemGroup>
+    <Resource Include="Assets\ZLLogo.png" />
+  </ItemGroup>
+
 </Project>

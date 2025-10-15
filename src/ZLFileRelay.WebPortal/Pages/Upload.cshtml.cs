@@ -47,10 +47,8 @@ namespace ZLFileRelay.WebPortal.Pages
             // Initialize the viewmodel
             UploadViewModel = new FileUploadViewModel
             {
-                AvailableDestinations = _uploadService.GetUploadDestinations(),
-                SelectedDestination = "transfer",
                 ShowTransferOption = _config.WebPortal.EnableUploadToTransfer,
-                RequiresTransfer = true,
+                RequiresTransfer = true, // Default to sending to SCADA
                 SiteName = _config.Branding.SiteName,
                 ContactEmail = _config.Branding.SupportEmail,
                 MaxFileSizeBytes = _config.Security.MaxUploadSizeBytes
@@ -104,7 +102,6 @@ namespace ZLFileRelay.WebPortal.Pages
 
         private void RepopulateViewModel()
         {
-            UploadViewModel.AvailableDestinations = _uploadService.GetUploadDestinations();
             UploadViewModel.ShowTransferOption = _config.WebPortal.EnableUploadToTransfer;
             UploadViewModel.SiteName = _config.Branding.SiteName;
             UploadViewModel.ContactEmail = _config.Branding.SupportEmail;

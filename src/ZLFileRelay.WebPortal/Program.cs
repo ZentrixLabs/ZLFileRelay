@@ -1,6 +1,8 @@
 using Microsoft.AspNetCore.Authentication.Negotiate;
+using Microsoft.AspNetCore.RateLimiting;
 using Microsoft.AspNetCore.Server.IISIntegration;
 using Serilog;
+using System.Threading.RateLimiting;
 using ZLFileRelay.Core.Interfaces;
 using ZLFileRelay.Core.Models;
 using ZLFileRelay.WebPortal.Services;
@@ -44,6 +46,9 @@ try
         {
             builder.WebHost.ConfigureKestrel(options =>
             {
+                // SECURITY FIX (MEDIUM-1): Set request body size limit at Kestrel level
+                options.Limits.MaxRequestBodySize = appConfig.Security.MaxUploadSizeBytes;
+                
                 options.ConfigureHttpsDefaults(httpsOptions =>
                 {
                     httpsOptions.ServerCertificate = new System.Security.Cryptography.X509Certificates.X509Certificate2(
@@ -52,11 +57,25 @@ try
                 });
             });
         }
+        else
+        {
+            builder.WebHost.ConfigureKestrel(options =>
+            {
+                // SECURITY FIX (MEDIUM-1): Set request body size limit at Kestrel level
+                options.Limits.MaxRequestBodySize = appConfig.Security.MaxUploadSizeBytes;
+            });
+        }
     }
     else
     {
         // HTTP only
         builder.WebHost.UseUrls(httpUrl);
+        
+        builder.WebHost.ConfigureKestrel(options =>
+        {
+            // SECURITY FIX (MEDIUM-1): Set request body size limit at Kestrel level
+            options.Limits.MaxRequestBodySize = appConfig.Security.MaxUploadSizeBytes;
+        });
     }
 
     // Configure Serilog
@@ -96,24 +115,49 @@ try
     // Register services
     builder.Services.AddScoped<IFileUploadService, FileUploadService>();
     builder.Services.AddScoped<AuthorizationService>();
+    
+    // Register SignalR services for real-time transfer status updates
+    builder.Services.AddSignalR();
+    builder.Services.AddSingleton<ITransferStatusService, TransferStatusService>();
+    builder.Services.AddHostedService<StatusMonitorService>();
 
-    // SECURITY FIX (MEDIUM-4): Add rate limiting for file uploads
+    // SECURITY FIX (MEDIUM-3): Add comprehensive rate limiting for all endpoints
     builder.Services.AddRateLimiter(options =>
     {
+        // Global rate limiter - applies to all requests per IP
+        options.GlobalLimiter = PartitionedRateLimiter.Create<HttpContext, string>(context =>
+        {
+            // Get client IP (handles proxy scenarios)
+            var clientIp = context.Connection.RemoteIpAddress?.ToString() ?? "unknown";
+            
+            return RateLimitPartition.GetFixedWindowLimiter(clientIp, _ => new FixedWindowRateLimiterOptions
+            {
+                PermitLimit = 100, // 100 requests per minute per IP (protects against brute force)
+                Window = TimeSpan.FromMinutes(1),
+                QueueProcessingOrder = QueueProcessingOrder.OldestFirst,
+                QueueLimit = 0 // No queuing - reject immediately
+            });
+        });
+        
+        // Specific rate limiter for file uploads (more restrictive)
         options.AddFixedWindowLimiter("upload", limiterOptions =>
         {
             limiterOptions.PermitLimit = appConfig.WebPortal.MaxConcurrentUploads;
             limiterOptions.Window = TimeSpan.FromMinutes(1);
-            limiterOptions.QueueProcessingOrder = System.Threading.RateLimiting.QueueProcessingOrder.OldestFirst;
+            limiterOptions.QueueProcessingOrder = QueueProcessingOrder.OldestFirst;
             limiterOptions.QueueLimit = 0; // No queuing - reject immediately if limit exceeded
         });
 
         options.OnRejected = async (context, cancellationToken) =>
         {
             context.HttpContext.Response.StatusCode = StatusCodes.Status429TooManyRequests;
-            await context.HttpContext.Response.WriteAsync(
-                "Too many upload requests. Please wait a moment and try again.", 
-                cancellationToken);
+            
+            // Provide different messages based on which limiter rejected
+            var message = context.Lease.TryGetMetadata(MetadataName.ReasonPhrase, out var reason) && reason == "upload"
+                ? "Too many upload requests. Please wait a moment and try again."
+                : "Too many requests from your IP address. Please wait a moment and try again.";
+            
+            await context.HttpContext.Response.WriteAsync(message, cancellationToken);
         };
     });
 
@@ -132,13 +176,87 @@ try
     }
 
     // Configure the HTTP request pipeline
-    if (!app.Environment.IsDevelopment())
+    // SECURITY FIX (HIGH-2): Explicit error handling for all environments
+    if (app.Environment.IsDevelopment())
     {
-        app.UseExceptionHandler("/Error");
-        app.UseHsts();
+        // In development, show detailed errors
+        app.UseDeveloperExceptionPage();
+    }
+    else
+    {
+        // In production, use generic error page (no technical details)
+        app.UseExceptionHandler(errorApp =>
+        {
+            errorApp.Run(async context =>
+            {
+                context.Response.StatusCode = 500;
+                context.Response.ContentType = "text/html";
+                
+                await context.Response.WriteAsync(@"
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Error - ZL File Relay</title>
+    <style>
+        body { font-family: Arial, sans-serif; margin: 40px; background-color: #f5f5f5; }
+        .error-container { max-width: 600px; margin: 0 auto; background: white; padding: 30px; border-radius: 5px; box-shadow: 0 2px 4px rgba(0,0,0,0.1); }
+        h1 { color: #d32f2f; }
+        p { color: #666; line-height: 1.6; }
+        a { color: #0066CC; text-decoration: none; }
+        a:hover { text-decoration: underline; }
+    </style>
+</head>
+<body>
+    <div class='error-container'>
+        <h1>An Error Occurred</h1>
+        <p>We're sorry, but something went wrong while processing your request.</p>
+        <p>Please try again later or contact your system administrator if the problem persists.</p>
+        <p><a href='/Upload'>Return to Upload Page</a></p>
+    </div>
+</body>
+</html>");
+            });
+        });
+        
+        // Only use HSTS if HTTPS is enabled
+        if (appConfig.WebPortal.Kestrel.EnableHttps)
+        {
+            app.UseHsts();
+        }
     }
 
-    app.UseHttpsRedirection();
+    // SECURITY FIX (CRITICAL-1): Only use HTTPS redirection if HTTPS is enabled
+    if (appConfig.WebPortal.Kestrel.EnableHttps)
+    {
+        app.UseHttpsRedirection();
+    }
+    
+    // SECURITY FIX (HIGH-1): Add security headers for DMZ deployment
+    app.Use(async (context, next) =>
+    {
+        // Prevent clickjacking
+        context.Response.Headers["X-Frame-Options"] = "DENY";
+        
+        // Prevent MIME sniffing
+        context.Response.Headers["X-Content-Type-Options"] = "nosniff";
+        
+        // XSS Protection (legacy browsers)
+        context.Response.Headers["X-XSS-Protection"] = "1; mode=block";
+        
+        // Content Security Policy - restrictive for file upload app (allow SignalR WebSockets)
+        context.Response.Headers["Content-Security-Policy"] = 
+            "default-src 'self'; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline'; img-src 'self' data:; font-src 'self'; frame-ancestors 'none'; connect-src 'self' ws: wss:";
+        
+        // Control referrer information
+        context.Response.Headers["Referrer-Policy"] = "strict-origin-when-cross-origin";
+        
+        // Permissions policy - disable unnecessary features
+        context.Response.Headers["Permissions-Policy"] = 
+            "geolocation=(), microphone=(), camera=(), payment=(), usb=(), magnetometer=(), gyroscope=()";
+        
+        await next();
+    });
+    
     app.UseStaticFiles();
 
     app.UseRouting();
@@ -154,6 +272,9 @@ try
     app.UseAuthorization();
 
     app.MapRazorPages();
+    
+    // Map SignalR hub for real-time transfer status updates
+    app.MapHub<ZLFileRelay.WebPortal.Hubs.TransferStatusHub>("/hubs/transferstatus");
 
     Log.Information("ZL File Relay Web Portal starting on {Urls}", 
         string.Join(", ", app.Urls));

@@ -8,14 +8,9 @@ namespace ZLFileRelay.WebPortal.ViewModels
         [Required]
         public List<IFormFile>? Files { get; set; } = new();
 
-        [Required]
-        public string SelectedDestination { get; set; } = "transfer";
-
-        public Dictionary<string, string> AvailableDestinations { get; set; } = new();
-
         public string? Notes { get; set; }
 
-        [Display(Name = "Queue for Automatic Transfer")]
+        [Display(Name = "Send to SCADA")]
         public bool RequiresTransfer { get; set; } = true;
 
         public bool ShowTransferOption { get; set; } = true;

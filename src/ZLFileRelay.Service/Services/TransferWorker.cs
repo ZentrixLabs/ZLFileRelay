@@ -202,12 +202,27 @@ namespace ZLFileRelay.Service.Services
                                     result.FileName, result.ErrorMessage);
                             }
 
+                            // Write status notification for WebPortal
+                            await WriteStatusNotificationAsync(filePath, result);
+
                             _fileQueue.Remove(filePath);
                             processedCount++;
                         }
                         catch (Exception ex)
                         {
                             _logger.LogError(ex, "Failed to transfer file after retries: {FilePath}", filePath);
+                            
+                            // Write failure notification
+                            var failedResult = new TransferResult
+                            {
+                                Success = false,
+                                FileName = Path.GetFileName(filePath),
+                                SourcePath = filePath,
+                                ErrorMessage = ex.Message,
+                                EndTime = DateTime.Now
+                            };
+                            await WriteStatusNotificationAsync(filePath, failedResult);
+
                             _fileQueue.Remove(filePath);
                             processedCount++;
                             break;
@@ -242,6 +257,51 @@ namespace ZLFileRelay.Service.Services
             {
                 _logger.LogError(ex, "Error during memory cleanup");
             }
+        }
+
+        private async Task WriteStatusNotificationAsync(string sourceFilePath, TransferResult result)
+        {
+            try
+            {
+                // Extract transfer ID from source file path
+                // This should match the ID generated when the file was uploaded
+                var transferId = GenerateTransferId(sourceFilePath);
+
+                // Create status directory if it doesn't exist
+                var statusDirectory = Path.Combine(_config.Service.WatchDirectory, ".status");
+                if (!Directory.Exists(statusDirectory))
+                {
+                    Directory.CreateDirectory(statusDirectory);
+                }
+
+                // Write status file
+                var statusFilePath = Path.Combine(statusDirectory, $"{transferId}.status.json");
+                var statusJson = System.Text.Json.JsonSerializer.Serialize(result, new System.Text.Json.JsonSerializerOptions
+                {
+                    WriteIndented = true
+                });
+
+                await File.WriteAllTextAsync(statusFilePath, statusJson);
+                _logger.LogDebug("Wrote status notification: {StatusFile}", statusFilePath);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogWarning(ex, "Failed to write status notification for {SourcePath}", sourceFilePath);
+            }
+        }
+
+        private static string GenerateTransferId(string filePath)
+        {
+            // Create a unique ID based on file path
+            // This should match the logic in TransferStatusService
+            var fileName = Path.GetFileName(filePath);
+            var pathHash = fileName + "_" + File.GetLastWriteTime(filePath).Ticks;
+            return Convert.ToBase64String(
+                System.Security.Cryptography.SHA256.HashData(
+                    System.Text.Encoding.UTF8.GetBytes(pathHash)))
+                .Replace("/", "_")
+                .Replace("+", "-")
+                .Substring(0, 16);
         }
 
         private void DisposeResources()

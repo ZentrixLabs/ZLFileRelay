@@ -5,6 +5,7 @@
         xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
         xmlns:local="clr-namespace:ZLFileRelay.ConfigTool"
         xmlns:ui="http://schemas.modernwpf.com/2019"
+        xmlns:converters="clr-namespace:ZLFileRelay.ConfigTool.Converters"
         ui:WindowHelper.UseModernWindowStyle="True"
         mc:Ignorable="d"
         Title="ZL File Relay - Configuration Tool" 
@@ -13,6 +14,10 @@
         MinHeight="600"
         MinWidth="900"
         WindowStartupLocation="CenterScreen">
+    <Window.Resources>
+        <converters:BoolToAllowedDeniedConverter x:Key="BoolToAllowedDeniedConverter"/>
+        <converters:BoolToEnabledDisabledConverter x:Key="BoolToEnabledDisabledConverter"/>
+    </Window.Resources>
     <Grid>
         <Grid.RowDefinitions>
             <RowDefinition Height="*" />
@@ -712,9 +717,336 @@
                 </ScrollViewer>
             </TabItem>
 
+            <!-- Security Settings Tab -->
+            <TabItem Header="Security">
+                <ScrollViewer VerticalScrollBarVisibility="Auto">
+                    <StackPanel Margin="20">
+                        <TextBlock Text="Security Configuration" 
+                                   Style="{StaticResource TitleTextBlockStyle}"
+                                   Margin="0,0,0,10"/>
+                        <TextBlock Text="Configure file security policies and upload restrictions" 
+                                   FontSize="14" 
+                                   Foreground="Gray"
+                                   Margin="0,0,0,20"/>
+                        
+                        <!-- Security Warning -->
+                        <Border Background="#FFF3E0" BorderBrush="#FF9800" BorderThickness="2" CornerRadius="4" Padding="15" Margin="0,0,0,20">
+                            <StackPanel>
+                                <TextBlock FontWeight="SemiBold" Foreground="#E65100" Margin="0,0,0,10">
+                                    ⚠️ Important Security Notice
+                                </TextBlock>
+                                <TextBlock TextWrapping="Wrap" Foreground="#424242" FontSize="12">
+                                    These settings control what types of files can be uploaded and transferred. 
+                                    Changes to these settings directly impact system security. For DMZ deployments, 
+                                    keep executable files blocked unless specifically required for your use case.
+                                </TextBlock>
+                            </StackPanel>
+                        </Border>
+
+                        <!-- File Security Policies -->
+                        <ui:SimpleStackPanel Spacing="15" Margin="0,0,0,30">
+                            <TextBlock Text="File Security Policies" Style="{StaticResource SubtitleTextBlockStyle}"/>
+                            
+                            <!-- Allow Executable Files -->
+                            <Border BorderBrush="{DynamicResource SystemControlForegroundBaseLowBrush}" 
+                                    BorderThickness="1" 
+                                    CornerRadius="4" 
+                                    Padding="15">
+                                <StackPanel>
+                                    <CheckBox x:Name="AllowExecutableFilesCheckBox" 
+                                              Content="Allow Executable Files"
+                                              FontWeight="SemiBold"
+                                              Margin="0,0,0,10"/>
+                                    <TextBlock TextWrapping="Wrap" 
+                                               FontSize="12" 
+                                               Foreground="Gray"
+                                               Margin="20,0,0,5">
+                                        When enabled, allows uploading and transferring executable files (.exe, .dll, .bat, .cmd, .ps1, etc.)
+                                    </TextBlock>
+                                    <TextBlock TextWrapping="Wrap" 
+                                               FontSize="11" 
+                                               Foreground="#D32F2F"
+                                               Margin="20,0,0,0">
+                                        ⚠️ Security Risk: Only enable this if your workflow requires executable file transfers. 
+                                        Executable files can pose security threats if from untrusted sources.
+                                    </TextBlock>
+                                </StackPanel>
+                            </Border>
+
+                            <!-- Allow Hidden Files -->
+                            <Border BorderBrush="{DynamicResource SystemControlForegroundBaseLowBrush}" 
+                                    BorderThickness="1" 
+                                    CornerRadius="4" 
+                                    Padding="15">
+                                <StackPanel>
+                                    <CheckBox x:Name="AllowHiddenFilesCheckBox" 
+                                              Content="Allow Hidden Files"
+                                              FontWeight="SemiBold"
+                                              Margin="0,0,0,10"/>
+                                    <TextBlock TextWrapping="Wrap" 
+                                               FontSize="12" 
+                                               Foreground="Gray"
+                                               Margin="20,0,0,0">
+                                        When enabled, allows processing of files with the hidden attribute set. 
+                                        Hidden files are typically system files and usually should not be transferred.
+                                    </TextBlock>
+                                </StackPanel>
+                            </Border>
+                        </ui:SimpleStackPanel>
+
+                        <!-- Upload Size Limits -->
+                        <ui:SimpleStackPanel Spacing="15" Margin="0,0,0,30">
+                            <TextBlock Text="Upload Size Limits" Style="{StaticResource SubtitleTextBlockStyle}"/>
+                            
+                            <Border BorderBrush="{DynamicResource SystemControlForegroundBaseLowBrush}" 
+                                    BorderThickness="1" 
+                                    CornerRadius="4" 
+                                    Padding="15">
+                                <Grid>
+                                    <Grid.RowDefinitions>
+                                        <RowDefinition Height="Auto"/>
+                                        <RowDefinition Height="Auto"/>
+                                        <RowDefinition Height="Auto"/>
+                                        <RowDefinition Height="Auto"/>
+                                    </Grid.RowDefinitions>
+                                    <Grid.ColumnDefinitions>
+                                        <ColumnDefinition Width="Auto"/>
+                                        <ColumnDefinition Width="*"/>
+                                        <ColumnDefinition Width="Auto"/>
+                                    </Grid.ColumnDefinitions>
+
+                                    <TextBlock Grid.Row="0" Grid.Column="0" 
+                                               Text="Maximum Upload Size:" 
+                                               VerticalAlignment="Center" 
+                                               Margin="0,0,15,0"
+                                               FontWeight="SemiBold"/>
+                                    
+                                    <Slider Grid.Row="0" Grid.Column="1" 
+                                            x:Name="MaxUploadSizeSlider"
+                                            Minimum="1" 
+                                            Maximum="100" 
+                                            TickFrequency="1"
+                                            IsSnapToTickEnabled="True"
+                                            VerticalAlignment="Center"
+                                            Margin="0,0,10,0"
+                                            ToolTip="Set the maximum file size that can be uploaded (in GB)"/>
+                                    
+                                    <StackPanel Grid.Row="0" Grid.Column="2" 
+                                                Orientation="Horizontal"
+                                                VerticalAlignment="Center">
+                                        <TextBlock x:Name="MaxUploadSizeValue" 
+                                                   Text="{Binding ElementName=MaxUploadSizeSlider, Path=Value, StringFormat={}{0:F0}}"
+                                                   FontSize="18" 
+                                                   FontWeight="Bold"
+                                                   VerticalAlignment="Center"/>
+                                        <TextBlock Text=" GB" 
+                                                   FontSize="14" 
+                                                   Foreground="Gray"
+                                                   VerticalAlignment="Center"
+                                                   Margin="3,0,0,0"/>
+                                    </StackPanel>
+
+                                    <TextBlock Grid.Row="1" Grid.Column="0" Grid.ColumnSpan="3"
+                                               TextWrapping="Wrap" 
+                                               FontSize="12" 
+                                               Foreground="Gray"
+                                               Margin="0,10,0,0">
+                                        Maximum size for individual file uploads. Larger files will be rejected.
+                                    </TextBlock>
+
+                                    <Border Grid.Row="2" Grid.Column="0" Grid.ColumnSpan="3"
+                                            Background="#E3F2FD" 
+                                            BorderBrush="#2196F3" 
+                                            BorderThickness="1" 
+                                            CornerRadius="4" 
+                                            Padding="10"
+                                            Margin="0,10,0,0">
+                                        <StackPanel>
+                                            <TextBlock TextWrapping="Wrap" FontSize="11" Foreground="#1565C0" FontWeight="SemiBold" Margin="0,0,0,5">
+                                                💡 Recommended Settings by Environment
+                                            </TextBlock>
+                                            <TextBlock TextWrapping="Wrap" FontSize="11" Foreground="#424242" Margin="0,0,0,3">
+                                                <Bold>DMZ/Production:</Bold> 1-5 GB (balanced security and functionality)
+                                            </TextBlock>
+                                            <TextBlock TextWrapping="Wrap" FontSize="11" Foreground="#424242" Margin="0,0,0,3">
+                                                <Bold>Internal Network:</Bold> 5-20 GB (more permissive for trusted users)
+                                            </TextBlock>
+                                            <TextBlock TextWrapping="Wrap" FontSize="11" Foreground="#424242">
+                                                <Bold>Development:</Bold> 20-100 GB (maximum flexibility for testing)
+                                            </TextBlock>
+                                        </StackPanel>
+                                    </Border>
+
+                                    <!-- Quick Size Presets -->
+                                    <StackPanel Grid.Row="3" Grid.Column="0" Grid.ColumnSpan="3"
+                                                Orientation="Horizontal" 
+                                                Margin="0,15,0,0">
+                                        <TextBlock Text="Quick Presets:" 
+                                                   VerticalAlignment="Center" 
+                                                   Margin="0,0,10,0"
+                                                   FontSize="12"
+                                                   Foreground="Gray"/>
+                                        <Button Content="1 GB" 
+                                                Click="SetMaxSize1GB"
+                                                Style="{StaticResource SecondaryButton}"
+                                                Height="28" 
+                                                Padding="10,0"
+                                                Margin="0,0,5,0"/>
+                                        <Button Content="5 GB" 
+                                                Click="SetMaxSize5GB"
+                                                Style="{StaticResource SecondaryButton}"
+                                                Height="28" 
+                                                Padding="10,0"
+                                                Margin="0,0,5,0"/>
+                                        <Button Content="10 GB" 
+                                                Click="SetMaxSize10GB"
+                                                Style="{StaticResource SecondaryButton}"
+                                                Height="28" 
+                                                Padding="10,0"
+                                                Margin="0,0,5,0"/>
+                                        <Button Content="20 GB" 
+                                                Click="SetMaxSize20GB"
+                                                Style="{StaticResource SecondaryButton}"
+                                                Height="28" 
+                                                Padding="10,0"
+                                                Margin="0,0,5,0"/>
+                                        <Button Content="50 GB" 
+                                                Click="SetMaxSize50GB"
+                                                Style="{StaticResource SecondaryButton}"
+                                                Height="28" 
+                                                Padding="10,0"/>
+                                    </StackPanel>
+                                </Grid>
+                            </Border>
+                        </ui:SimpleStackPanel>
+
+                        <!-- Audit Logging -->
+                        <ui:SimpleStackPanel Spacing="15" Margin="0,0,0,30">
+                            <TextBlock Text="Audit &amp; Compliance" Style="{StaticResource SubtitleTextBlockStyle}"/>
+                            
+                            <Border BorderBrush="{DynamicResource SystemControlForegroundBaseLowBrush}" 
+                                    BorderThickness="1" 
+                                    CornerRadius="4" 
+                                    Padding="15">
+                                <StackPanel>
+                                    <CheckBox x:Name="EnableAuditLogCheckBox" 
+                                              Content="Enable Audit Logging"
+                                              FontWeight="SemiBold"
+                                              Margin="0,0,0,10"
+                                              IsChecked="True"/>
+                                    <TextBlock TextWrapping="Wrap" 
+                                               FontSize="12" 
+                                               Foreground="Gray"
+                                               Margin="20,0,0,15">
+                                        Records all security-relevant events (uploads, transfers, authentication, authorization) to a separate audit log. 
+                                        Recommended for compliance and security monitoring.
+                                    </TextBlock>
+
+                                    <Grid Margin="20,0,0,0">
+                                        <Grid.ColumnDefinitions>
+                                            <ColumnDefinition Width="Auto"/>
+                                            <ColumnDefinition Width="*"/>
+                                            <ColumnDefinition Width="Auto"/>
+                                        </Grid.ColumnDefinitions>
+
+                                        <TextBlock Grid.Column="0" 
+                                                   Text="Audit Log Path:" 
+                                                   VerticalAlignment="Center" 
+                                                   Margin="0,0,10,0"/>
+                                        <TextBox Grid.Column="1" 
+                                                 x:Name="AuditLogPathTextBox"
+                                                 Text="C:\FileRelay\logs\audit.log"
+                                                 Margin="0,0,5,0"
+                                                 ToolTip="Full path to the audit log file"/>
+                                        <Button Grid.Column="2" 
+                                                Content="Browse..." 
+                                                Style="{StaticResource SecondaryButton}"
+                                                Height="32"/>
+                                    </Grid>
+                                </StackPanel>
+                            </Border>
+                        </ui:SimpleStackPanel>
+
+                        <!-- Current Configuration Summary -->
+                        <Border Background="#F5F5F5" 
+                                BorderBrush="{DynamicResource SystemControlForegroundBaseLowBrush}" 
+                                BorderThickness="1" 
+                                CornerRadius="4" 
+                                Padding="15"
+                                Margin="0,0,0,20">
+                            <StackPanel>
+                                <TextBlock Text="Current Security Posture" 
+                                           FontWeight="SemiBold" 
+                                           Margin="0,0,0,10"/>
+                                <Grid>
+                                    <Grid.ColumnDefinitions>
+                                        <ColumnDefinition Width="200"/>
+                                        <ColumnDefinition Width="*"/>
+                                    </Grid.ColumnDefinitions>
+                                    <Grid.RowDefinitions>
+                                        <RowDefinition Height="Auto"/>
+                                        <RowDefinition Height="Auto"/>
+                                        <RowDefinition Height="Auto"/>
+                                        <RowDefinition Height="Auto"/>
+                                    </Grid.RowDefinitions>
+
+                                    <TextBlock Grid.Row="0" Grid.Column="0" Text="Executable Files:" FontSize="12" Margin="0,0,0,5"/>
+                                    <TextBlock Grid.Row="0" Grid.Column="1" 
+                                               Text="{Binding ElementName=AllowExecutableFilesCheckBox, Path=IsChecked, Converter={StaticResource BoolToAllowedDeniedConverter}}" 
+                                               FontSize="12" 
+                                               FontWeight="SemiBold"
+                                               Margin="0,0,0,5"/>
+
+                                    <TextBlock Grid.Row="1" Grid.Column="0" Text="Hidden Files:" FontSize="12" Margin="0,0,0,5"/>
+                                    <TextBlock Grid.Row="1" Grid.Column="1" 
+                                               Text="{Binding ElementName=AllowHiddenFilesCheckBox, Path=IsChecked, Converter={StaticResource BoolToAllowedDeniedConverter}}" 
+                                               FontSize="12" 
+                                               FontWeight="SemiBold"
+                                               Margin="0,0,0,5"/>
+
+                                    <TextBlock Grid.Row="2" Grid.Column="0" Text="Max File Size:" FontSize="12" Margin="0,0,0,5"/>
+                                    <TextBlock Grid.Row="2" Grid.Column="1" FontSize="12" FontWeight="SemiBold" Margin="0,0,0,5">
+                                        <Run Text="{Binding ElementName=MaxUploadSizeSlider, Path=Value, StringFormat={}{0:F0}}"/>
+                                        <Run Text=" GB"/>
+                                    </TextBlock>
+
+                                    <TextBlock Grid.Row="3" Grid.Column="0" Text="Audit Logging:" FontSize="12"/>
+                                    <TextBlock Grid.Row="3" Grid.Column="1" 
+                                               Text="{Binding ElementName=EnableAuditLogCheckBox, Path=IsChecked, Converter={StaticResource BoolToEnabledDisabledConverter}}" 
+                                               FontSize="12" 
+                                               FontWeight="SemiBold"/>
+                                </Grid>
+                            </StackPanel>
+                        </Border>
+
+                        <!-- Save Button -->
+                        <Button x:Name="SaveSecurityButton"
+                                Click="SaveSecuritySettings"
+                                Style="{StaticResource PrimaryButton}"
+                                Padding="20,10"
+                                Height="38"
+                                HorizontalAlignment="Left">
+                            <StackPanel Orientation="Horizontal">
+                                <TextBlock FontFamily="Segoe MDL2 Assets" Text="&#xE74E;" FontSize="16" Margin="0,0,8,0" VerticalAlignment="Center"/>
+                                <TextBlock Text="Save Security Settings" VerticalAlignment="Center"/>
+                            </StackPanel>
+                        </Button>
+
+                        <TextBlock x:Name="SecurityStatusText" 
+                                   Margin="0,10,0,0" 
+                                   Foreground="Green"/>
+                    </StackPanel>
+                </ScrollViewer>
+            </TabItem>
+
             <!-- Remote Server / Advanced Tab -->
             <TabItem Header="Advanced">
                 <ContentControl x:Name="RemoteServerContent"/>
+            </TabItem>
+
+            <!-- About Tab -->
+            <TabItem Header="About">
+                <ContentControl x:Name="AboutContent"/>
             </TabItem>
 
         </TabControl>
