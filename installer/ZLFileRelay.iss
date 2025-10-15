@@ -49,8 +49,10 @@ PrivilegesRequiredOverridesAllowed=dialog
 ; Wizard
 DisableWelcomePage=no
 WizardStyle=modern
-WizardImageFile=installer\assets\WizardImage.bmp
-WizardSmallImageFile=installer\assets\WizardSmallImage.bmp
+; TODO: Create branded wizard images for professional installer appearance
+; WizardImageFile=installer\assets\WizardImage.bmp (164x314)
+; WizardSmallImageFile=installer\assets\WizardSmallImage.bmp (55x58)
+; Using Inno Setup defaults until custom images are created
 
 ; Uninstall
 UninstallDisplayName={#MyAppName}
@@ -102,16 +104,12 @@ Source: "..\publish\appsettings.json"; DestDir: "{commonappdata}\ZLFileRelay"; F
 ; Documentation
 Source: "..\publish\docs\*"; DestDir: "{app}\docs"; Flags: ignoreversion recursesubdirs createallsubdirs
 
-; PowerShell Helper Scripts
-Source: "scripts\*"; DestDir: "{app}\scripts"; Flags: ignoreversion recursesubdirs
-
 [Dirs]
 ; Application directories
 Name: "{app}\Service"
 Name: "{app}\WebPortal"
 Name: "{app}\ConfigTool"
 Name: "{app}\docs"
-Name: "{app}\scripts"
 Name: "{app}\Uninstall"
 
 ; Data directories

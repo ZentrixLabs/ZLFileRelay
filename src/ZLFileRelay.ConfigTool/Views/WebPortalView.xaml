@@ -1,0 +1,204 @@
+<UserControl x:Class="ZLFileRelay.ConfigTool.Views.WebPortalView"
+             xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006" 
+             xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+             xmlns:ui="http://schemas.modernwpf.com/2019"
+             mc:Ignorable="d" 
+             d:DesignHeight="700" d:DesignWidth="900">
+    
+    <ScrollViewer VerticalScrollBarVisibility="Auto">
+        <StackPanel Margin="20">
+            
+            <!-- Page Header -->
+            <TextBlock Text="Web Portal Configuration" 
+                       FontSize="28" 
+                       FontWeight="Bold" 
+                       Margin="0,0,0,10"/>
+            <TextBlock Text="Configure the web upload interface settings and SSL certificates" 
+                       FontSize="14" 
+                       Foreground="Gray"
+                       Margin="0,0,0,20"/>
+
+            <!-- Server Configuration -->
+            <ui:SimpleStackPanel Spacing="10" Margin="0,0,0,20">
+                <TextBlock Text="Server Configuration" Style="{StaticResource SubtitleTextBlockStyle}"/>
+                
+                <Grid>
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="120"/>
+                        <ColumnDefinition Width="*"/>
+                    </Grid.ColumnDefinitions>
+                    <Grid.RowDefinitions>
+                        <RowDefinition Height="Auto"/>
+                        <RowDefinition Height="Auto"/>
+                        <RowDefinition Height="10"/>
+                        <RowDefinition Height="Auto"/>
+                    </Grid.RowDefinitions>
+                    
+                    <TextBlock Grid.Row="0" Grid.Column="0" Text="HTTP Port:" VerticalAlignment="Center"/>
+                    <ui:NumberBox Grid.Row="0" Grid.Column="1" 
+                                  Value="{Binding HttpPort, Mode=TwoWay}" 
+                                  Minimum="1" Maximum="65535" 
+                                  Margin="0,0,0,5"
+                                  ToolTip="Port number for HTTP access to the web portal (default: 8080)"/>
+                    
+                    <TextBlock Grid.Row="1" Grid.Column="0" Text="HTTPS Port:" VerticalAlignment="Center"/>
+                    <ui:NumberBox Grid.Row="1" Grid.Column="1" 
+                                  Value="{Binding HttpsPort, Mode=TwoWay}" 
+                                  Minimum="1" Maximum="65535"
+                                  ToolTip="Port number for secure HTTPS access (default: 8443). Requires SSL certificate."/>
+                    
+                    <CheckBox Grid.Row="3" Grid.Column="0" Grid.ColumnSpan="2" 
+                              Content="Enable HTTPS (requires SSL certificate)"
+                              IsChecked="{Binding EnableHttps}"/>
+                </Grid>
+            </ui:SimpleStackPanel>
+
+            <!-- SSL Certificate Configuration -->
+            <ui:SimpleStackPanel Spacing="10" Margin="0,0,0,20">
+                <TextBlock Text="SSL Certificate (Required for HTTPS)" Style="{StaticResource SubtitleTextBlockStyle}"/>
+                
+                <Grid>
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="120"/>
+                        <ColumnDefinition Width="*"/>
+                        <ColumnDefinition Width="Auto"/>
+                    </Grid.ColumnDefinitions>
+                    <Grid.RowDefinitions>
+                        <RowDefinition Height="Auto"/>
+                        <RowDefinition Height="Auto"/>
+                        <RowDefinition Height="10"/>
+                        <RowDefinition Height="Auto"/>
+                    </Grid.RowDefinitions>
+                    
+                    <TextBlock Grid.Row="0" Grid.Column="0" Text="Certificate Path:" VerticalAlignment="Center"/>
+                    <TextBox Grid.Row="0" Grid.Column="1" 
+                             Text="{Binding CertificatePath, UpdateSourceTrigger=PropertyChanged}" 
+                             Margin="0,0,5,5"
+                             ToolTip="Full path to the SSL certificate file (.pfx or .p12 format)"/>
+                    <Button Grid.Row="0" Grid.Column="2" 
+                            Command="{Binding BrowseCertificateCommand}"
+                            Content="Browse..." 
+                            Margin="0,0,0,5"/>
+                    
+                    <TextBlock Grid.Row="1" Grid.Column="0" Text="Password:" VerticalAlignment="Center"/>
+                    <PasswordBox Grid.Row="1" Grid.Column="1" 
+                                 x:Name="CertPasswordBox"/>
+                    <Button Grid.Row="1" Grid.Column="2" 
+                            Command="{Binding TestCertificateCommand}"
+                            CommandParameter="{Binding ElementName=CertPasswordBox}"
+                            Content="Test Cert"/>
+                    
+                    <TextBlock Grid.Row="3" Grid.Column="0" Grid.ColumnSpan="3" 
+                               Text="{Binding CertificateStatus}"
+                               Foreground="Gray"/>
+                </Grid>
+            </ui:SimpleStackPanel>
+
+            <!-- Authentication Settings -->
+            <ui:SimpleStackPanel Spacing="10" Margin="0,0,0,20">
+                <TextBlock Text="Authentication" Style="{StaticResource SubtitleTextBlockStyle}"/>
+                
+                <CheckBox Content="Require Windows Authentication"
+                          IsChecked="{Binding RequireAuthentication}"/>
+                <TextBlock Text="When enabled, users must authenticate with their Windows credentials to access the upload portal." 
+                           TextWrapping="Wrap"
+                           Margin="25,0,0,10"
+                           FontSize="12"
+                           Foreground="Gray"/>
+                
+                <TextBlock Text="Allowed Groups (one per line, leave empty to allow all authenticated users):" 
+                           Margin="0,5,0,5"/>
+                <TextBox Text="{Binding AllowedGroups, UpdateSourceTrigger=PropertyChanged}" 
+                         AcceptsReturn="True"
+                         TextWrapping="Wrap"
+                         Height="80"
+                         VerticalScrollBarVisibility="Auto"
+                         ToolTip="Specify Windows groups that are allowed to upload files. Format: DOMAIN\GroupName or COMPUTERNAME\GroupName"/>
+            </ui:SimpleStackPanel>
+
+
+            <!-- Branding Settings -->
+            <ui:SimpleStackPanel Spacing="10" Margin="0,0,0,20">
+                <TextBlock Text="Branding" Style="{StaticResource SubtitleTextBlockStyle}"/>
+                <TextBlock TextWrapping="Wrap" 
+                           FontSize="12" 
+                           Foreground="Gray"
+                           Margin="0,0,0,10">
+                    Customize how the web portal appears to users. These settings affect the web portal's appearance and branding.
+                </TextBlock>
+                
+                <Grid>
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="120"/>
+                        <ColumnDefinition Width="*"/>
+                        <ColumnDefinition Width="Auto"/>
+                    </Grid.ColumnDefinitions>
+                    <Grid.RowDefinitions>
+                        <RowDefinition Height="Auto"/>
+                        <RowDefinition Height="Auto"/>
+                        <RowDefinition Height="Auto"/>
+                        <RowDefinition Height="Auto"/>
+                    </Grid.RowDefinitions>
+                    
+                    <TextBlock Grid.Row="0" Grid.Column="0" Text="Company Name:" VerticalAlignment="Center"/>
+                    <TextBox Grid.Row="0" Grid.Column="1" Grid.ColumnSpan="2"
+                             Text="{Binding CompanyName, UpdateSourceTrigger=PropertyChanged}" 
+                             Margin="0,0,0,5"
+                             ToolTip="Your company or organization name (e.g., 'Acme Corporation')"/>
+                    
+                    <TextBlock Grid.Row="1" Grid.Column="0" Text="Site Name:" VerticalAlignment="Center"/>
+                    <TextBox Grid.Row="1" Grid.Column="1" Grid.ColumnSpan="2"
+                             Text="{Binding SiteName, UpdateSourceTrigger=PropertyChanged}" 
+                             Margin="0,0,0,5"
+                             ToolTip="Name of this specific site or location (e.g., 'DMZ Upload Portal', 'Main Site')"/>
+                    
+                    <TextBlock Grid.Row="2" Grid.Column="0" Text="Support Email:" VerticalAlignment="Center"/>
+                    <TextBox Grid.Row="2" Grid.Column="1" Grid.ColumnSpan="2"
+                             Text="{Binding SupportEmail, UpdateSourceTrigger=PropertyChanged}" 
+                             Margin="0,0,0,5"
+                             ToolTip="Contact email for support inquiries"/>
+                    
+                    <TextBlock Grid.Row="3" Grid.Column="0" Text="Logo Path:" VerticalAlignment="Center"/>
+                    <TextBox Grid.Row="3" Grid.Column="1"
+                             Text="{Binding LogoPath, UpdateSourceTrigger=PropertyChanged}" 
+                             Margin="0,0,5,0"
+                             ToolTip="Path to your company logo (relative to web portal root, e.g., 'Assets/logo.png')"/>
+                    <Button Grid.Row="3" Grid.Column="2"
+                            Command="{Binding BrowseLogoCommand}"
+                            Content="Browse..."/>
+                </Grid>
+            </ui:SimpleStackPanel>
+
+            <!-- Actions -->
+            <WrapPanel Margin="0,10,0,0">
+                <Button Command="{Binding SaveConfigurationCommand}"
+                        Style="{StaticResource PrimaryButton}"
+                        Padding="20,10"
+                        Height="38"
+                        Margin="0,0,10,0">
+                    <StackPanel Orientation="Horizontal">
+                        <TextBlock FontFamily="Segoe MDL2 Assets" Text="&#xE74E;" FontSize="16" Margin="0,0,8,0" VerticalAlignment="Center"/>
+                        <TextBlock Text="Save Configuration" VerticalAlignment="Center"/>
+                    </StackPanel>
+                </Button>
+                <Button Command="{Binding RestartWebServiceCommand}"
+                        Style="{StaticResource SecondaryButton}"
+                        Padding="20,10"
+                        Height="38">
+                    <StackPanel Orientation="Horizontal">
+                        <TextBlock FontFamily="Segoe MDL2 Assets" Text="&#xE72C;" FontSize="16" Margin="0,0,8,0" VerticalAlignment="Center"/>
+                        <TextBlock Text="Restart Web Service" VerticalAlignment="Center"/>
+                    </StackPanel>
+                </Button>
+            </WrapPanel>
+            
+            <TextBlock Text="{Binding StatusMessage}" 
+                       Margin="0,10,0,0" 
+                       TextWrapping="Wrap"/>
+
+        </StackPanel>
+    </ScrollViewer>
+</UserControl>
+

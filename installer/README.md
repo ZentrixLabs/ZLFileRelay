@@ -46,24 +46,27 @@ iscc installer\ZLFileRelay.iss
 1. ✅ Copies all files to `C:\Program Files\ZLFileRelay`
 2. ✅ Creates data directories (`C:\FileRelay\*`)
 3. ✅ Copies config to `C:\ProgramData\ZLFileRelay`
-4. ✅ **Optionally** installs Windows Service
-5. ✅ **Optionally** configures IIS for web portal
-6. ✅ Creates Start Menu shortcuts
-7. ✅ **Optionally** creates desktop shortcut
+4. ✅ **Optionally** installs File Transfer Windows Service
+5. ✅ **Optionally** installs Web Portal Windows Service (Kestrel - **NO IIS REQUIRED!**)
+6. ✅ **Optionally** configures Windows Firewall (port 8080)
+7. ✅ Creates Start Menu shortcuts
+8. ✅ **Optionally** creates desktop shortcut
 
 ---
 
-## ✅ No .NET Installation Required!
+## ✅ No .NET or IIS Installation Required!
 
 This is a **self-contained installer** that includes:
 - ✅ .NET 8 Runtime
 - ✅ ASP.NET Core 8 Runtime  
 - ✅ All dependencies
+- ✅ Built-in Kestrel web server
 
 **Target machines need:**
 - ✅ Windows Server 2019+ (or Windows 10/11)
 - ✅ 500MB disk space
 - ❌ **NO .NET framework required!**
+- ❌ **NO IIS required!** (Web portal runs as Windows Service)
 - ❌ **NO internet connection required!**
 
 ---
@@ -94,22 +97,19 @@ C:\Program Files\ZLFileRelay\
 │   ├── ZLFileRelay.Service.exe
 │   ├── *.dll (including .NET runtime)
 │   └── ...
-├── WebPortal\                  (~75MB - with ASP.NET Core 8)
-│   ├── ZLFileRelay.WebPortal.exe
-│   ├── web.config
+├── WebPortal\                  (~75MB - with ASP.NET Core 8 + Kestrel)
+│   ├── ZLFileRelay.WebPortal.exe (runs as Windows Service!)
 │   ├── wwwroot\
 │   ├── *.dll (including ASP.NET Core runtime)
 │   └── ...
 ├── ConfigTool\                 (~65MB - single file)
 │   └── ZLFileRelay.ConfigTool.exe (includes .NET 8)
-├── docs\
-│   ├── README.md
-│   ├── INSTALLATION.md
-│   ├── CONFIGURATION.md
-│   └── ...
-└── scripts\
-    ├── Configure-IIS.ps1
-    └── Remove-IIS.ps1
+└── docs\
+    ├── README.md
+    ├── getting-started\
+    ├── configuration\
+    ├── deployment\
+    └── ...
 
 C:\ProgramData\ZLFileRelay\
 └── appsettings.json
@@ -124,17 +124,6 @@ C:\FileRelay\
 
 ---
 
-## 🛠️ Assets Needed
-
-Create these files in `installer/assets/`:
-
-1. **icon.ico** - Application icon (256x256)
-2. **WizardImage.bmp** - Large wizard image (164x314)
-3. **WizardSmallImage.bmp** - Small wizard image (55x58)
-
-**Tip:** Use your company branding for professional appearance
-
----
 
 ## 📝 Testing Checklist
 
@@ -142,13 +131,16 @@ Before distributing installer:
 
 - [ ] Test on Windows Server 2019 (no .NET installed)
 - [ ] Test on Windows Server 2022 (no .NET installed)
+- [ ] Test on Windows Server Core (headless)
 - [ ] Test on air-gapped VM
-- [ ] Verify service installs and starts
-- [ ] Verify web portal works in IIS
-- [ ] Verify config tool launches
+- [ ] Verify File Transfer Service installs and starts
+- [ ] Verify Web Portal Service installs and starts (port 8080)
+- [ ] Verify web portal accessible via browser (no IIS needed)
+- [ ] Verify ConfigTool launches
 - [ ] Test complete file transfer workflow
 - [ ] Test uninstaller (clean removal)
 - [ ] Verify no .NET installation required
+- [ ] Verify no IIS required for web portal
 - [ ] Check installer size acceptable (~150MB)
 
 ---

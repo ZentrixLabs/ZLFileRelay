@@ -1,0 +1,319 @@
+<UserControl x:Class="ZLFileRelay.ConfigTool.Views.ServiceView"
+             xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006" 
+             xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+             xmlns:ui="http://schemas.modernwpf.com/2019"
+             mc:Ignorable="d" 
+             d:DesignHeight="700" d:DesignWidth="900">
+    
+    <ScrollViewer VerticalScrollBarVisibility="Auto">
+        <StackPanel Margin="20">
+            
+            <!-- Page Header -->
+            <TextBlock Text="Service Management" 
+                       FontSize="28" 
+                       FontWeight="Bold" 
+                       Margin="0,0,0,10"/>
+            <TextBlock Text="Manage the ZL File Relay Windows service and service account" 
+                       FontSize="14" 
+                       Foreground="Gray"
+                       Margin="0,0,0,20"/>
+
+            <!-- Service Status -->
+            <ui:SimpleStackPanel Spacing="10" Margin="0,0,0,20">
+                <TextBlock Text="Service Status" 
+                           Style="{StaticResource SubtitleTextBlockStyle}"/>
+                <Border Background="{DynamicResource SystemControlBackgroundAccentBrush}" 
+                        CornerRadius="4" 
+                        Padding="15">
+                    <Grid>
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="Auto" />
+                            <ColumnDefinition Width="*" />
+                            <ColumnDefinition Width="Auto" />
+                        </Grid.ColumnDefinitions>
+                        
+                        <TextBlock Grid.Column="0" Text="Status:" Foreground="White" 
+                                   VerticalAlignment="Center" FontWeight="Bold"/>
+                        <TextBlock Grid.Column="1" 
+                                   Text="{Binding ServiceStatus}" 
+                                   Foreground="White"
+                                   FontWeight="Bold" 
+                                   FontSize="16"
+                                   VerticalAlignment="Center" 
+                                   Margin="10,0" />
+                        <Button Grid.Column="2" 
+                                Command="{Binding RefreshStatusCommand}"
+                                Style="{StaticResource SecondaryButton}">
+                            <StackPanel Orientation="Horizontal">
+                                <TextBlock FontFamily="Segoe MDL2 Assets" Text="&#xE72C;" FontSize="16" Margin="0,0,8,0" VerticalAlignment="Center"/>
+                                <TextBlock Text="Refresh" VerticalAlignment="Center"/>
+                            </StackPanel>
+                        </Button>
+                    </Grid>
+                </Border>
+            </ui:SimpleStackPanel>
+
+            <!-- Service Controls -->
+            <ui:SimpleStackPanel Spacing="10" Margin="0,0,0,20">
+                <TextBlock Text="Service Controls" 
+                           Style="{StaticResource SubtitleTextBlockStyle}"/>
+                <WrapPanel>
+                    <Button Command="{Binding InstallServiceCommand}"
+                            Margin="0,0,10,10"
+                            Style="{StaticResource SecondaryButton}">
+                        <StackPanel Orientation="Horizontal">
+                            <TextBlock FontFamily="Segoe MDL2 Assets" Text="&#xE896;" FontSize="16" Margin="0,0,8,0" VerticalAlignment="Center"/>
+                            <TextBlock Text="Install Service" VerticalAlignment="Center"/>
+                        </StackPanel>
+                    </Button>
+                    <Button Command="{Binding UninstallServiceCommand}"
+                            Margin="0,0,10,10"
+                            Style="{StaticResource DestructiveButton}">
+                        <StackPanel Orientation="Horizontal">
+                            <TextBlock FontFamily="Segoe MDL2 Assets" Text="&#xE74D;" FontSize="16" Margin="0,0,8,0" VerticalAlignment="Center"/>
+                            <TextBlock Text="Uninstall Service" VerticalAlignment="Center"/>
+                        </StackPanel>
+                    </Button>
+                    <Button Command="{Binding StartServiceCommand}"
+                            Style="{StaticResource PrimaryButton}"
+                            Margin="0,0,10,10">
+                        <StackPanel Orientation="Horizontal">
+                            <TextBlock FontFamily="Segoe MDL2 Assets" Text="&#xE768;" FontSize="16" Margin="0,0,8,0" VerticalAlignment="Center"/>
+                            <TextBlock Text="Start Service" VerticalAlignment="Center"/>
+                        </StackPanel>
+                    </Button>
+                    <Button Command="{Binding StopServiceCommand}"
+                            Margin="0,0,10,10"
+                            Style="{StaticResource SecondaryButton}">
+                        <StackPanel Orientation="Horizontal">
+                            <TextBlock FontFamily="Segoe MDL2 Assets" Text="&#xE71A;" FontSize="16" Margin="0,0,8,0" VerticalAlignment="Center"/>
+                            <TextBlock Text="Stop Service" VerticalAlignment="Center"/>
+                        </StackPanel>
+                    </Button>
+                </WrapPanel>
+            </ui:SimpleStackPanel>
+
+            <!-- Service Account Section -->
+            <ui:SimpleStackPanel Spacing="10" Margin="0,0,0,20">
+                <TextBlock Text="Service Account" 
+                           Style="{StaticResource SubtitleTextBlockStyle}"/>
+                
+                <!-- Contextual Help -->
+                <Expander Header="ℹ️ Why do I need a service account?" Margin="0,0,0,10" IsExpanded="False">
+                    <Border Background="#F0FFF0" BorderBrush="#90EE90" BorderThickness="1" CornerRadius="4" Padding="15">
+                        <StackPanel>
+                            <TextBlock TextWrapping="Wrap" FontWeight="SemiBold" Margin="0,0,0,10">
+                                About Service Accounts
+                            </TextBlock>
+                            <TextBlock TextWrapping="Wrap" Margin="0,0,0,10">
+                                Windows services run under a specific user account. The default "LocalSystem" account may not have access to network shares or specific folders.
+                            </TextBlock>
+                            <TextBlock TextWrapping="Wrap" FontWeight="SemiBold" Margin="0,0,0,5">
+                                When to change the service account:
+                            </TextBlock>
+                            <TextBlock TextWrapping="Wrap" Margin="15,0,0,5">
+                                • Need to access network shares (SMB/CIFS transfers)
+                            </TextBlock>
+                            <TextBlock TextWrapping="Wrap" Margin="15,0,0,5">
+                                • Need to access folders with specific permissions
+                            </TextBlock>
+                            <TextBlock TextWrapping="Wrap" Margin="15,0,0,10">
+                                • Require domain authentication
+                            </TextBlock>
+                            <TextBlock TextWrapping="Wrap" Foreground="DarkOrange" FontSize="11">
+                                ⚠️ Important: The service account needs "Log on as a service" rights and write permissions to all configured directories.
+                            </TextBlock>
+                        </StackPanel>
+                    </Border>
+                </Expander>
+
+                <!-- Current Account Info -->
+                <Border Background="{DynamicResource SystemControlBackgroundAccentBrush}" 
+                        CornerRadius="4" 
+                        Padding="15">
+                    <StackPanel>
+                        <TextBlock Text="Current Account" 
+                                   FontWeight="Bold" 
+                                   Foreground="White"
+                                   Margin="0,0,0,5"/>
+                        <TextBlock Text="{Binding CurrentServiceAccount}" 
+                                   FontSize="16"
+                                   Foreground="White"
+                                   FontWeight="Bold"/>
+                        <TextBlock Text="{Binding ServiceAccountStatus}" 
+                                   Foreground="White"
+                                   Margin="0,5,0,0"/>
+                    </StackPanel>
+                </Border>
+            </ui:SimpleStackPanel>
+
+            <!-- Change Service Account -->
+            <ui:SimpleStackPanel Spacing="10" Margin="0,0,0,20">
+                <TextBlock Text="Change Service Account" Style="{StaticResource SubtitleTextBlockStyle}"/>
+                
+                <Grid>
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="120"/>
+                        <ColumnDefinition Width="*"/>
+                    </Grid.ColumnDefinitions>
+                    <Grid.RowDefinitions>
+                        <RowDefinition Height="Auto"/>
+                        <RowDefinition Height="Auto"/>
+                        <RowDefinition Height="Auto"/>
+                        <RowDefinition Height="10"/>
+                        <RowDefinition Height="Auto"/>
+                    </Grid.RowDefinitions>
+                    
+                    <TextBlock Grid.Row="0" Grid.Column="0" Text="Domain:" VerticalAlignment="Center"/>
+                    <TextBox Grid.Row="0" Grid.Column="1" 
+                             Text="{Binding Domain, UpdateSourceTrigger=PropertyChanged}" 
+                             Margin="0,0,0,5"
+                             ToolTip="Domain name for the service account. Use '.' for local machine accounts, or specify your Active Directory domain name."/>
+                    
+                    <TextBlock Grid.Row="1" Grid.Column="0" Text="Username:" VerticalAlignment="Center"/>
+                    <TextBox Grid.Row="1" Grid.Column="1" 
+                             Text="{Binding ServiceAccountUsername, UpdateSourceTrigger=PropertyChanged}" 
+                             Margin="0,0,0,5"
+                             ToolTip="Username for the Windows service account. Format: DOMAIN\username or .\username for local accounts. This account needs 'Logon as Service' rights."/>
+                    
+                    <TextBlock Grid.Row="2" Grid.Column="0" Text="Password:" VerticalAlignment="Center"/>
+                    <PasswordBox Grid.Row="2" Grid.Column="1" x:Name="ServiceAccountPasswordBox"/>
+                    
+                    <StackPanel Grid.Row="4" Grid.Column="0" Grid.ColumnSpan="2" Orientation="Horizontal">
+                        <Button Command="{Binding ApplyAccountChangeCommand}"
+                                CommandParameter="{Binding ElementName=ServiceAccountPasswordBox}"
+                                Style="{StaticResource PrimaryButton}"
+                                Padding="15,8"
+                                Margin="0,0,10,0">
+                            <StackPanel Orientation="Horizontal">
+                                <TextBlock FontFamily="Segoe MDL2 Assets" Text="&#xE73E;" FontSize="16" Margin="0,0,8,0" VerticalAlignment="Center"/>
+                                <TextBlock Text="Apply Account Change" VerticalAlignment="Center"/>
+                            </StackPanel>
+                        </Button>
+                        <Button Command="{Binding GrantLogonRightsCommand}"
+                                Style="{StaticResource SecondaryButton}"
+                                Padding="15,8">
+                            <StackPanel Orientation="Horizontal">
+                                <TextBlock FontFamily="Segoe MDL2 Assets" Text="&#xE785;" FontSize="16" Margin="0,0,8,0" VerticalAlignment="Center"/>
+                                <TextBlock Text="Grant Logon Rights" VerticalAlignment="Center"/>
+                            </StackPanel>
+                        </Button>
+                    </StackPanel>
+                </Grid>
+            </ui:SimpleStackPanel>
+
+            <!-- Permission Management -->
+            <ui:SimpleStackPanel Spacing="10" Margin="0,0,0,20">
+                <TextBlock Text="Folder Permissions" Style="{StaticResource SubtitleTextBlockStyle}"/>
+                <TextBlock Text="Grant the service account permissions to all required folders:" 
+                           TextWrapping="Wrap"
+                           Foreground="Gray"
+                           Margin="0,0,0,10"/>
+                <WrapPanel>
+                    <Button Command="{Binding FixUploadPermissionsCommand}"
+                            Style="{StaticResource SecondaryButton}"
+                            Padding="15,8"
+                            Margin="0,0,10,10">
+                        <StackPanel Orientation="Horizontal">
+                            <TextBlock FontFamily="Segoe MDL2 Assets" Text="&#xE90F;" FontSize="16" Margin="0,0,8,0" VerticalAlignment="Center"/>
+                            <TextBlock Text="Fix Upload Folder" VerticalAlignment="Center"/>
+                        </StackPanel>
+                    </Button>
+                    <Button Command="{Binding FixLogPermissionsCommand}"
+                            Style="{StaticResource SecondaryButton}"
+                            Padding="15,8"
+                            Margin="0,0,10,10">
+                        <StackPanel Orientation="Horizontal">
+                            <TextBlock FontFamily="Segoe MDL2 Assets" Text="&#xE90F;" FontSize="16" Margin="0,0,8,0" VerticalAlignment="Center"/>
+                            <TextBlock Text="Fix Log Folder" VerticalAlignment="Center"/>
+                        </StackPanel>
+                    </Button>
+                    <Button Command="{Binding FixAllPermissionsCommand}"
+                            Style="{StaticResource PrimaryButton}"
+                            Padding="15,8"
+                            Margin="0,0,10,10">
+                        <StackPanel Orientation="Horizontal">
+                            <TextBlock FontFamily="Segoe MDL2 Assets" Text="&#xE90F;" FontSize="16" Margin="0,0,8,0" VerticalAlignment="Center"/>
+                            <TextBlock Text="Fix All Folders" VerticalAlignment="Center"/>
+                        </StackPanel>
+                    </Button>
+                </WrapPanel>
+            </ui:SimpleStackPanel>
+
+            <!-- SMB Credentials -->
+            <ui:SimpleStackPanel Spacing="10" Margin="0,0,0,20">
+                <TextBlock Text="SMB Credentials" 
+                           Style="{StaticResource SubtitleTextBlockStyle}"/>
+                <Border BorderBrush="{DynamicResource SystemControlForegroundBaseMediumBrush}" 
+                        BorderThickness="1" 
+                        CornerRadius="4" 
+                        Padding="15">
+                    <Grid>
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="Auto" />
+                            <ColumnDefinition Width="*" />
+                            <ColumnDefinition Width="Auto" />
+                        </Grid.ColumnDefinitions>
+                        
+                        <TextBlock Grid.Column="0" Text="Credentials:" VerticalAlignment="Center"/>
+                        <TextBlock Grid.Column="1" 
+                                   Text="{Binding SmbCredentialsStatus}" 
+                                   FontWeight="Bold" 
+                                   VerticalAlignment="Center" 
+                                   Margin="10,0" />
+                        <Button Grid.Column="2" 
+                                Command="{Binding ConfigureSmbCredentialsCommand}"
+                                Style="{StaticResource PrimaryButton}">
+                            <StackPanel Orientation="Horizontal">
+                                <TextBlock FontFamily="Segoe MDL2 Assets" Text="&#xE8D7;" FontSize="16" Margin="0,0,8,0" VerticalAlignment="Center"/>
+                                <TextBlock Text="Configure SMB" VerticalAlignment="Center"/>
+                            </StackPanel>
+                        </Button>
+                    </Grid>
+                </Border>
+            </ui:SimpleStackPanel>
+
+            <!-- Activity Log -->
+            <ui:SimpleStackPanel Spacing="10">
+                <TextBlock Text="Activity Log" 
+                           Style="{StaticResource SubtitleTextBlockStyle}"/>
+                <Border BorderBrush="{DynamicResource SystemControlForegroundBaseMediumBrush}" 
+                        BorderThickness="1" 
+                        CornerRadius="4">
+                    <Grid>
+                        <Grid.RowDefinitions>
+                            <RowDefinition Height="200" />
+                            <RowDefinition Height="Auto" />
+                        </Grid.RowDefinitions>
+                        
+                        <ScrollViewer Grid.Row="0" 
+                                      VerticalScrollBarVisibility="Auto" 
+                                      HorizontalScrollBarVisibility="Auto"
+                                      Padding="10">
+                            <ItemsControl ItemsSource="{Binding ActivityLog}">
+                                <ItemsControl.ItemTemplate>
+                                    <DataTemplate>
+                                        <TextBlock Text="{Binding}" 
+                                                   FontFamily="Consolas" 
+                                                   FontSize="12"
+                                                   TextWrapping="Wrap" />
+                                    </DataTemplate>
+                                </ItemsControl.ItemTemplate>
+                            </ItemsControl>
+                        </ScrollViewer>
+                        
+                        <Button Grid.Row="1" 
+                                Command="{Binding ClearLogCommand}"
+                                Content="Clear Log" 
+                                HorizontalAlignment="Right" 
+                                Margin="10" />
+                    </Grid>
+                </Border>
+            </ui:SimpleStackPanel>
+
+        </StackPanel>
+    </ScrollViewer>
+</UserControl>
+

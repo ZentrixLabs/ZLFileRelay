@@ -41,14 +41,36 @@ public partial class RemoteServerViewModel : ObservableObject
     [ObservableProperty] private string _detectedServerInfo = string.Empty;
     [ObservableProperty] private bool _canConnect = false;
 
+    // Audit & Compliance
+    [ObservableProperty] private bool _enableAuditLog = true;
+    [ObservableProperty] private string _auditLogPath = @"C:\FileRelay\logs\audit.log";
+    [ObservableProperty] private int _auditLogRetentionDays = 30;
+
+    private readonly ConfigurationService _configurationService;
+
     public RemoteServerViewModel(
         IRemoteServerProvider remoteServerProvider,
         ILogger<RemoteServerViewModel> logger,
-        PowerShellRemotingService psRemoting)
+        PowerShellRemotingService psRemoting,
+        ConfigurationService configurationService)
     {
         _remoteServerProvider = remoteServerProvider;
         _logger = logger;
         _psRemoting = psRemoting;
+        _configurationService = configurationService;
+        
+        LoadAuditSettings();
+    }
+
+    private void LoadAuditSettings()
+    {
+        var config = _configurationService.CurrentConfiguration;
+        if (config != null)
+        {
+            EnableAuditLog = config.Security.EnableAuditLog;
+            AuditLogPath = config.Security.AuditLogPath;
+            AuditLogRetentionDays = config.Logging.RetentionDays;
+        }
     }
 
     partial void OnIsLocalModeChanged(bool value)
@@ -416,6 +438,50 @@ public partial class RemoteServerViewModel : ObservableObject
                 LogMessages.RemoveAt(0);
             }
         });
+    }
+
+    [RelayCommand]
+    private void BrowseAuditLog()
+    {
+        var dialog = new Microsoft.Win32.SaveFileDialog
+        {
+            Title = "Select Audit Log Path",
+            Filter = "Log Files (*.log)|*.log|All Files (*.*)|*.*",
+            DefaultExt = ".log",
+            FileName = "audit.log"
+        };
+
+        if (dialog.ShowDialog() == true)
+        {
+            AuditLogPath = dialog.FileName;
+        }
+    }
+
+    [RelayCommand]
+    private async Task SaveAuditSettingsAsync()
+    {
+        try
+        {
+            var config = _configurationService.CurrentConfiguration;
+            if (config == null)
+            {
+                AddLog("❌ Configuration not loaded");
+                return;
+            }
+
+            config.Security.EnableAuditLog = EnableAuditLog;
+            config.Security.AuditLogPath = AuditLogPath;
+            config.Logging.RetentionDays = AuditLogRetentionDays;
+
+            var success = await _configurationService.SaveAsync(config);
+            AddLog(success 
+                ? "✅ Audit settings saved successfully" 
+                : "❌ Failed to save audit settings");
+        }
+        catch (Exception ex)
+        {
+            AddLog($"❌ Error saving audit settings: {ex.Message}");
+        }
     }
 }
 

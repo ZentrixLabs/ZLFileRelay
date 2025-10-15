@@ -147,7 +147,7 @@ C:\ProgramData\ZLFileRelay\appsettings.json
 }
 ```
 
-See [CONFIGURATION.md](docs/CONFIGURATION.md) for complete reference.
+See [Configuration Reference](docs/configuration/CONFIGURATION.md) for complete details.
 
 ## Security Features
 
@@ -170,7 +170,7 @@ Applications drop files in monitored directory → Service transfers automatical
 ### Scenario 3: Multi-Site Deployment
 Deploy at multiple sites with site-specific configurations
 
-See [DEPLOYMENT.md](docs/DEPLOYMENT.md) for detailed deployment guides.
+See [Deployment Guide](docs/deployment/DEPLOYMENT.md) for detailed deployment scenarios.
 
 ## Project Structure
 
@@ -210,23 +210,31 @@ dotnet test
 
 ## Documentation
 
-- [Installation Guide](docs/INSTALLATION.md)
-- [Configuration Reference](docs/CONFIGURATION.md)
-- [Deployment Guide](docs/DEPLOYMENT.md)
-- [Remote Management Guide](docs/REMOTE_MANAGEMENT.md) ⚠️
-- [WinRM Setup Guide](docs/WINRM_SETUP.md) ⚠️
-- [Troubleshooting](docs/TROUBLESHOOTING.md)
+📚 **[Complete Documentation](docs/)** - All guides organized by category
 
-### ⚠️ Remote Management Requirement
+### Quick Access
+- 🚀 **[Quick Start](docs/getting-started/QUICK_START.md)** - Get started in 15 minutes
+- 📦 **[Installation](docs/getting-started/INSTALLATION.md)** - Step-by-step installation
+- ⚙️ **[Configuration](docs/configuration/CONFIGURATION.md)** - Configuration reference
+- 🚀 **[Deployment](docs/deployment/DEPLOYMENT.md)** - Production deployment
+- 🔐 **[Security](docs/configuration/SECURITY.md)** - Security best practices
+- 👤 **[User Guides](docs/user-guides/)** - Using ConfigTool and Web Portal
+- 🌐 **[DMZ Deployment](docs/deployment/DMZ_DEPLOYMENT.md)** - Air-gapped deployment
+- 🧪 **[Testing Guide](docs/deployment/SIDE_BY_SIDE_TESTING.md)** - Test alongside existing systems
 
-If you plan to manage remote servers (e.g., Windows Server Core), **WinRM must be enabled** on target servers:
-
-```powershell
-# Run on target server as Administrator:
-Enable-PSRemoting -Force
+### Documentation Structure
+```
+docs/
+├── getting-started/     # Installation and quick start
+├── configuration/       # Configuration and security
+├── deployment/          # Deployment scenarios
+├── user-guides/        # End-user documentation
+├── development/        # Developer resources
+└── reference/          # Technical references
 ```
 
-See [WinRM Setup Guide](docs/WINRM_SETUP.md) for full details. Most enterprise environments already have WinRM enabled via Group Policy.
+### ⚠️ Remote Management Note
+To manage remote servers with ConfigTool, **WinRM must be enabled** on target servers. See [WinRM Setup Guide](docs/configuration/WINRM_SETUP.md) for details.
 
 ## Support
 

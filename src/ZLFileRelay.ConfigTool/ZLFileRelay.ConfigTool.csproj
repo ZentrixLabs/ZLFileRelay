@@ -39,6 +39,12 @@
   <!-- Branding Assets -->
   <ItemGroup>
     <Resource Include="Assets\ZLLogo.png" />
+    <Resource Include="Assets\ZLFileRelay.ico" />
   </ItemGroup>
+
+  <!-- Application Icon -->
+  <PropertyGroup>
+    <ApplicationIcon>Assets\ZLFileRelay.ico</ApplicationIcon>
+  </PropertyGroup>
 
 </Project>

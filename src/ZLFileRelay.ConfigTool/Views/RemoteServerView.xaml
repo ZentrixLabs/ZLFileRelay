@@ -130,6 +130,70 @@
                 </StackPanel>
             </GroupBox>
 
+            <!-- Audit & Compliance -->
+            <GroupBox Header="Audit &amp; Compliance" Padding="15" Margin="0,0,0,15">
+                <StackPanel>
+                    <CheckBox Content="Enable Audit Logging"
+                              IsChecked="{Binding EnableAuditLog}"
+                              FontWeight="SemiBold"
+                              Margin="0,0,0,10"/>
+                    <TextBlock TextWrapping="Wrap" 
+                               FontSize="12" 
+                               Foreground="Gray"
+                               Margin="0,0,0,15">
+                        Records all security-relevant events (uploads, transfers, authentication, authorization) to a separate audit log. 
+                        Recommended for compliance and security monitoring.
+                    </TextBlock>
+
+                    <Grid IsEnabled="{Binding EnableAuditLog}">
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="Auto"/>
+                            <ColumnDefinition Width="*"/>
+                            <ColumnDefinition Width="Auto"/>
+                        </Grid.ColumnDefinitions>
+                        <Grid.RowDefinitions>
+                            <RowDefinition Height="Auto"/>
+                            <RowDefinition Height="Auto"/>
+                        </Grid.RowDefinitions>
+
+                        <TextBlock Grid.Row="0" Grid.Column="0" 
+                                   Text="Audit Log Path:" 
+                                   VerticalAlignment="Center" 
+                                   Margin="0,0,10,5"/>
+                        <TextBox Grid.Row="0" Grid.Column="1" 
+                                 Text="{Binding AuditLogPath, UpdateSourceTrigger=PropertyChanged}"
+                                 Margin="0,0,5,5"
+                                 ToolTip="Full path to the audit log file"/>
+                        <Button Grid.Row="0" Grid.Column="2" 
+                                Command="{Binding BrowseAuditLogCommand}"
+                                Content="Browse..." 
+                                Height="28"
+                                Margin="0,0,0,5"/>
+                        
+                        <TextBlock Grid.Row="1" Grid.Column="0" 
+                                   Text="Retention Days:" 
+                                   VerticalAlignment="Center" 
+                                   Margin="0,0,10,0"/>
+                        <StackPanel Grid.Row="1" Grid.Column="1" Grid.ColumnSpan="2" Orientation="Horizontal">
+                            <TextBox Text="{Binding AuditLogRetentionDays, UpdateSourceTrigger=PropertyChanged}" 
+                                     Width="80"
+                                     Height="28"
+                                     ToolTip="Number of days to retain audit logs"/>
+                            <TextBlock Text=" days" 
+                                       VerticalAlignment="Center" 
+                                       Margin="10,0,0,0"/>
+                        </StackPanel>
+                    </Grid>
+
+                    <Button Command="{Binding SaveAuditSettingsCommand}"
+                            Content="Save Audit Settings"
+                            Width="150"
+                            Height="32"
+                            HorizontalAlignment="Left"
+                            Margin="0,15,0,0"/>
+                </StackPanel>
+            </GroupBox>
+
             <!-- Requirements Info -->
             <GroupBox Header="Remote Management Requirements" Padding="15">
                 <StackPanel>

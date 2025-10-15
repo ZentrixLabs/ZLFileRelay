@@ -1,130 +1,116 @@
-# ZL File Relay - Documentation
+# ZL File Relay Documentation
 
-Welcome to the ZL File Relay documentation. This guide will help you install, configure, and deploy the unified file transfer solution.
+Welcome to the ZL File Relay documentation. This guide will help you install, configure, and use the system.
 
-## 📚 Documentation Index
+## Quick Links
 
-### Getting Started
-- **[Installation Guide](INSTALLATION.md)** - Step-by-step installation instructions
-- **[ConfigTool Quick Start](CONFIGTOOL_QUICK_START.md)** - Using the configuration GUI
+- 🚀 **[Quick Start Guide](getting-started/QUICK_START.md)** - Get up and running in 15 minutes
+- 📦 **[Installation Guide](getting-started/INSTALLATION.md)** - Detailed installation instructions
+- ⚙️ **[Configuration Reference](configuration/CONFIGURATION.md)** - Complete configuration options
+- 🌐 **[Deployment Guide](deployment/DEPLOYMENT.md)** - Production deployment best practices
 
-### Configuration
-- **[Configuration Reference](CONFIGURATION.md)** - Complete configuration options
-- **[Credential Management](CREDENTIAL_MANAGEMENT.md)** - Understanding credential types and security
+## Documentation Structure
 
-### Deployment
-- **[Deployment Guide](DEPLOYMENT.md)** - Production deployment procedures
-- **[Deployment Quick Reference](DEPLOYMENT_QUICK_REFERENCE.md)** - TL;DR deployment steps
-- **[Remote Management](REMOTE_MANAGEMENT.md)** - Managing remote servers
-- **[WinRM Setup](WINRM_SETUP.md)** - PowerShell Remoting configuration
+### 📘 Getting Started
+Start here if you're new to ZL File Relay:
+- **[Quick Start Guide](getting-started/QUICK_START.md)** - Basic setup and first use
+- **[Installation Guide](getting-started/INSTALLATION.md)** - Complete installation instructions
 
-### Security
-- **[Security](SECURITY.md)** - Security features, best practices, and audit history
+### ⚙️ Configuration
+Learn how to configure ZL File Relay:
+- **[Configuration Reference](configuration/CONFIGURATION.md)** - All configuration options explained
+- **[Credential Management](configuration/CREDENTIAL_MANAGEMENT.md)** - Secure credential handling (SSH keys, passwords)
+- **[Branding Customization](configuration/BRANDING.md)** - Customize logos, names, and colors
+- **[Security Best Practices](configuration/SECURITY.md)** - Security recommendations and hardening
+- **[WinRM Setup](configuration/WINRM_SETUP.md)** - Enable remote management with ConfigTool
 
-### Reference
-- **[Icon Reference](ICON_REFERENCE.md)** - Segoe MDL2 Assets icons used in ConfigTool
-- **[Documentation Structure](DOCUMENTATION_STRUCTURE.md)** - How docs are organized
+### 🚀 Deployment
+Deploy ZL File Relay in various scenarios:
+- **[Deployment Guide](deployment/DEPLOYMENT.md)** - General deployment instructions
+- **[DMZ Deployment](deployment/DMZ_DEPLOYMENT.md)** - Deploy in DMZ/air-gapped environments
+- **[Side-by-Side Testing](deployment/SIDE_BY_SIDE_TESTING.md)** - Test alongside existing systems
+- **[Production Coexistence](deployment/PRODUCTION_COEXISTENCE.md)** - Run with legacy systems
+- **[Quick Reference](deployment/QUICK_REFERENCE.md)** - Quick deployment commands
 
----
+### 👤 User Guides
+How to use ZL File Relay components:
+- **[Configuration Tool](user-guides/CONFIG_TOOL.md)** - Use the WPF ConfigTool application
+- **[Remote Management](user-guides/REMOTE_MANAGEMENT.md)** - Manage remote servers
 
-## 🎯 Quick Navigation
+### 👨‍💻 Development
+For developers and contributors:
+- **[Icon Reference](development/ICON_REFERENCE.md)** - Font Awesome icons used in the project
+- **[Font Awesome Setup](development/FONTAWESOME_SETUP.md)** - Set up Font Awesome Pro for desktop
+- **[Font Awesome Quick Start](development/FONTAWESOME_QUICK_START.md)** - Quick Font Awesome reference
 
-### By Role
+### 📚 Reference
+Technical references:
+- **[ConfigTool Tab Reference](reference/CONFIG_TOOL_TABS.md)** - Detailed tab-by-tab reference
 
-#### 🔧 System Administrator
-**I need to install and configure ZLFileRelay:**
-1. Read: [Installation Guide](INSTALLATION.md)
-2. Then: [Configuration Reference](CONFIGURATION.md)
-3. Use: [ConfigTool Quick Start](CONFIGTOOL_QUICK_START.md)
-4. Finally: [Deployment Guide](DEPLOYMENT.md)
+## Common Tasks
 
-#### 🌐 Remote Site Manager
-**I need to manage a remote server:**
-1. Read: [Remote Management](REMOTE_MANAGEMENT.md)
-2. Setup: [WinRM Setup](WINRM_SETUP.md)
-3. Configure: Use ConfigTool in remote mode
+### First Time Setup
+1. Read the [Quick Start Guide](getting-started/QUICK_START.md)
+2. Follow the [Installation Guide](getting-started/INSTALLATION.md)
+3. Configure your [SSH credentials](configuration/CREDENTIAL_MANAGEMENT.md)
+4. Test with the [Side-by-Side Testing](deployment/SIDE_BY_SIDE_TESTING.md) guide
 
-#### 🛡️ Security Professional
-**I need to review security:**
-1. Read: [Security](SECURITY.md)
-2. Review: Configuration security settings
-3. Reference: Security audit history (October 2025)
+### Production Deployment
+1. Review [Security Best Practices](configuration/SECURITY.md)
+2. Follow the [Deployment Guide](deployment/DEPLOYMENT.md)
+3. Set up [Remote Management](user-guides/REMOTE_MANAGEMENT.md) if needed
+4. See [DMZ Deployment](deployment/DMZ_DEPLOYMENT.md) for air-gapped environments
 
-#### 🚀 DevOps Engineer
-**I need to deploy to production:**
-1. Read: [Deployment Quick Reference](DEPLOYMENT_QUICK_REFERENCE.md)
-2. Deep dive: [Deployment Guide](DEPLOYMENT.md)
-3. Check: [Security Best Practices](SECURITY.md)
+### Customization
+1. Customize [Branding](configuration/BRANDING.md) (logos, colors, names)
+2. Configure [allowed user groups](configuration/CONFIGURATION.md#webportal-settings)
+3. Set up [credential encryption](configuration/CREDENTIAL_MANAGEMENT.md)
 
----
+### Testing Alongside Existing Systems
+1. Read [Production Coexistence](deployment/PRODUCTION_COEXISTENCE.md)
+2. Follow [Side-by-Side Testing](deployment/SIDE_BY_SIDE_TESTING.md)
+3. Use different ports and paths to avoid conflicts
 
-## 🎓 By Task
+## Support
 
-| I want to... | Read this... |
-|--------------|--------------|
-| **Install on new server** | [INSTALLATION.md](INSTALLATION.md) |
-| **Configure settings** | [CONFIGURATION.md](CONFIGURATION.md) |
-| **Use the GUI tool** | [CONFIGTOOL_QUICK_START.md](CONFIGTOOL_QUICK_START.md) |
-| **Deploy to production** | [DEPLOYMENT_QUICK_REFERENCE.md](DEPLOYMENT_QUICK_REFERENCE.md) |
-| **Manage remote servers** | [REMOTE_MANAGEMENT.md](REMOTE_MANAGEMENT.md) |
-| **Setup PowerShell Remoting** | [WINRM_SETUP.md](WINRM_SETUP.md) |
-| **Understand credentials** | [CREDENTIAL_MANAGEMENT.md](CREDENTIAL_MANAGEMENT.md) |
-| **Review security** | [SECURITY.md](SECURITY.md) |
-| **Find icon codes** | [ICON_REFERENCE.md](ICON_REFERENCE.md) |
+### Getting Help
+- Check the documentation sections above
+- Review the [troubleshooting sections](deployment/DEPLOYMENT.md#troubleshooting) in deployment guides
+- Check Windows Event Viewer (Application log, source: "ZLFileRelay")
+- Review log files in configured log directory
 
----
+### Contributing
+Contributions are welcome! See the development section for technical details.
 
-## 📦 Archive
+## Architecture Overview
 
-Historical documentation and working notes are preserved in `docs/archive/` including:
-- Project development history
-- Phase completion reports
-- Security review session (October 2025) - Detailed analysis and fixes
-- UX improvement tracking
-- Implementation status updates
+ZL File Relay consists of three main components:
 
-**Note:** Archive documents are maintained for historical reference and audit purposes.
+1. **Windows Service** (`ZLFileRelay.Service`)
+   - Monitors directories for new files
+   - Transfers files via SSH/SCP or SMB
+   - Runs as a background Windows Service
+   - Configurable retry logic and error handling
 
----
+2. **Web Portal** (`ZLFileRelay.WebPortal`)
+   - ASP.NET Core web application
+   - User-friendly file upload interface
+   - Windows Authentication
+   - Hosted in IIS
 
-## 🆘 Getting Help
+3. **Configuration Tool** (`ZLFileRelay.ConfigTool`)
+   - WPF desktop application
+   - Unified configuration management
+   - Service control (start/stop/restart)
+   - Remote server management via WinRM
+   - Test connections and credentials
 
-### Documentation Issues
-- Check the relevant guide above
-- Review FAQ sections in each document
-- Check archived documents if needed
+All components share the same configuration file (`appsettings.json`) for consistency.
 
-### Support Contacts
-- **General Support:** See main README.md
-- **Security Issues:** See [SECURITY.md](SECURITY.md) for responsible disclosure
-- **Configuration Help:** See [CONFIGURATION.md](CONFIGURATION.md)
+## Version History
 
----
+See [CHANGELOG.md](../CHANGELOG.md) in the root directory for version history and release notes.
 
-## 📝 Documentation Standards
+## License
 
-All documentation follows these principles:
-- **Clear and Concise** - Get to the point quickly
-- **Task-Oriented** - Organized by what you want to accomplish
-- **Well-Structured** - Consistent formatting and organization
-- **Up-to-Date** - Kept current with each release
-- **Professional** - Suitable for enterprise environments
-
----
-
-## 🔄 Recent Updates
-
-### October 2025
-- **Security Review:** Comprehensive security audit completed
-- **Security Fixes:** 10 vulnerabilities fixed (2 CRITICAL, 3 HIGH, 5 MEDIUM)
-- **Documentation:** Consolidated 15 security docs into one SECURITY.md
-- **Cleanup:** Organized 52+ docs into 13 clean public docs + archive
-- **Status:** Production-ready with excellent security posture (93/100)
-
-See [SECURITY.md](SECURITY.md) for complete security audit history.
-
----
-
-**Last Updated:** October 2025  
-**Documentation Version:** 2.0 (cleaned and consolidated)  
-**Status:** ✅ Production-ready
+See [LICENSE](../LICENSE) in the root directory.

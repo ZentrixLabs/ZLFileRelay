@@ -60,6 +60,12 @@ public partial class App : Application
                 services.AddTransient<MainViewModel>();
                 services.AddTransient<DashboardViewModel>();
                 services.AddTransient<RemoteServerViewModel>();
+                
+                // New Unified ViewModels (post-UX simplification)
+                services.AddTransient<ServiceViewModel>();
+                services.AddTransient<FileTransferViewModel>();
+                
+                // Legacy ViewModels (kept for compatibility, may be removed later)
                 services.AddTransient<ServiceManagementViewModel>();
                 services.AddTransient<ConfigurationViewModel>();
                 services.AddTransient<WebPortalViewModel>();

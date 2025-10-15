@@ -1,3 +1,4 @@
+using System.Windows.Controls;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
 using System.IO;
@@ -15,15 +16,18 @@ public partial class WebPortalViewModel : ObservableObject
     [ObservableProperty] private int _httpsPort = 8443;
     [ObservableProperty] private bool _enableHttps = false;
     [ObservableProperty] private string _certificatePath = string.Empty;
-    [ObservableProperty] private string _certificatePassword = string.Empty;
+    [ObservableProperty] private string _certificateStatus = "No certificate configured";
 
     // Authentication
     [ObservableProperty] private bool _requireAuthentication = true;
-    [ObservableProperty] private bool _useWindowsAuth = true;
+    [ObservableProperty] private string _allowedGroups = string.Empty;
 
-    // File Upload Settings
-    [ObservableProperty] private long _maxFileSizeMB = 4096;
-    [ObservableProperty] private bool _enableUploadToTransfer = true;
+
+    // Branding Settings (editable)
+    [ObservableProperty] private string _companyName = "Your Company";
+    [ObservableProperty] private string _siteName = "Main Site";
+    [ObservableProperty] private string _supportEmail = "support@example.com";
+    [ObservableProperty] private string _logoPath = "";
 
     // Status
     [ObservableProperty] private string _statusMessage = string.Empty;
@@ -44,11 +48,16 @@ public partial class WebPortalViewModel : ObservableObject
         HttpsPort = config.WebPortal.Kestrel.HttpsPort;
         EnableHttps = config.WebPortal.Kestrel.EnableHttps;
         CertificatePath = config.WebPortal.Kestrel.CertificatePath ?? string.Empty;
-        CertificatePassword = config.WebPortal.Kestrel.CertificatePassword ?? string.Empty;
-        UseWindowsAuth = config.WebPortal.Kestrel.UseWindowsAuth;
         RequireAuthentication = config.WebPortal.RequireAuthentication;
-        MaxFileSizeMB = config.WebPortal.MaxFileSizeBytes / (1024 * 1024);
-        EnableUploadToTransfer = config.WebPortal.EnableUploadToTransfer;
+        AllowedGroups = config.WebPortal.AllowedGroups != null ? string.Join("\n", config.WebPortal.AllowedGroups) : string.Empty;
+        
+        // Branding (editable)
+        CompanyName = config.Branding.CompanyName;
+        SiteName = config.Branding.SiteName;
+        SupportEmail = config.Branding.SupportEmail;
+        LogoPath = config.Branding.LogoPath ?? string.Empty;
+        
+        ValidateConfiguration();
     }
 
     [RelayCommand]
@@ -69,37 +78,72 @@ public partial class WebPortalViewModel : ObservableObject
     }
 
     [RelayCommand]
-    private async Task TestCertificateAsync()
+    private void BrowseLogo()
+    {
+        var dialog = new Microsoft.Win32.OpenFileDialog
+        {
+            Title = "Select Company Logo",
+            Filter = "Image Files (*.png;*.jpg;*.jpeg;*.gif;*.svg)|*.png;*.jpg;*.jpeg;*.gif;*.svg|All Files (*.*)|*.*",
+            DefaultExt = ".png"
+        };
+
+        if (dialog.ShowDialog() == true)
+        {
+            LogoPath = dialog.FileName;
+        }
+    }
+
+    [RelayCommand]
+    private async Task TestCertificateAsync(PasswordBox? passwordBox)
     {
         if (string.IsNullOrWhiteSpace(CertificatePath))
         {
-            StatusMessage = "❌ No certificate path specified";
+            CertificateStatus = "❌ No certificate path specified";
             return;
         }
 
         if (!File.Exists(CertificatePath))
         {
-            StatusMessage = $"❌ Certificate file not found: {CertificatePath}";
+            CertificateStatus = $"❌ Certificate file not found";
             return;
         }
 
         try
         {
+            var password = passwordBox?.Password ?? string.Empty;
+            
             // Try to load the certificate
             var cert = new System.Security.Cryptography.X509Certificates.X509Certificate2(
                 CertificatePath,
-                CertificatePassword);
+                password);
 
-            StatusMessage = $"✅ Certificate valid: {cert.Subject} (Expires: {cert.NotAfter:yyyy-MM-dd})";
+            CertificateStatus = $"✅ Valid: {cert.Subject} (Expires: {cert.NotAfter:yyyy-MM-dd})";
             IsValid = true;
         }
         catch (Exception ex)
         {
-            StatusMessage = $"❌ Invalid certificate: {ex.Message}";
+            CertificateStatus = $"❌ Invalid: {ex.Message}";
             IsValid = false;
         }
 
         await Task.CompletedTask;
+    }
+
+
+    [RelayCommand]
+    private async Task RestartWebServiceAsync()
+    {
+        try
+        {
+            StatusMessage = "⚠️ Restarting web service... (Feature not yet implemented)";
+            // TODO: Implement web service restart logic
+            await Task.Delay(1000);
+            StatusMessage = "Web service restart would occur here. For now, manually restart the service.";
+        }
+        catch (Exception ex)
+        {
+            StatusMessage = $"❌ Error: {ex.Message}";
+        }
     }
 
     [RelayCommand]
@@ -119,14 +163,25 @@ public partial class WebPortalViewModel : ObservableObject
             config.WebPortal.Kestrel.HttpsPort = HttpsPort;
             config.WebPortal.Kestrel.EnableHttps = EnableHttps;
             config.WebPortal.Kestrel.CertificatePath = CertificatePath;
-            config.WebPortal.Kestrel.CertificatePassword = CertificatePassword;
-            config.WebPortal.Kestrel.UseWindowsAuth = UseWindowsAuth;
             config.WebPortal.RequireAuthentication = RequireAuthentication;
-            config.WebPortal.MaxFileSizeBytes = MaxFileSizeMB * 1024 * 1024;
-            config.WebPortal.EnableUploadToTransfer = EnableUploadToTransfer;
+            
+            // Parse allowed groups
+            var groups = AllowedGroups
+                .Split(new[] { '\n', '\r' }, StringSplitOptions.RemoveEmptyEntries)
+                .Select(g => g.Trim())
+                .Where(g => !string.IsNullOrWhiteSpace(g))
+                .ToList();
+            config.WebPortal.AllowedGroups = groups.Count > 0 ? groups : null;
+            
+            
+            // Save branding settings
+            config.Branding.CompanyName = CompanyName;
+            config.Branding.SiteName = SiteName;
+            config.Branding.SupportEmail = SupportEmail;
+            config.Branding.LogoPath = string.IsNullOrWhiteSpace(LogoPath) ? null : LogoPath;
 
             var success = await _configurationService.SaveAsync(config);
-            StatusMessage = success
+            StatusMessage = success 
                 ? "✅ Configuration saved. Restart Web Portal service to apply changes."
                 : "❌ Failed to save configuration";
         }
