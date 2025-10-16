@@ -13,6 +13,8 @@ bld/
 [Oo]bj/
 [Ll]og/
 [Ll]ogs/
+[Pp]ublish/
+publish/
 
 # Visual Studio
 .vs/
@@ -97,9 +99,13 @@ artifacts/
 
 # Installer output
 installer/Output/
+installer/output/
 dist/
 *.exe
 *.msi
+
+# Build output
+build/publish/
 
 # Logs
 logs/
