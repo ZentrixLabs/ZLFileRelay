@@ -54,9 +54,38 @@ public partial class ServiceAccountViewModel : ObservableObject
         {
             AddLog($"Setting service account to: {ServiceAccountUsername}");
             
+            string? adminUsername = null;
+            string? adminPassword = null;
+
+            // Check if running as admin
+            var identity = System.Security.Principal.WindowsIdentity.GetCurrent();
+            var principal = new System.Security.Principal.WindowsPrincipal(identity);
+            var isAdmin = principal.IsInRole(System.Security.Principal.WindowsBuiltInRole.Administrator);
+
+            if (!isAdmin)
+            {
+                // Prompt for admin credentials
+                var credDialog = new Dialogs.CredentialDialog();
+                var result = credDialog.ShowDialog();
+                
+                if (result == true)
+                {
+                    adminUsername = credDialog.Username;
+                    adminPassword = credDialog.Password;
+                    AddLog($"Using admin credentials: {adminUsername}");
+                }
+                else
+                {
+                    AddLog("❌ Admin credentials required but not provided");
+                    return;
+                }
+            }
+
             var success = await _serviceAccountManager.SetServiceAccountAsync(
                 ServiceAccountUsername,
-                ServiceAccountPassword);
+                ServiceAccountPassword,
+                adminUsername,
+                adminPassword);
 
             if (success)
             {
@@ -82,7 +111,37 @@ public partial class ServiceAccountViewModel : ObservableObject
         {
             AddLog($"Granting 'Logon as Service' right to: {ServiceAccountUsername}");
             
-            var success = await _serviceAccountManager.GrantLogonAsServiceRightAsync(ServiceAccountUsername);
+            string? adminUsername = null;
+            string? adminPassword = null;
+
+            // Check if running as admin
+            var identity = System.Security.Principal.WindowsIdentity.GetCurrent();
+            var principal = new System.Security.Principal.WindowsPrincipal(identity);
+            var isAdmin = principal.IsInRole(System.Security.Principal.WindowsBuiltInRole.Administrator);
+
+            if (!isAdmin)
+            {
+                // Prompt for admin credentials
+                var credDialog = new Dialogs.CredentialDialog();
+                var result = credDialog.ShowDialog();
+                
+                if (result == true)
+                {
+                    adminUsername = credDialog.Username;
+                    adminPassword = credDialog.Password;
+                    AddLog($"Using admin credentials: {adminUsername}");
+                }
+                else
+                {
+                    AddLog("❌ Admin credentials required but not provided");
+                    return;
+                }
+            }
+
+            var success = await _serviceAccountManager.GrantLogonAsServiceRightAsync(
+                ServiceAccountUsername,
+                adminUsername,
+                adminPassword);
 
             if (success)
             {

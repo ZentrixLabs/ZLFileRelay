@@ -1,8 +1,8 @@
 using System.Diagnostics;
-using System.DirectoryServices;
 using System.IO;
+using System.Runtime.InteropServices;
+using System.Security;
 using System.Security.Principal;
-using System.ServiceProcess;
 using System.Threading.Tasks;
 using Microsoft.Extensions.Logging;
 using ZLFileRelay.ConfigTool.Interfaces;
@@ -11,6 +11,7 @@ namespace ZLFileRelay.ConfigTool.Services;
 
 /// <summary>
 /// Manages the service account credentials for the ZLFileRelay Windows Service.
+/// Uses sc.exe for maximum compatibility with older servers.
 /// 
 /// IMPORTANT: Service account credentials managed by this class are ONLY for running 
 /// the ZLFileRelay service itself. They are NOT used for remote management operations.
@@ -20,17 +21,14 @@ public class ServiceAccountManager
 {
     private readonly ILogger<ServiceAccountManager> _logger;
     private readonly IRemoteServerProvider _remoteServerProvider;
-    private readonly PowerShellRemotingService _psRemoting;
     private const string ServiceName = "ZLFileRelay";
 
     public ServiceAccountManager(
         ILogger<ServiceAccountManager> logger,
-        IRemoteServerProvider remoteServerProvider,
-        PowerShellRemotingService psRemoting)
+        IRemoteServerProvider remoteServerProvider)
     {
         _logger = logger;
         _remoteServerProvider = remoteServerProvider;
-        _psRemoting = psRemoting;
     }
 
     private string GetScTarget()
@@ -85,300 +83,464 @@ public class ServiceAccountManager
     }
 
     /// <summary>
-    /// Sets the service account for the ZLFileRelay Windows Service.
+    /// Sets the service account for the ZLFileRelay Windows Service using sc.exe.
     /// These credentials are ONLY used for running the service, NOT for remote management.
+    /// Prompts for admin credentials if current user is not an administrator.
     /// </summary>
-    public async Task<bool> SetServiceAccountAsync(string username, string password)
+    public async Task<bool> SetServiceAccountAsync(string username, string password, 
+        string? adminUsername = null, string? adminPassword = null)
     {
         try
         {
-            // Security check: Log that these are service credentials, not remote management credentials
             _logger.LogInformation("Setting service account credentials for ZLFileRelay service: {Username}", username);
             _logger.LogDebug("Note: Service account credentials are NOT used for remote management operations");
             
-            // SECURITY FIX: Use WMI via PowerShell with SecureString instead of sc.exe
-            // This prevents password exposure in command-line arguments
-            
-            // Convert password to SecureString (encrypted in memory)
-            var securePassword = new System.Security.SecureString();
-            foreach (char c in password)
-            {
-                securePassword.AppendChar(c);
-            }
-            securePassword.MakeReadOnly();
-
-            // Define PowerShell script that uses WMI to change service account
-            var psScript = @"
-param(
-    [Parameter(Mandatory=$true)]
-    [string]$ServiceName,
-    
-    [Parameter(Mandatory=$true)]
-    [string]$Username,
-    
-    [Parameter(Mandatory=$true)]
-    [securestring]$Password
-)
-
-$ErrorActionPreference = 'Stop'
-
-try {
-    # Convert SecureString to plain text for WMI (handled securely in memory)
-    $bstr = [System.Runtime.InteropServices.Marshal]::SecureStringToBSTR($Password)
-    try {
-        $plainPassword = [System.Runtime.InteropServices.Marshal]::PtrToStringAuto($bstr)
-        
-        # Get the service via WMI
-        $service = Get-WmiObject -Class Win32_Service -Filter ""Name='$ServiceName'""
-        
-        if ($null -eq $service) {
-            throw ""Service not found: $ServiceName""
-        }
-        
-        Write-Output ""Found service: $($service.DisplayName)""
-        Write-Output ""Current service account: $($service.StartName)""
-        Write-Output ""Changing service account to: $Username""
-        
-        # Change service account using WMI Change method
-        # Parameters: DisplayName, PathName, ServiceType, ErrorControl, StartMode, 
-        #             DesktopInteract, StartName, StartPassword, LoadOrderGroup, 
-        #             LoadOrderGroupDependencies, ServiceDependencies
-        $result = $service.Change(
-            $null,           # DisplayName (null = no change)
-            $null,           # PathName (null = no change)
-            $null,           # ServiceType (null = no change)
-            $null,           # ErrorControl (null = no change)
-            $null,           # StartMode (null = no change)
-            $null,           # DesktopInteract (null = no change)
-            $Username,       # StartName (the new account)
-            $plainPassword,  # StartPassword (the new password)
-            $null,           # LoadOrderGroup (null = no change)
-            $null,           # LoadOrderGroupDependencies (null = no change)
-            $null            # ServiceDependencies (null = no change)
-        )
-        
-        # Check result code
-        switch ($result.ReturnValue) {
-            0 { 
-                Write-Output ""✅ Service account changed successfully""
-                return $true 
-            }
-            1 { throw ""Not supported"" }
-            2 { throw ""Access denied"" }
-            3 { throw ""Dependent services running"" }
-            4 { throw ""Invalid service control"" }
-            5 { throw ""Service cannot accept control"" }
-            6 { throw ""Service not active"" }
-            7 { throw ""Service request timeout"" }
-            8 { throw ""Unknown failure"" }
-            9 { throw ""Path not found"" }
-            10 { throw ""Service already running"" }
-            11 { throw ""Service database locked"" }
-            12 { throw ""Service dependency deleted"" }
-            13 { throw ""Service dependency failure"" }
-            14 { throw ""Service disabled"" }
-            15 { throw ""Service logon failure - Invalid account or password"" }
-            16 { throw ""Service marked for deletion"" }
-            17 { throw ""Service no thread"" }
-            18 { throw ""Status: Circular dependency"" }
-            19 { throw ""Status: Duplicate name"" }
-            20 { throw ""Status: Invalid name"" }
-            21 { throw ""Status: Invalid parameter"" }
-            22 { throw ""Status: Invalid service account"" }
-            23 { throw ""Status: Service exists"" }
-            24 { throw ""Service already paused"" }
-            default { throw ""Unknown error code: $($result.ReturnValue)"" }
-        }
-    }
-    finally {
-        # Zero out and free the unmanaged string containing the password
-        [System.Runtime.InteropServices.Marshal]::ZeroFreeBSTR($bstr)
-    }
-}
-catch {
-    Write-Error ""Failed to change service account: $($_.Exception.Message)""
-    throw
-}
-";
-
-            // Execute the script with parameters
-            // First, load the script
-            var loadResult = await _psRemoting.ExecuteScriptAsync(psScript);
-            
-            if (!loadResult.Success)
-            {
-                _logger.LogError("Failed to load PowerShell script: {Errors}", loadResult.ErrorText);
-                return false;
-            }
-
-            // Now execute with safe parameter passing
-            var parameters = new Dictionary<string, object>
-            {
-                { "ServiceName", ServiceName },
-                { "Username", username },
-                { "Password", securePassword }
-            };
-
-            var result = await _psRemoting.ExecuteCommandAsync(psScript, parameters);
-
-            if (result.Success)
-            {
-                _logger.LogInformation("Service account updated successfully: {Output}", result.OutputText);
-                return true;
-            }
-            else
-            {
-                _logger.LogError("Failed to set service account: {Errors}", result.ErrorText);
-                return false;
-            }
+            // Use sc.exe to set service account
+            return await SetServiceAccountWithScExeAsync(username, password, adminUsername, adminPassword);
         }
         catch (Exception ex)
         {
             _logger.LogError(ex, "Failed to set service account for {Username}", username);
             return false;
         }
-        finally
-        {
-            // Clear password from memory as soon as possible
-            // Note: The SecureString is automatically disposed when it goes out of scope
-        }
     }
 
-    public async Task<bool> GrantLogonAsServiceRightAsync(string username)
+    /// <summary>
+    /// Sets the service account using sc.exe command.
+    /// Handles both local and remote scenarios with admin credential elevation.
+    /// </summary>
+    private async Task<bool> SetServiceAccountWithScExeAsync(string username, string password, 
+        string? adminUsername, string? adminPassword)
     {
         try
         {
-            _logger.LogInformation("Granting logon as service right to: {Username}", username);
-
-            // SECURITY FIX: Use parameterized PowerShell execution to prevent injection attacks
-            // Define the PowerShell function that grants SeServiceLogonRight
-            var functionDefinition = @"
-function Grant-ServiceLogonRight {
-    [CmdletBinding()]
-    param(
-        [Parameter(Mandatory=$true)]
-        [ValidateNotNullOrEmpty()]
-        [string]$UserName
-    )
-    
-    $ErrorActionPreference = 'Stop'
-    
-    try {
-        # Resolve username to SID
-        $ntprincipal = New-Object System.Security.Principal.NTAccount $UserName
-        $sid = $ntprincipal.Translate([System.Security.Principal.SecurityIdentifier])
-        $sidstr = $sid.Value.ToString()
-        
-        Write-Output ""Account: $UserName""
-        Write-Output ""Account SID: $sidstr""
-        
-        # Export current security policy
-        $tmp = [System.IO.Path]::GetTempFileName()
-        $null = secedit.exe /export /cfg ""$tmp""
-        
-        if (-not (Test-Path $tmp)) {
-            throw ""Failed to export security policy""
-        }
-        
-        # Read current settings
-        $content = Get-Content -Path $tmp
-        $currentSetting = """"
-        
-        foreach($line in $content) {
-            if($line -like ""SeServiceLogonRight*"") {
-                $parts = $line.Split('=', [System.StringSplitOptions]::RemoveEmptyEntries)
-                if ($parts.Count -ge 2) {
-                    $currentSetting = $parts[1].Trim()
-                }
-                break
-            }
-        }
-        
-        # Check if user already has the right
-        if($currentSetting -notlike ""*$sidstr*"") {
-            Write-Output ""Granting SeServiceLogonRight...""
+            var scTarget = GetScTarget();
+            var arguments = $"{scTarget}config {ServiceName} obj= \"{username}\" password= \"{password}\"";
             
-            # Build new setting list
-            if([string]::IsNullOrEmpty($currentSetting)) {
-                $currentSetting = ""*$sidstr""
-            } else {
-                $currentSetting = ""*$sidstr,$currentSetting""
-            }
-            
-            # Create security database configuration
-            $configContent = @""
-[Unicode]
-Unicode=yes
-[Version]
-signature=""$CHICAGO$""
-Revision=1
-[Privilege Rights]
-SeServiceLogonRight = $currentSetting
-""@
-            
-            $tmp2 = [System.IO.Path]::GetTempFileName()
-            $configContent | Set-Content -Path $tmp2 -Encoding Unicode -Force
-            
-            # Apply configuration
-            $null = secedit.exe /configure /db ""secedit.sdb"" /cfg ""$tmp2"" /areas USER_RIGHTS /quiet
-            
-            # Clean up
-            if (Test-Path $tmp2) {
-                Remove-Item -Path $tmp2 -Force
-            }
-            
-            Write-Output ""Successfully granted SeServiceLogonRight to $UserName""
-        } else {
-            Write-Output ""Account already has SeServiceLogonRight""
-        }
-        
-        # Clean up
-        if (Test-Path $tmp) {
-            Remove-Item -Path $tmp -Force
-        }
-        
-        return $true
-    }
-    catch {
-        Write-Error $_.Exception.Message
-        return $false
-    }
-}
-";
-
-            // First, load the function definition
-            var loadResult = await _psRemoting.ExecuteScriptAsync(functionDefinition);
-            
-            if (!loadResult.Success)
+            // Check if we're running as admin
+            if (IsRunningAsAdministrator())
             {
-                _logger.LogError("Failed to load PowerShell function: {Errors}", loadResult.ErrorText);
-                return false;
+                // Direct execution - we have admin rights
+                _logger.LogDebug("Running sc.exe with current admin credentials");
+                return await RunScExeAsync(arguments);
             }
-
-            // Now invoke the function with safe parameter passing
-            var parameters = new Dictionary<string, object>
+            else if (!string.IsNullOrWhiteSpace(adminUsername) && !string.IsNullOrWhiteSpace(adminPassword))
             {
-                { "UserName", username }
-            };
-
-            var result = await _psRemoting.ExecuteCommandAsync("Grant-ServiceLogonRight", parameters);
-
-            if (result.Success)
-            {
-                _logger.LogInformation("Grant logon as service right succeeded for {User}: {Output}", 
-                    username, result.OutputText);
-                return true;
+                // Use provided admin credentials to run sc.exe elevated
+                _logger.LogDebug("Running sc.exe with provided admin credentials: {AdminUser}", adminUsername);
+                return await RunScExeElevatedAsync(arguments, adminUsername, adminPassword);
             }
             else
             {
-                _logger.LogError("Failed to grant logon as service right for {User}: {Errors}", 
-                    username, result.ErrorText);
+                _logger.LogError("Administrator rights required but no admin credentials provided");
                 return false;
             }
         }
         catch (Exception ex)
         {
+            _logger.LogError(ex, "Failed to set service account using sc.exe");
+            return false;
+        }
+    }
+
+    /// <summary>
+    /// Runs sc.exe with current user credentials (must be admin)
+    /// </summary>
+    private async Task<bool> RunScExeAsync(string arguments)
+    {
+        var startInfo = new ProcessStartInfo
+        {
+            FileName = "sc.exe",
+            Arguments = arguments,
+            UseShellExecute = false,
+            RedirectStandardOutput = true,
+            RedirectStandardError = true,
+            CreateNoWindow = true
+        };
+
+        using var process = Process.Start(startInfo);
+        if (process == null)
+        {
+            _logger.LogError("Failed to start sc.exe process");
+            return false;
+        }
+
+        var output = await process.StandardOutput.ReadToEndAsync();
+        var error = await process.StandardError.ReadToEndAsync();
+        await process.WaitForExitAsync();
+
+        if (process.ExitCode == 0)
+        {
+            _logger.LogInformation("Service account updated successfully: {Output}", output);
+            return true;
+        }
+        else
+        {
+            _logger.LogError("sc.exe failed with exit code {ExitCode}: {Error}", process.ExitCode, error);
+            return false;
+        }
+    }
+
+    /// <summary>
+    /// Runs sc.exe with elevated admin credentials
+    /// </summary>
+    private async Task<bool> RunScExeElevatedAsync(string arguments, string adminUsername, string adminPassword)
+    {
+        try
+        {
+            // Parse domain and username
+            var parts = adminUsername.Split('\\');
+            var domain = parts.Length > 1 ? parts[0] : ".";
+            var user = parts.Length > 1 ? parts[1] : parts[0];
+
+            var securePassword = new SecureString();
+            foreach (char c in adminPassword)
+            {
+                securePassword.AppendChar(c);
+            }
+            securePassword.MakeReadOnly();
+
+            var startInfo = new ProcessStartInfo
+            {
+                FileName = "sc.exe",
+                Arguments = arguments,
+                UseShellExecute = false,
+                RedirectStandardOutput = true,
+                RedirectStandardError = true,
+                CreateNoWindow = true,
+                Domain = domain,
+                UserName = user,
+                Password = securePassword,
+                LoadUserProfile = false
+            };
+
+            using var process = Process.Start(startInfo);
+            if (process == null)
+            {
+                _logger.LogError("Failed to start sc.exe process with admin credentials");
+                return false;
+            }
+
+            var output = await process.StandardOutput.ReadToEndAsync();
+            var error = await process.StandardError.ReadToEndAsync();
+            await process.WaitForExitAsync();
+
+            if (process.ExitCode == 0)
+            {
+                _logger.LogInformation("Service account updated successfully with elevated credentials: {Output}", output);
+                return true;
+            }
+            else
+            {
+                _logger.LogError("sc.exe failed with exit code {ExitCode}: {Error}", process.ExitCode, error);
+                return false;
+            }
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Failed to run sc.exe with elevated credentials");
+            return false;
+        }
+    }
+
+    /// <summary>
+    /// Checks if the current process is running with administrator privileges
+    /// </summary>
+    private bool IsRunningAsAdministrator()
+    {
+        using var identity = WindowsIdentity.GetCurrent();
+        var principal = new WindowsPrincipal(identity);
+        return principal.IsInRole(WindowsBuiltInRole.Administrator);
+    }
+
+    public async Task<bool> GrantLogonAsServiceRightAsync(string username, 
+        string? adminUsername = null, string? adminPassword = null)
+    {
+        try
+        {
+            _logger.LogInformation("Granting logon as service right to: {Username}", username);
+
+            // Use secedit.exe for maximum compatibility
+            return await GrantLogonAsServiceRightSecEditAsync(username, adminUsername, adminPassword);
+        }
+        catch (Exception ex)
+        {
             _logger.LogError(ex, "Failed to grant logon as service right for {Username}", username);
+            return false;
+        }
+    }
+
+    /// <summary>
+    /// Grants "Log on as a service" right using secedit.exe safely.
+    /// This method preserves existing user rights by appending the new account.
+    /// 
+    /// Steps:
+    /// 1. Export current security policy
+    /// 2. Read and parse the exported file
+    /// 3. Append the new account to existing accounts (don't overwrite)
+    /// 4. Apply the updated policy
+    /// 5. Optionally force group policy update
+    /// </summary>
+    private async Task<bool> GrantLogonAsServiceRightSecEditAsync(string username, 
+        string? adminUsername = null, string? adminPassword = null)
+    {
+        // Use a predictable temp location for easier troubleshooting
+        var tempDir = Path.Combine(Path.GetTempPath(), "ZLFileRelay");
+        Directory.CreateDirectory(tempDir);
+        
+        var exportFile = Path.Combine(tempDir, "secconfig_export.cfg");
+        var configFile = Path.Combine(tempDir, "secconfig_new.cfg");
+        
+        try
+        {
+            _logger.LogInformation("Granting 'Log on as a service' right to {Username}", username);
+
+            // Step 1: Resolve username to SID
+            var account = new NTAccount(username);
+            var sid = (SecurityIdentifier)account.Translate(typeof(SecurityIdentifier));
+            var sidString = $"*{sid.Value}";
+            
+            _logger.LogInformation("Resolved {Username} to SID: {Sid}", username, sid.Value);
+
+            // Check if we need admin elevation
+            bool needsElevation = !IsRunningAsAdministrator() && 
+                                  !string.IsNullOrWhiteSpace(adminUsername) && 
+                                  !string.IsNullOrWhiteSpace(adminPassword);
+
+            _logger.LogDebug("Admin elevation {Status}", needsElevation ? "required" : "not needed");
+
+            // Step 2: Export current security policy
+            _logger.LogInformation("Step 1/4: Exporting current security policy...");
+            var exportSuccess = needsElevation
+                ? await RunSeceditElevatedAsync($"/export /cfg \"{exportFile}\"", adminUsername!, adminPassword!)
+                : await RunSeceditAsync($"/export /cfg \"{exportFile}\"");
+
+            if (!exportSuccess || !File.Exists(exportFile))
+            {
+                _logger.LogError("Failed to export security policy using secedit.exe");
+                return false;
+            }
+
+            // Step 3: Read and parse current settings
+            _logger.LogInformation("Step 2/4: Reading current SeServiceLogonRight settings...");
+            var lines = await File.ReadAllLinesAsync(exportFile);
+            var currentSetting = "";
+            
+            foreach (var line in lines)
+            {
+                if (line.StartsWith("SeServiceLogonRight", StringComparison.OrdinalIgnoreCase))
+                {
+                    var parts = line.Split('=', 2);
+                    if (parts.Length >= 2)
+                    {
+                        currentSetting = parts[1].Trim();
+                    }
+                    break;
+                }
+            }
+
+            // Log existing accounts for transparency
+            if (!string.IsNullOrEmpty(currentSetting))
+            {
+                _logger.LogInformation("Existing SeServiceLogonRight accounts: {Accounts}", currentSetting);
+            }
+            else
+            {
+                _logger.LogInformation("No existing SeServiceLogonRight accounts found");
+            }
+
+            // Step 4: Check if user already has the right
+            if (currentSetting.Contains(sid.Value))
+            {
+                _logger.LogInformation("Account {Username} already has SeServiceLogonRight - no changes needed", username);
+                return true;
+            }
+
+            // Step 5: Append new account to existing list (preserve existing accounts)
+            _logger.LogInformation("Step 3/4: Appending {Username} to existing accounts...", username);
+            
+            string newSetting;
+            if (string.IsNullOrEmpty(currentSetting))
+            {
+                // No existing accounts - just add this one
+                newSetting = sidString;
+                _logger.LogDebug("Creating new SeServiceLogonRight with: {Setting}", newSetting);
+            }
+            else
+            {
+                // Append to existing accounts (SAFE - preserves all existing rights)
+                newSetting = $"{currentSetting},{sidString}";
+                _logger.LogDebug("Appending to existing accounts. New setting: {Setting}", newSetting);
+            }
+
+            // Step 6: Create updated security configuration
+            var configContent = $@"[Unicode]
+Unicode=yes
+[Version]
+signature=""$CHICAGO$""
+Revision=1
+[Privilege Rights]
+SeServiceLogonRight = {newSetting}";
+
+            await File.WriteAllTextAsync(configFile, configContent);
+            _logger.LogDebug("Created configuration file at: {Path}", configFile);
+
+            // Step 7: Apply the updated policy
+            _logger.LogInformation("Step 4/4: Applying updated security policy...");
+            var applySuccess = needsElevation
+                ? await RunSeceditElevatedAsync($"/configure /db secedit.sdb /cfg \"{configFile}\" /areas USER_RIGHTS", adminUsername!, adminPassword!)
+                : await RunSeceditAsync($"/configure /db secedit.sdb /cfg \"{configFile}\" /areas USER_RIGHTS");
+            
+            if (!applySuccess)
+            {
+                _logger.LogError("Failed to apply security configuration using secedit.exe");
+                return false;
+            }
+
+            _logger.LogInformation("✅ Successfully granted SeServiceLogonRight to {Username}", username);
+            _logger.LogInformation("Existing accounts were preserved and {Username} was appended to the list", username);
+
+            // Optional Step 8: Force group policy update
+            try
+            {
+                _logger.LogDebug("Forcing group policy update (optional)...");
+                var gpupdateSuccess = needsElevation
+                    ? await RunCommandElevatedAsync("gpupdate.exe", "/force", adminUsername!, adminPassword!)
+                    : await RunCommandAsync("gpupdate.exe", "/force");
+                
+                if (gpupdateSuccess)
+                {
+                    _logger.LogInformation("Group policy updated successfully");
+                }
+                else
+                {
+                    _logger.LogWarning("Group policy update failed, but SeServiceLogonRight was still granted");
+                }
+            }
+            catch (Exception ex)
+            {
+                _logger.LogWarning(ex, "Could not run gpupdate, but SeServiceLogonRight was still granted");
+            }
+
+            return true;
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Failed to grant SeServiceLogonRight using secedit.exe");
+            return false;
+        }
+        finally
+        {
+            // Clean up temp files
+            try
+            {
+                if (File.Exists(exportFile))
+                {
+                    File.Delete(exportFile);
+                    _logger.LogDebug("Cleaned up export file: {Path}", exportFile);
+                }
+                if (File.Exists(configFile))
+                {
+                    File.Delete(configFile);
+                    _logger.LogDebug("Cleaned up config file: {Path}", configFile);
+                }
+            }
+            catch (Exception ex)
+            {
+                _logger.LogWarning(ex, "Failed to clean up temporary files");
+            }
+        }
+    }
+
+    private async Task<bool> RunSeceditAsync(string arguments)
+    {
+        var startInfo = new ProcessStartInfo
+        {
+            FileName = "secedit.exe",
+            Arguments = arguments,
+            UseShellExecute = false,
+            RedirectStandardOutput = true,
+            RedirectStandardError = true,
+            CreateNoWindow = true
+        };
+
+        using var process = Process.Start(startInfo);
+        if (process == null) return false;
+
+        await process.WaitForExitAsync();
+        return process.ExitCode == 0;
+    }
+
+    private async Task<bool> RunSeceditElevatedAsync(string arguments, string adminUsername, string adminPassword)
+    {
+        return await RunCommandElevatedAsync("secedit.exe", arguments, adminUsername, adminPassword);
+    }
+
+    private async Task<bool> RunCommandAsync(string command, string arguments)
+    {
+        try
+        {
+            var startInfo = new ProcessStartInfo
+            {
+                FileName = command,
+                Arguments = arguments,
+                UseShellExecute = false,
+                RedirectStandardOutput = true,
+                RedirectStandardError = true,
+                CreateNoWindow = true
+            };
+
+            using var process = Process.Start(startInfo);
+            if (process == null) return false;
+
+            await process.WaitForExitAsync();
+            return process.ExitCode == 0;
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Failed to run {Command}", command);
+            return false;
+        }
+    }
+
+    private async Task<bool> RunCommandElevatedAsync(string command, string arguments, string adminUsername, string adminPassword)
+    {
+        try
+        {
+            var parts = adminUsername.Split('\\');
+            var domain = parts.Length > 1 ? parts[0] : ".";
+            var user = parts.Length > 1 ? parts[1] : parts[0];
+
+            var securePassword = new SecureString();
+            foreach (char c in adminPassword)
+            {
+                securePassword.AppendChar(c);
+            }
+            securePassword.MakeReadOnly();
+
+            var startInfo = new ProcessStartInfo
+            {
+                FileName = command,
+                Arguments = arguments,
+                UseShellExecute = false,
+                RedirectStandardOutput = true,
+                RedirectStandardError = true,
+                CreateNoWindow = true,
+                Domain = domain,
+                UserName = user,
+                Password = securePassword,
+                LoadUserProfile = false
+            };
+
+            using var process = Process.Start(startInfo);
+            if (process == null) return false;
+
+            await process.WaitForExitAsync();
+            return process.ExitCode == 0;
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Failed to run {Command} with elevated credentials", command);
             return false;
         }
     }
