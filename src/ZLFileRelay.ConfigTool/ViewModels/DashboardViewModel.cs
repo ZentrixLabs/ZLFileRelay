@@ -10,6 +10,8 @@ public partial class DashboardViewModel : ObservableObject
     private readonly ServiceManagementViewModel _serviceViewModel;
     private readonly ConfigurationViewModel _configurationViewModel;
     private readonly SshSettingsViewModel _sshViewModel;
+    private DateTime? _serviceStartTime;
+    private System.Threading.Timer? _uptimeUpdateTimer;
     
     public DashboardViewModel(
         ServiceManagementViewModel serviceViewModel,
@@ -30,6 +32,13 @@ public partial class DashboardViewModel : ObservableObject
         // Initial update
         UpdateHealthStatus();
         AddActivity("Dashboard loaded", ActivityType.Info);
+        
+        // Start uptime update timer (every 5 seconds)
+        _uptimeUpdateTimer = new System.Threading.Timer(
+            _ => UpdateUptimeIfRunning(),
+            null,
+            TimeSpan.Zero,
+            TimeSpan.FromSeconds(5));
     }
     
     #region Health Status Properties
@@ -148,21 +157,26 @@ public partial class DashboardViewModel : ObservableObject
         {
             ServiceHealthStatus = HealthStatus.Good;
             ServiceHealthText = "Running normally";
+            // Update service uptime when service is running
+            UpdateServiceUptime(true);
         }
         else if (serviceStatus.Contains("stopped"))
         {
             ServiceHealthStatus = HealthStatus.Warning;
             ServiceHealthText = "Service stopped";
+            ServiceUptime = "Not running";
         }
         else if (serviceStatus.Contains("not installed"))
         {
             ServiceHealthStatus = HealthStatus.Error;
             ServiceHealthText = "Not installed";
+            ServiceUptime = "Not installed";
         }
         else
         {
             ServiceHealthStatus = HealthStatus.Unknown;
             ServiceHealthText = "Status unknown";
+            ServiceUptime = "Unknown";
         }
         
         // Configuration Health
@@ -230,6 +244,67 @@ public partial class DashboardViewModel : ObservableObject
     }
     
     #endregion
+    
+    #region Service Uptime Calculation
+    
+    private void UpdateServiceUptime(bool isRunning)
+    {
+        if (isRunning)
+        {
+            // If we don't have a start time recorded, assume it just started
+            if (_serviceStartTime == null)
+            {
+                _serviceStartTime = DateTime.Now;
+            }
+            
+            var uptime = DateTime.Now - _serviceStartTime.Value;
+            ServiceUptime = FormatUptime(uptime);
+        }
+        else
+        {
+            // Service is not running, reset start time
+            _serviceStartTime = null;
+            ServiceUptime = "Not running";
+        }
+    }
+    
+    private void UpdateUptimeIfRunning()
+    {
+        // Only update uptime if service is running and we have a start time
+        var serviceStatus = _serviceViewModel.ServiceStatusText?.ToLowerInvariant() ?? "unknown";
+        if (serviceStatus.Contains("running") && _serviceStartTime.HasValue)
+        {
+            var uptime = DateTime.Now - _serviceStartTime.Value;
+            ServiceUptime = FormatUptime(uptime);
+        }
+    }
+    
+    private static string FormatUptime(TimeSpan uptime)
+    {
+        if (uptime.TotalDays >= 1)
+        {
+            return $"{(int)uptime.TotalDays}d {uptime.Hours}h {uptime.Minutes}m";
+        }
+        else if (uptime.TotalHours >= 1)
+        {
+            return $"{uptime.Hours}h {uptime.Minutes}m {uptime.Seconds}s";
+        }
+        else if (uptime.TotalMinutes >= 1)
+        {
+            return $"{uptime.Minutes}m {uptime.Seconds}s";
+        }
+        else
+        {
+            return $"{uptime.Seconds}s";
+        }
+    }
+    
+    #endregion
+    
+    public void Dispose()
+    {
+        _uptimeUpdateTimer?.Dispose();
+    }
 }
 
 public enum HealthStatus

@@ -54,9 +54,24 @@ public class AboutViewModel
         var version = assembly.GetName().Version;
         Version = version != null ? $"{version.Major}.{version.Minor}.{version.Build}" : "1.0.0";
         
-        // Get build date from assembly
-        var buildDate = System.IO.File.GetLastWriteTime(assembly.Location);
-        BuildDate = buildDate.ToString("MMMM dd, yyyy");
+        // Get build date from executable (works with single-file apps)
+        try
+        {
+            var exePath = System.Diagnostics.Process.GetCurrentProcess().MainModule?.FileName;
+            if (!string.IsNullOrEmpty(exePath) && System.IO.File.Exists(exePath))
+            {
+                var buildDate = System.IO.File.GetLastWriteTime(exePath);
+                BuildDate = buildDate.ToString("MMMM dd, yyyy");
+            }
+            else
+            {
+                BuildDate = DateTime.Now.ToString("MMMM dd, yyyy");
+            }
+        }
+        catch
+        {
+            BuildDate = DateTime.Now.ToString("MMMM dd, yyyy");
+        }
     }
 }
 

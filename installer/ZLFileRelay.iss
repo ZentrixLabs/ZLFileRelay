@@ -4,8 +4,8 @@
 
 #define MyAppName "ZL File Relay"
 #define MyAppVersion "1.0.0"
-#define MyAppPublisher "Your Company"
-#define MyAppURL "https://yourcompany.com"
+#define MyAppPublisher "ZentrixLabs"
+#define MyAppURL "https://zentrixlabs.com"
 #define MyAppExeName "ZLFileRelay.ConfigTool.exe"
 
 [Setup]
@@ -26,9 +26,9 @@ DefaultGroupName={#MyAppName}
 DisableProgramGroupPage=yes
 
 ; Output
-OutputDir=installer\output
+OutputDir=output
 OutputBaseFilename=ZLFileRelay-Setup-v{#MyAppVersion}-SelfContained
-SetupIconFile=installer\assets\icon.ico
+SetupIconFile=assets\icon.ico
 UninstallDisplayIcon={app}\ConfigTool\{#MyAppExeName}
 
 ; Compression (Ultra compression for large .NET runtime)
@@ -50,8 +50,8 @@ PrivilegesRequiredOverridesAllowed=dialog
 DisableWelcomePage=no
 WizardStyle=modern
 ; TODO: Create branded wizard images for professional installer appearance
-; WizardImageFile=installer\assets\WizardImage.bmp (164x314)
-; WizardSmallImageFile=installer\assets\WizardSmallImage.bmp (55x58)
+; WizardImageFile=assets\WizardImage.bmp (164x314)
+; WizardSmallImageFile=assets\WizardSmallImage.bmp (55x58)
 ; Using Inno Setup defaults until custom images are created
 
 ; Uninstall
@@ -94,15 +94,16 @@ Source: "..\publish\Service\*"; DestDir: "{app}\Service"; Components: service; F
 ; Web Upload Portal (with ASP.NET Core 8, ~75MB)
 Source: "..\publish\WebPortal\*"; DestDir: "{app}\WebPortal"; Components: webportal; Flags: ignoreversion recursesubdirs createallsubdirs
 
-; Configuration Tool (single .exe with .NET 8, ~65MB)
+; Configuration Tool (single .exe with .NET 8, ~300MB)
 Source: "..\publish\ConfigTool\ZLFileRelay.ConfigTool.exe"; DestDir: "{app}\ConfigTool"; Components: configtool; Flags: ignoreversion
-Source: "..\publish\ConfigTool\appsettings.json"; DestDir: "{app}\ConfigTool"; Components: configtool; Flags: ignoreversion onlyifdoesntexist
+; ConfigTool needs appsettings.json for fallback defaults
+Source: "..\appsettings.json"; DestDir: "{app}\ConfigTool"; Components: configtool; Flags: ignoreversion onlyifdoesntexist
 
 ; Configuration Files
-Source: "..\publish\appsettings.json"; DestDir: "{commonappdata}\ZLFileRelay"; Flags: onlyifdoesntexist uninsneveruninstall
+Source: "..\appsettings.json"; DestDir: "{commonappdata}\ZLFileRelay"; Flags: onlyifdoesntexist uninsneveruninstall
 
 ; Documentation
-Source: "..\publish\docs\*"; DestDir: "{app}\docs"; Flags: ignoreversion recursesubdirs createallsubdirs
+Source: "..\docs\*"; DestDir: "{app}\docs"; Flags: ignoreversion recursesubdirs createallsubdirs
 
 [Dirs]
 ; Application directories
@@ -182,7 +183,7 @@ begin
   begin
     MsgBox('This application requires 64-bit Windows.' + #13#10 + 
            'Please install on a 64-bit version of Windows.', 
-           mbCritical, MB_OK);
+           mbError, MB_OK);
     Result := False;
     Exit;
   end;
@@ -193,7 +194,7 @@ begin
   begin
     MsgBox('This application requires Windows Server 2016 or later.' + #13#10 +
            'Current version: ' + IntToStr(WindowsVersion.Major) + '.' + IntToStr(WindowsVersion.Minor),
-           mbCritical, MB_OK);
+           mbError, MB_OK);
     Result := False;
     Exit;
   end;

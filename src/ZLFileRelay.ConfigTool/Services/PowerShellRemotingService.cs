@@ -219,7 +219,27 @@ public class PowerShellRemotingService
     {
         try
         {
+            // Check if PowerShell is available
+            if (!IsPowerShellAvailable())
+            {
+                _logger.LogError("PowerShell is not available or properly installed");
+                return new PowerShellResult
+                {
+                    Success = false,
+                    Output = new List<string>(),
+                    Errors = new List<string> { "PowerShell is not available or properly installed. Please install PowerShell or repair the installation." }
+                };
+            }
+
+            // Create PowerShell instance with proper error handling
             using var powershell = PowerShell.Create();
+            
+            // Set execution policy to bypass for this session to avoid script execution issues
+            powershell.AddCommand("Set-ExecutionPolicy").AddParameter("ExecutionPolicy", "Bypass").AddParameter("Scope", "Process");
+            powershell.Invoke();
+            powershell.Commands.Clear();
+
+            // Add the actual script
             powershell.AddScript(script);
 
             var results = await Task.Run(() => powershell.Invoke());
@@ -246,6 +266,16 @@ public class PowerShellRemotingService
                 Errors = errors
             };
         }
+        catch (ArgumentNullException ex) when (ex.ParamName == "path1")
+        {
+            _logger.LogError(ex, "PowerShell installation path is corrupted or missing");
+            return new PowerShellResult
+            {
+                Success = false,
+                Output = new List<string>(),
+                Errors = new List<string> { "PowerShell installation is corrupted. Please reinstall PowerShell or run Windows Update to repair the installation." }
+            };
+        }
         catch (Exception ex)
         {
             _logger.LogError(ex, "Failed to execute local PowerShell script");
@@ -262,7 +292,26 @@ public class PowerShellRemotingService
     {
         try
         {
+            // Check if PowerShell is available
+            if (!IsPowerShellAvailable())
+            {
+                _logger.LogError("PowerShell is not available or properly installed");
+                return new PowerShellResult
+                {
+                    Success = false,
+                    Output = new List<string>(),
+                    Errors = new List<string> { "PowerShell is not available or properly installed. Please install PowerShell or repair the installation." }
+                };
+            }
+
             using var powershell = PowerShell.Create();
+            
+            // Set execution policy to bypass for this session
+            powershell.AddCommand("Set-ExecutionPolicy").AddParameter("ExecutionPolicy", "Bypass").AddParameter("Scope", "Process");
+            powershell.Invoke();
+            powershell.Commands.Clear();
+
+            // Add the actual command
             powershell.AddCommand(command);
 
             if (parameters != null)
@@ -297,6 +346,16 @@ public class PowerShellRemotingService
                 Errors = errors
             };
         }
+        catch (ArgumentNullException ex) when (ex.ParamName == "path1")
+        {
+            _logger.LogError(ex, "PowerShell installation path is corrupted or missing");
+            return new PowerShellResult
+            {
+                Success = false,
+                Output = new List<string>(),
+                Errors = new List<string> { "PowerShell installation is corrupted. Please reinstall PowerShell or run Windows Update to repair the installation." }
+            };
+        }
         catch (Exception ex)
         {
             _logger.LogError(ex, "Failed to execute local PowerShell command");
@@ -306,6 +365,35 @@ public class PowerShellRemotingService
                 Output = new List<string>(),
                 Errors = new List<string> { ex.Message }
             };
+        }
+    }
+
+    /// <summary>
+    /// Checks if PowerShell is available and properly installed
+    /// </summary>
+    private bool IsPowerShellAvailable()
+    {
+        try
+        {
+            // Try to create a PowerShell instance to test if it's available
+            using var testPowerShell = PowerShell.Create();
+            
+            // Try a simple command to verify PowerShell is working
+            testPowerShell.AddCommand("Get-Host").AddParameter("Version");
+            var result = testPowerShell.Invoke();
+            
+            return !testPowerShell.HadErrors && result.Count > 0;
+        }
+        catch (ArgumentNullException ex) when (ex.ParamName == "path1")
+        {
+            // This is the specific error we're trying to catch
+            _logger.LogWarning("PowerShell installation path is corrupted: {Message}", ex.Message);
+            return false;
+        }
+        catch (Exception ex)
+        {
+            _logger.LogWarning(ex, "PowerShell availability check failed: {Message}", ex.Message);
+            return false;
         }
     }
 }

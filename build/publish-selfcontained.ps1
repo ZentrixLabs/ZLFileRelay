@@ -8,7 +8,7 @@ param(
 )
 
 $ErrorActionPreference = "Stop"
-$PublishDir = "publish"
+$PublishDir = "../publish"
 
 Write-Host "`n╔══════════════════════════════════════════════════════════════╗" -ForegroundColor Green
 Write-Host "║  🚀 ZL FILE RELAY - SELF-CONTAINED PUBLISH                  ║" -ForegroundColor Green
@@ -30,7 +30,7 @@ New-Item -ItemType Directory -Force -Path $PublishDir | Out-Null
 # Publish Service
 Write-Host "`n━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━" -ForegroundColor DarkGray
 Write-Host "📦 Publishing File Transfer Service (with .NET 8)..." -ForegroundColor Cyan
-dotnet publish src/ZLFileRelay.Service/ZLFileRelay.Service.csproj `
+dotnet publish ../src/ZLFileRelay.Service/ZLFileRelay.Service.csproj `
     -c $Configuration `
     -r $Runtime `
     --self-contained true `
@@ -48,7 +48,7 @@ Write-Host "✅ Service published" -ForegroundColor Green
 # Publish Web Portal
 Write-Host "`n━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━" -ForegroundColor DarkGray
 Write-Host "🌐 Publishing Web Portal (with .NET 8)..." -ForegroundColor Cyan
-dotnet publish src/ZLFileRelay.WebPortal/ZLFileRelay.WebPortal.csproj `
+dotnet publish ../src/ZLFileRelay.WebPortal/ZLFileRelay.WebPortal.csproj `
     -c $Configuration `
     -r $Runtime `
     --self-contained true `
@@ -66,7 +66,7 @@ Write-Host "✅ Web Portal published" -ForegroundColor Green
 # Publish Config Tool (single file)
 Write-Host "`n━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━" -ForegroundColor DarkGray
 Write-Host "🔧 Publishing Configuration Tool (single file with .NET 8)..." -ForegroundColor Cyan
-dotnet publish src/ZLFileRelay.ConfigTool/ZLFileRelay.ConfigTool.csproj `
+dotnet publish ../src/ZLFileRelay.ConfigTool/ZLFileRelay.ConfigTool.csproj `
     -c $Configuration `
     -r $Runtime `
     --self-contained true `
@@ -85,13 +85,13 @@ Write-Host "✅ Config Tool published" -ForegroundColor Green
 # Copy configuration file
 Write-Host "`n━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━" -ForegroundColor DarkGray
 Write-Host "📄 Copying configuration templates..." -ForegroundColor Cyan
-Copy-Item "appsettings.json" "$PublishDir/appsettings.json"
+Copy-Item "../appsettings.json" "$PublishDir/appsettings.json"
 Write-Host "✅ Configuration copied" -ForegroundColor Green
 
 # Copy documentation
 Write-Host "`n📚 Copying documentation..." -ForegroundColor Cyan
-if (Test-Path "docs") {
-    Copy-Item "docs" "$PublishDir/docs" -Recurse -Force
+if (Test-Path "../docs") {
+    Copy-Item "../docs" "$PublishDir/docs" -Recurse -Force
     Write-Host "✅ Documentation copied" -ForegroundColor Green
 }
 
