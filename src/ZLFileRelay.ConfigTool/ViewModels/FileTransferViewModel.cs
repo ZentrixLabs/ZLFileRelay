@@ -34,6 +34,14 @@ public partial class FileTransferViewModel : ObservableObject
     [ObservableProperty] private string _sshKeyPath = "";
     [ObservableProperty] private string? _publicKey;
     [ObservableProperty] private string _sshTestResult = "Click 'Test SSH Connection' to verify your settings";
+    
+    // SSH Advanced Settings
+    [ObservableProperty] private bool _isRemoteServerWindows = true;
+    [ObservableProperty] private bool _isRemoteServerLinux = false;
+    [ObservableProperty] private bool _sshCompression = true;
+    [ObservableProperty] private int _sshConnectionTimeout = 30;
+    [ObservableProperty] private int _sshTransferTimeout = 300;
+    [ObservableProperty] private bool _sshStrictHostKeyChecking = true;
 
     // SMB Configuration
     [ObservableProperty] private string _smbServer = "";
@@ -81,6 +89,22 @@ public partial class FileTransferViewModel : ObservableObject
         }
     }
 
+    partial void OnIsRemoteServerWindowsChanged(bool value)
+    {
+        if (value)
+        {
+            IsRemoteServerLinux = false;
+        }
+    }
+
+    partial void OnIsRemoteServerLinuxChanged(bool value)
+    {
+        if (value)
+        {
+            IsRemoteServerWindows = false;
+        }
+    }
+
     private async Task LoadConfigurationAsync()
     {
         try
@@ -110,6 +134,14 @@ public partial class FileTransferViewModel : ObservableObject
         SshUsername = _config.Transfer.Ssh.Username ?? "";
         SshDestinationPath = _config.Transfer.Ssh.DestinationPath ?? "/data/incoming";
         SshKeyPath = _config.Transfer.Ssh.PrivateKeyPath ?? "";
+        
+        // SSH Advanced
+        IsRemoteServerWindows = _config.Transfer.Ssh.RemoteServerType?.Equals("Windows", StringComparison.OrdinalIgnoreCase) ?? true;
+        IsRemoteServerLinux = _config.Transfer.Ssh.RemoteServerType?.Equals("Linux", StringComparison.OrdinalIgnoreCase) ?? false;
+        SshCompression = _config.Transfer.Ssh.Compression;
+        SshConnectionTimeout = _config.Transfer.Ssh.ConnectionTimeout;
+        SshTransferTimeout = _config.Transfer.Ssh.TransferTimeout;
+        SshStrictHostKeyChecking = _config.Transfer.Ssh.StrictHostKeyChecking;
 
         // SMB
         SmbServer = _config.Transfer.Smb.Server ?? "";
@@ -141,6 +173,13 @@ public partial class FileTransferViewModel : ObservableObject
         _config.Transfer.Ssh.Username = SshUsername;
         _config.Transfer.Ssh.DestinationPath = SshDestinationPath;
         _config.Transfer.Ssh.PrivateKeyPath = SshKeyPath;
+        
+        // SSH Advanced
+        _config.Transfer.Ssh.RemoteServerType = IsRemoteServerWindows ? "Windows" : "Linux";
+        _config.Transfer.Ssh.Compression = SshCompression;
+        _config.Transfer.Ssh.ConnectionTimeout = SshConnectionTimeout;
+        _config.Transfer.Ssh.TransferTimeout = SshTransferTimeout;
+        _config.Transfer.Ssh.StrictHostKeyChecking = SshStrictHostKeyChecking;
 
         // SMB
         _config.Transfer.Smb.Server = SmbServer;
@@ -202,14 +241,37 @@ public partial class FileTransferViewModel : ObservableObject
     {
         var dialog = new Microsoft.Win32.OpenFileDialog
         {
-            Title = "Select SSH Private Key",
-            Filter = "All Files (*.*)|*.*|SSH Keys (id_*)|id_*",
-            DefaultExt = ""
+            Title = "Select SSH Private Key (NOT the .pub file)",
+            Filter = "SSH Private Keys (*.key;*.pem;id_*;*_key)|*.key;*.pem;id_*;*_key|" +
+                    "Key Files (*.key)|*.key|" +
+                    "PEM Files (*.pem)|*.pem|" +
+                    "All Files (*.*)|*.*",
+            DefaultExt = "",
+            FilterIndex = 1,
+            CheckFileExists = true
         };
 
         if (dialog.ShowDialog() == true)
         {
             SshKeyPath = dialog.FileName;
+            
+            // Warn if they selected a .pub file by mistake
+            if (dialog.FileName.EndsWith(".pub", StringComparison.OrdinalIgnoreCase))
+            {
+                SshTestResult = "⚠️ Warning: You selected a public key (.pub) file. " +
+                              "Please select the PRIVATE key file (without .pub extension) instead.";
+            }
+            // Warn if they selected a .crt or .cer file (certificate, not private key)
+            else if (dialog.FileName.EndsWith(".crt", StringComparison.OrdinalIgnoreCase) ||
+                     dialog.FileName.EndsWith(".cer", StringComparison.OrdinalIgnoreCase))
+            {
+                SshTestResult = "⚠️ Warning: You selected a certificate file (.crt/.cer). " +
+                              "Please select the PRIVATE key file (usually .key or .pem) instead.";
+            }
+            else
+            {
+                SshTestResult = $"✓ Private key path set to: {dialog.FileName}";
+            }
         }
     }
 
@@ -236,11 +298,16 @@ public partial class FileTransferViewModel : ObservableObject
             SshKeyPath = keyPair.PrivateKeyPath;
             PublicKey = keyPair.PublicKey;
 
-            SshTestResult = $"✅ SSH key pair generated successfully\n\n" +
-                           $"Private key: {keyPair.PrivateKeyPath}\n" +
-                           $"Public key: {keyPair.PublicKeyPath}\n\n" +
-                           $"📋 Copy this public key to your server's ~/.ssh/authorized_keys file:\n\n" +
-                           $"{PublicKey}";
+            SshTestResult = $"✅ SSH key pair generated successfully (ED25519 format)\n\n" +
+                           $"🔒 Private key (keep secure): {keyPair.PrivateKeyPath}\n" +
+                           $"📤 Public key (deploy to remote): {keyPair.PublicKeyPath}\n\n" +
+                           $"Next Steps:\n" +
+                           $"1. The private key path has been automatically filled in above\n" +
+                           $"2. Click 'View Public Key' or 'Copy to Clipboard' to get the public key\n" +
+                           $"3. Add the public key to your remote server's ~/.ssh/authorized_keys file\n" +
+                           $"4. Grant the service account read access to: {keyPair.PrivateKeyPath}\n" +
+                           $"5. Test the connection\n\n" +
+                           $"⚠️ Important: Never share the private key file! Only deploy the public key (.pub) to remote servers.";
         }
         catch (Exception ex)
         {
@@ -261,11 +328,16 @@ public partial class FileTransferViewModel : ObservableObject
         if (publicKey != null)
         {
             PublicKey = publicKey;
-            SshTestResult = $"📋 Public Key:\n\n{publicKey}\n\nCopy this to your server's ~/.ssh/authorized_keys file";
+            var publicKeyPath = $"{SshKeyPath}.pub";
+            SshTestResult = $"📋 Public Key (from {publicKeyPath}):\n\n{publicKey}\n\n" +
+                           $"✅ Copy this entire text to your remote server's ~/.ssh/authorized_keys file\n\n" +
+                           $"Tip: Use the 'Copy to Clipboard' button to copy this key.";
         }
         else
         {
-            SshTestResult = "❌ Could not read public key. Make sure the private key file exists.";
+            var publicKeyPath = $"{SshKeyPath}.pub";
+            SshTestResult = $"❌ Could not read public key file: {publicKeyPath}\n\n" +
+                           $"Make sure the private key file exists and the public key (.pub) was generated alongside it.";
         }
     }
 

@@ -152,19 +152,30 @@ public class ConfigurationService
     {
         try
         {
+            _logger.LogInformation("Starting configuration save to {Path}", _configPath);
+
             // Validate configuration first
             var validationResult = await ValidateAsync(configuration);
             if (!validationResult.IsValid)
             {
-                _logger.LogWarning("Configuration validation failed: {Errors}", 
-                    string.Join(", ", validationResult.Errors));
-                return false;
+                var errorMessage = string.Join(", ", validationResult.Errors);
+                _logger.LogWarning("Configuration validation failed: {Errors}", errorMessage);
+                throw new InvalidOperationException($"Configuration validation failed: {errorMessage}");
+            }
+
+            // Ensure directory exists
+            var configDirectory = Path.GetDirectoryName(_configPath);
+            if (!string.IsNullOrEmpty(configDirectory) && !Directory.Exists(configDirectory))
+            {
+                _logger.LogInformation("Creating configuration directory: {Directory}", configDirectory);
+                Directory.CreateDirectory(configDirectory);
             }
 
             // Backup existing config
             if (File.Exists(_configPath))
             {
                 var backupPath = $"{_configPath}.{DateTime.Now:yyyyMMddHHmmss}.bak";
+                _logger.LogInformation("Creating backup: {BackupPath}", backupPath);
                 File.Copy(_configPath, backupPath, true);
                 _logger.LogInformation("Created configuration backup: {BackupPath}", backupPath);
             }
@@ -178,17 +189,40 @@ public class ConfigurationService
                 PropertyNamingPolicy = JsonNamingPolicy.CamelCase
             };
 
+            _logger.LogDebug("Serializing configuration to JSON");
             var json = JsonSerializer.Serialize(wrapper, options);
+            
+            _logger.LogInformation("Writing configuration to {Path} ({Size} bytes)", _configPath, json.Length);
             await File.WriteAllTextAsync(_configPath, json);
 
             _currentConfiguration = configuration;
             _logger.LogInformation("Configuration saved successfully to {Path}", _configPath);
             return true;
         }
+        catch (UnauthorizedAccessException ex)
+        {
+            _logger.LogError(ex, "Permission denied saving configuration to {Path}", _configPath);
+            throw;
+        }
+        catch (DirectoryNotFoundException ex)
+        {
+            _logger.LogError(ex, "Directory not found for configuration path {Path}", _configPath);
+            throw;
+        }
+        catch (IOException ex)
+        {
+            _logger.LogError(ex, "IO error saving configuration to {Path}", _configPath);
+            throw;
+        }
+        catch (JsonException ex)
+        {
+            _logger.LogError(ex, "JSON serialization error saving configuration");
+            throw new InvalidOperationException("Failed to serialize configuration to JSON", ex);
+        }
         catch (Exception ex)
         {
             _logger.LogError(ex, "Failed to save configuration to {Path}", _configPath);
-            return false;
+            throw;
         }
     }
 
@@ -229,11 +263,47 @@ public class ConfigurationService
                 errors.Add("SMB share path is required when using SMB transfer method");
         }
 
+        // Validate Web Portal settings
+        if (configuration.WebPortal.Enabled)
+        {
+            if (configuration.WebPortal.Kestrel.HttpPort <= 0 || configuration.WebPortal.Kestrel.HttpPort > 65535)
+                errors.Add("Web Portal HTTP port must be between 1 and 65535");
+
+            if (configuration.WebPortal.Kestrel.HttpsPort <= 0 || configuration.WebPortal.Kestrel.HttpsPort > 65535)
+                errors.Add("Web Portal HTTPS port must be between 1 and 65535");
+
+            if (configuration.WebPortal.Kestrel.HttpPort == configuration.WebPortal.Kestrel.HttpsPort)
+                errors.Add("Web Portal HTTP and HTTPS ports must be different");
+
+            if (configuration.WebPortal.Kestrel.EnableHttps && string.IsNullOrWhiteSpace(configuration.WebPortal.Kestrel.CertificatePath))
+                errors.Add("Certificate path is required when HTTPS is enabled for Web Portal");
+
+            if (configuration.WebPortal.Kestrel.EnableHttps && 
+                !string.IsNullOrWhiteSpace(configuration.WebPortal.Kestrel.CertificatePath) && 
+                !File.Exists(configuration.WebPortal.Kestrel.CertificatePath))
+                errors.Add($"Certificate file not found: {configuration.WebPortal.Kestrel.CertificatePath}");
+        }
+
+        // Validate Branding settings
+        if (string.IsNullOrWhiteSpace(configuration.Branding.CompanyName))
+            errors.Add("Company name is required");
+
+        if (string.IsNullOrWhiteSpace(configuration.Branding.SiteName))
+            errors.Add("Site name is required");
+
+        if (!string.IsNullOrWhiteSpace(configuration.Branding.LogoPath) && !File.Exists(configuration.Branding.LogoPath))
+            errors.Add($"Logo file not found: {configuration.Branding.LogoPath}");
+
         return Task.FromResult(new ValidationResult
         {
             IsValid = errors.Count == 0,
             Errors = errors
         });
+    }
+
+    public string GetConfigurationPath()
+    {
+        return _configPath;
     }
 
     public ZLFileRelayConfiguration GetDefaultConfiguration()

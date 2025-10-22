@@ -151,10 +151,20 @@ public partial class WebPortalViewModel : ObservableObject
     {
         try
         {
+            StatusMessage = "💾 Saving configuration...";
+            
             var config = _configurationService.CurrentConfiguration;
             if (config == null)
             {
-                StatusMessage = "❌ Configuration not loaded";
+                StatusMessage = "❌ Configuration not loaded - please restart the application";
+                return;
+            }
+
+            // Validate current settings first
+            ValidateConfiguration();
+            if (!IsValid)
+            {
+                StatusMessage = "❌ Please fix validation errors before saving";
                 return;
             }
 
@@ -162,7 +172,7 @@ public partial class WebPortalViewModel : ObservableObject
             config.WebPortal.Kestrel.HttpPort = HttpPort;
             config.WebPortal.Kestrel.HttpsPort = HttpsPort;
             config.WebPortal.Kestrel.EnableHttps = EnableHttps;
-            config.WebPortal.Kestrel.CertificatePath = CertificatePath;
+            config.WebPortal.Kestrel.CertificatePath = string.IsNullOrWhiteSpace(CertificatePath) ? null : CertificatePath;
             config.WebPortal.RequireAuthentication = RequireAuthentication;
             
             // Parse allowed groups
@@ -173,21 +183,64 @@ public partial class WebPortalViewModel : ObservableObject
                 .ToList();
             config.WebPortal.AllowedGroups = groups.Count > 0 ? groups : null;
             
-            
             // Save branding settings
             config.Branding.CompanyName = CompanyName;
             config.Branding.SiteName = SiteName;
             config.Branding.SupportEmail = SupportEmail;
             config.Branding.LogoPath = string.IsNullOrWhiteSpace(LogoPath) ? null : LogoPath;
 
+            // Check if logo file exists if path is provided
+            if (!string.IsNullOrWhiteSpace(LogoPath) && !File.Exists(LogoPath))
+            {
+                StatusMessage = $"❌ Logo file not found: {LogoPath}";
+                return;
+            }
+
+            // Attempt to save with thorough error reporting
+            var configPath = _configurationService.GetConfigurationPath();
             var success = await _configurationService.SaveAsync(config);
-            StatusMessage = success 
-                ? "✅ Configuration saved. Restart Web Portal service to apply changes."
-                : "❌ Failed to save configuration";
+            
+            if (success)
+            {
+                StatusMessage = $"✅ Configuration saved successfully to:\n{configPath}\n\nRestart Web Portal service to apply changes.";
+            }
+            else
+            {
+                StatusMessage = $"❌ Failed to save configuration to:\n{configPath}\n\nCheck the following:\n" +
+                              "• Ensure you have write permissions to the config file\n" +
+                              "• Check that the config file is not locked by another process\n" +
+                              "• Verify all required fields are filled\n" +
+                              "• Check application logs for detailed error information";
+            }
+        }
+        catch (UnauthorizedAccessException ex)
+        {
+            var configPath = _configurationService.GetConfigurationPath();
+            StatusMessage = $"❌ Permission denied saving to:\n{configPath}\n\nError: {ex.Message}\n\n" +
+                          "Try running the configuration tool as Administrator or check file permissions.";
+        }
+        catch (DirectoryNotFoundException ex)
+        {
+            var configPath = _configurationService.GetConfigurationPath();
+            StatusMessage = $"❌ Directory not found for:\n{configPath}\n\nError: {ex.Message}\n\n" +
+                          "The configuration directory may have been moved or deleted.";
+        }
+        catch (IOException ex)
+        {
+            var configPath = _configurationService.GetConfigurationPath();
+            StatusMessage = $"❌ File access error for:\n{configPath}\n\nError: {ex.Message}\n\n" +
+                          "The configuration file may be locked by another process or the disk may be full.";
+        }
+        catch (InvalidOperationException ex)
+        {
+            StatusMessage = $"❌ Configuration validation error: {ex.Message}\n\n" +
+                          "Please check your settings and try again.";
         }
         catch (Exception ex)
         {
-            StatusMessage = $"❌ Error: {ex.Message}";
+            var configPath = _configurationService.GetConfigurationPath();
+            StatusMessage = $"❌ Unexpected error saving to:\n{configPath}\n\nError: {ex.Message}\n\n" +
+                          "Please check the application logs for more details.";
         }
     }
 

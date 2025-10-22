@@ -144,6 +144,7 @@ public class SshSettings
     public string? PrivateKeyPassphrase { get; set; }
     public string? PasswordEncrypted { get; set; }
     public string DestinationPath { get; set; } = string.Empty;
+    public string RemoteServerType { get; set; } = "Windows"; // "Windows" or "Linux" - affects path format
     public bool CreateDestinationDirectory { get; set; } = true;
     public bool PreserveTimestamps { get; set; } = true;
     public int ConnectionTimeout { get; set; } = 30;

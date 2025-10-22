@@ -107,22 +107,51 @@
                     <Border Background="#F0F8FF" BorderBrush="#B0C4DE" BorderThickness="1" CornerRadius="4" Padding="15">
                         <StackPanel>
                             <TextBlock TextWrapping="Wrap" FontWeight="SemiBold" Margin="0,0,0,10">
-                                Quick Start Guide: SSH Key Authentication
+                                Complete SSH Setup Guide
                             </TextBlock>
-                            <TextBlock TextWrapping="Wrap" Margin="0,0,0,5">
-                                <Bold>Step 1:</Bold> Click "Generate Key Pair" below to create a new SSH key pair.
+                            
+                            <TextBlock TextWrapping="Wrap" Margin="0,0,0,8" FontWeight="SemiBold">
+                                Part A: Prepare the Service Account (One-time setup)
                             </TextBlock>
-                            <TextBlock TextWrapping="Wrap" Margin="0,0,0,5">
-                                <Bold>Step 2:</Bold> Copy the public key and add it to your remote server's ~/.ssh/authorized_keys file.
+                            <TextBlock TextWrapping="Wrap" Margin="0,0,0,5" FontSize="12">
+                                <Bold>1.</Bold> Login to this server as the service account (e.g., <Run FontFamily="Consolas">svc_filetransfer</Run>) at least once
                             </TextBlock>
-                            <TextBlock TextWrapping="Wrap" Margin="0,0,0,5">
-                                <Bold>Step 3:</Bold> Enter your SSH host, port, username, and destination path below.
+                            <TextBlock TextWrapping="Wrap" Margin="20,0,0,5" FontSize="11" Foreground="Gray">
+                                Example: <Run FontFamily="Consolas">runas /user:DOMAIN\svc_filetransfer cmd</Run><LineBreak/>
+                                This creates the user profile (C:\Users\svc_filetransfer) where SSH keys will be stored.
                             </TextBlock>
-                            <TextBlock TextWrapping="Wrap" Margin="0,0,0,10">
-                                <Bold>Step 4:</Bold> Click "Test SSH Connection" to verify everything works.
+                            <TextBlock TextWrapping="Wrap" Margin="0,0,0,5" FontSize="12">
+                                <Bold>2.</Bold> Grant the service account read access to the private key folder
                             </TextBlock>
-                            <TextBlock TextWrapping="Wrap" Foreground="Gray" FontSize="11">
-                                💡 Tip: ED25519 keys provide strong security and are recommended for SSH authentication.
+                            
+                            <Border BorderBrush="#90CAF9" BorderThickness="1" Background="#E3F2FD" CornerRadius="3" Padding="10" Margin="0,8,0,8">
+                                <TextBlock TextWrapping="Wrap" FontSize="11">
+                                    ⚠️ The Windows Service runs as the service account and needs permission to read the private key file!
+                                </TextBlock>
+                            </Border>
+                            
+                            <TextBlock TextWrapping="Wrap" Margin="0,0,0,8" FontWeight="SemiBold">
+                                Part B: Generate and Deploy SSH Keys
+                            </TextBlock>
+                            <TextBlock TextWrapping="Wrap" Margin="0,0,0,5" FontSize="12">
+                                <Bold>1.</Bold> Click "Generate Key Pair" below to create SSH keys (ED25519 format recommended)
+                            </TextBlock>
+                            <TextBlock TextWrapping="Wrap" Margin="0,0,0,5" FontSize="12">
+                                <Bold>2.</Bold> Click "View Public Key" and copy the entire public key text
+                            </TextBlock>
+                            <TextBlock TextWrapping="Wrap" Margin="0,0,0,5" FontSize="12">
+                                <Bold>3.</Bold> On the REMOTE server, append the public key to <Run FontFamily="Consolas">~/.ssh/authorized_keys</Run>
+                            </TextBlock>
+                            <TextBlock TextWrapping="Wrap" Margin="20,0,0,5" FontSize="11" Foreground="Gray">
+                                Linux: <Run FontFamily="Consolas">echo "public-key-here" >> ~/.ssh/authorized_keys</Run><LineBreak/>
+                                Windows: Add to <Run FontFamily="Consolas">C:\Users\username\.ssh\authorized_keys</Run>
+                            </TextBlock>
+                            <TextBlock TextWrapping="Wrap" Margin="0,0,0,5" FontSize="12">
+                                <Bold>4.</Bold> Enter SSH connection details (host, port, username, path) and test the connection
+                            </TextBlock>
+                            
+                            <TextBlock TextWrapping="Wrap" Foreground="#1976D2" FontSize="11" Margin="0,10,0,0" FontStyle="Italic">
+                                💡 Tip: Use ED25519 keys (modern, fast, secure) instead of RSA keys when possible.
                             </TextBlock>
                         </StackPanel>
                     </Border>
@@ -168,6 +197,25 @@
                 <!-- SSH Key Management -->
                 <TextBlock Text="SSH Key Authentication" Style="{StaticResource SubtitleTextBlockStyle}" Margin="0,10,0,10"/>
                 
+                <!-- SSH Key Explanation -->
+                <Border Background="#FFF9E6" BorderBrush="#FFA726" BorderThickness="1" CornerRadius="4" Padding="12" Margin="0,0,0,10">
+                    <StackPanel>
+                        <TextBlock TextWrapping="Wrap" FontWeight="SemiBold" Foreground="#E65100" Margin="0,0,0,8">
+                            📌 SSH Key Setup Guide
+                        </TextBlock>
+                        <TextBlock TextWrapping="Wrap" FontSize="12" Foreground="#424242">
+                            SSH uses a <Bold>key pair</Bold> for authentication:<LineBreak/>
+                            • <Bold>Private Key</Bold> - Stays on THIS server (used by the service)<LineBreak/>
+                            <Run Foreground="Gray" FontSize="11">  Formats: </Run><Run FontFamily="Consolas" FontSize="11">id_ed25519</Run><Run Foreground="Gray" FontSize="11">, </Run><Run FontFamily="Consolas" FontSize="11">server.key</Run><Run Foreground="Gray" FontSize="11">, </Run><Run FontFamily="Consolas" FontSize="11">private.pem</Run><LineBreak/>
+                            • <Bold>Public Key</Bold> - Copy to REMOTE server's <Run FontFamily="Consolas">~/.ssh/authorized_keys</Run><LineBreak/>
+                            <Run Foreground="Gray" FontSize="11">  Formats: </Run><Run FontFamily="Consolas" FontSize="11">id_ed25519.pub</Run><Run Foreground="Gray" FontSize="11">, </Run><Run FontFamily="Consolas" FontSize="11">server.pub</Run><Run Foreground="Gray" FontSize="11">, </Run><Run FontFamily="Consolas" FontSize="11">public.pem</Run>
+                        </TextBlock>
+                        <TextBlock TextWrapping="Wrap" FontSize="11" Foreground="Gray" Margin="0,8,0,0">
+                            💡 The service account needs read access to the private key file. When browsing, select the private key (commonly <Run FontFamily="Consolas">.key</Run> or <Run FontFamily="Consolas">.pem</Run> or no extension).
+                        </TextBlock>
+                    </StackPanel>
+                </Border>
+                
                 <Grid>
                     <Grid.ColumnDefinitions>
                         <ColumnDefinition Width="150"/>
@@ -176,20 +224,30 @@
                     </Grid.ColumnDefinitions>
                     <Grid.RowDefinitions>
                         <RowDefinition Height="Auto"/>
+                        <RowDefinition Height="5"/>
+                        <RowDefinition Height="Auto"/>
                         <RowDefinition Height="10"/>
                         <RowDefinition Height="Auto"/>
                     </Grid.RowDefinitions>
                     
-                    <TextBlock Grid.Row="0" Grid.Column="0" Text="Private Key Path:" VerticalAlignment="Center"/>
+                    <TextBlock Grid.Row="0" Grid.Column="0" Text="Private Key File:" VerticalAlignment="Center" FontWeight="SemiBold"/>
                     <TextBox Grid.Row="0" Grid.Column="1" 
                              Text="{Binding SshKeyPath, UpdateSourceTrigger=PropertyChanged}" 
                              Margin="0,0,5,0"
-                             ToolTip="Path to the SSH private key file for authentication"/>
+                             ToolTip="Path to SSH private key. Formats: OpenSSH (no extension), PEM (.pem), or Key (.key)"/>
                     <Button Grid.Row="0" Grid.Column="2" 
                             Command="{Binding BrowseSshKeyCommand}"
-                            Content="Browse..."/>
+                            Content="Browse..."
+                            ToolTip="Select the PRIVATE key file (not .pub, .crt, or .cer files)"/>
                     
-                    <StackPanel Grid.Row="2" Grid.Column="0" Grid.ColumnSpan="3" Orientation="Horizontal">
+                    <TextBlock Grid.Row="2" Grid.Column="0" Grid.ColumnSpan="3"
+                               FontSize="11" 
+                               Foreground="Gray"
+                               Margin="150,0,0,0">
+                        Examples: <Run FontFamily="Consolas">id_ed25519</Run>, <Run FontFamily="Consolas">server.key</Run>, <Run FontFamily="Consolas">zlrelay_key.pem</Run>, <Run FontFamily="Consolas">private_key</Run>
+                    </TextBlock>
+                    
+                    <StackPanel Grid.Row="4" Grid.Column="0" Grid.ColumnSpan="3" Orientation="Horizontal">
                         <Button Command="{Binding GenerateSshKeyCommand}"
                                 Style="{StaticResource PrimaryButton}"
                                 Padding="15,8"
@@ -218,6 +276,98 @@
                         </Button>
                     </StackPanel>
                 </Grid>
+
+                <!-- Advanced SSH Settings -->
+                <Expander Header="⚙️ Advanced SSH Settings" Margin="0,15,0,10" IsExpanded="False">
+                    <Border Background="#F5F5F5" BorderBrush="{DynamicResource SystemControlForegroundBaseLowBrush}" BorderThickness="1" CornerRadius="4" Padding="15" Margin="0,5,0,0">
+                        <Grid>
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="180"/>
+                                <ColumnDefinition Width="*"/>
+                            </Grid.ColumnDefinitions>
+                            <Grid.RowDefinitions>
+                                <RowDefinition Height="Auto"/>
+                                <RowDefinition Height="10"/>
+                                <RowDefinition Height="Auto"/>
+                                <RowDefinition Height="10"/>
+                                <RowDefinition Height="Auto"/>
+                                <RowDefinition Height="10"/>
+                                <RowDefinition Height="Auto"/>
+                                <RowDefinition Height="10"/>
+                                <RowDefinition Height="Auto"/>
+                            </Grid.RowDefinitions>
+                            
+                            <!-- Remote Server Type -->
+                            <TextBlock Grid.Row="0" Grid.Column="0" Text="Remote Server Type:" VerticalAlignment="Center" FontWeight="SemiBold"/>
+                            <StackPanel Grid.Row="0" Grid.Column="1" Orientation="Vertical">
+                                <StackPanel Orientation="Horizontal">
+                                    <RadioButton Content="Windows" 
+                                                 IsChecked="{Binding IsRemoteServerWindows}" 
+                                                 GroupName="ServerType"
+                                                 Margin="0,0,20,0"/>
+                                    <RadioButton Content="Linux" 
+                                                 IsChecked="{Binding IsRemoteServerLinux}" 
+                                                 GroupName="ServerType"/>
+                                </StackPanel>
+                                <TextBlock Text="Affects path format: Windows uses backslashes (\), Linux uses forward slashes (/)" 
+                                           FontSize="11" 
+                                           Foreground="Gray"
+                                           Margin="0,5,0,0"
+                                           TextWrapping="Wrap"/>
+                            </StackPanel>
+                            
+                            <!-- SSH Compression -->
+                            <TextBlock Grid.Row="2" Grid.Column="0" Text="Enable Compression:" VerticalAlignment="Center"/>
+                            <StackPanel Grid.Row="2" Grid.Column="1">
+                                <CheckBox IsChecked="{Binding SshCompression}"
+                                          Content="Compress data during transfer"/>
+                                <TextBlock Text="Can improve transfer speed for large files on slow connections" 
+                                           FontSize="11" 
+                                           Foreground="Gray"
+                                           Margin="20,5,0,0"/>
+                            </StackPanel>
+                            
+                            <!-- Connection Timeout -->
+                            <TextBlock Grid.Row="4" Grid.Column="0" Text="Connection Timeout:" VerticalAlignment="Center"/>
+                            <StackPanel Grid.Row="4" Grid.Column="1">
+                                <ui:NumberBox Value="{Binding SshConnectionTimeout, Mode=TwoWay}" 
+                                              Minimum="10" 
+                                              Maximum="300" 
+                                              Width="100"
+                                              HorizontalAlignment="Left"/>
+                                <TextBlock Text="Seconds to wait when establishing SSH connection (default: 30)" 
+                                           FontSize="11" 
+                                           Foreground="Gray"
+                                           Margin="0,5,0,0"/>
+                            </StackPanel>
+                            
+                            <!-- Transfer Timeout -->
+                            <TextBlock Grid.Row="6" Grid.Column="0" Text="Transfer Timeout:" VerticalAlignment="Center"/>
+                            <StackPanel Grid.Row="6" Grid.Column="1">
+                                <ui:NumberBox Value="{Binding SshTransferTimeout, Mode=TwoWay}" 
+                                              Minimum="60" 
+                                              Maximum="3600" 
+                                              Width="100"
+                                              HorizontalAlignment="Left"/>
+                                <TextBlock Text="Seconds to wait for file transfer operations (default: 300)" 
+                                           FontSize="11" 
+                                           Foreground="Gray"
+                                           Margin="0,5,0,0"/>
+                            </StackPanel>
+                            
+                            <!-- Strict Host Key Checking -->
+                            <TextBlock Grid.Row="8" Grid.Column="0" Text="Strict Host Key Checking:" VerticalAlignment="Center"/>
+                            <StackPanel Grid.Row="8" Grid.Column="1">
+                                <CheckBox IsChecked="{Binding SshStrictHostKeyChecking}"
+                                          Content="Verify server identity (recommended)"/>
+                                <TextBlock Text="Ensures you're connecting to the expected server (disable only for testing)" 
+                                           FontSize="11" 
+                                           Foreground="Gray"
+                                           Margin="20,5,0,0"/>
+                            </StackPanel>
+                        </Grid>
+                    </Border>
+                </Expander>
 
                 <!-- Connection Test -->
                 <TextBlock Text="Connection Test" Style="{StaticResource SubtitleTextBlockStyle}" Margin="0,10,0,10"/>
