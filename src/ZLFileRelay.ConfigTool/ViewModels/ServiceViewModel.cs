@@ -243,32 +243,71 @@ public partial class ServiceViewModel : ObservableObject
     [RelayCommand]
     private async Task ApplyAccountChangeAsync(PasswordBox passwordBox)
     {
-        if (!IsRunningAsAdmin)
-        {
-            AddLogMessage("ERROR: Administrator rights required to change service account");
-            return;
-        }
-
         try
         {
             var password = passwordBox.Password;
+            
+            if (string.IsNullOrWhiteSpace(ServiceAccountUsername))
+            {
+                AddLogMessage("❌ Please enter a username for the service account");
+                return;
+            }
+            
+            if (string.IsNullOrWhiteSpace(password))
+            {
+                AddLogMessage("❌ Please enter a password for the service account");
+                return;
+            }
+            
             var fullUsername = string.IsNullOrWhiteSpace(Domain) || Domain == "."
                 ? $@".\{ServiceAccountUsername}"
                 : $@"{Domain}\{ServiceAccountUsername}";
 
             AddLogMessage($"Setting service account to: {fullUsername}");
             
-            var success = await _serviceAccountManager.SetServiceAccountAsync(fullUsername, password);
+            // Get admin credentials if not running as admin
+            string? adminUsername = null;
+            string? adminPassword = null;
+            
+            if (!IsRunningAsAdmin)
+            {
+                AddLogMessage("⚠️ Administrator credentials required to change service account");
+                
+                var adminDialog = new Views.ServiceAccountCredentialDialog("Administrator Account Required", null)
+                {
+                    Title = "Administrator Credentials Required",
+                    Owner = System.Windows.Application.Current.MainWindow
+                };
+                
+                if (adminDialog.ShowDialog() == true)
+                {
+                    adminUsername = adminDialog.Username;
+                    adminPassword = adminDialog.Password;
+                    AddLogMessage("Using provided admin credentials");
+                }
+                else
+                {
+                    AddLogMessage("❌ Admin credentials required but not provided");
+                    return;
+                }
+            }
+            
+            var success = await _serviceAccountManager.SetServiceAccountAsync(
+                fullUsername, 
+                password, 
+                adminUsername, 
+                adminPassword);
 
             if (success)
             {
                 AddLogMessage("✅ Service account updated successfully");
                 passwordBox.Clear();
+                ServiceAccountUsername = "";
                 await RefreshStatusAsync();
             }
             else
             {
-                AddLogMessage("❌ Failed to set service account");
+                AddLogMessage("❌ Failed to set service account. Check the error messages above for details.");
             }
         }
         catch (Exception ex)
@@ -280,21 +319,51 @@ public partial class ServiceViewModel : ObservableObject
     [RelayCommand]
     private async Task GrantLogonRightsAsync()
     {
-        if (!IsRunningAsAdmin)
-        {
-            AddLogMessage("ERROR: Administrator rights required to grant logon rights");
-            return;
-        }
-
         try
         {
+            if (string.IsNullOrWhiteSpace(ServiceAccountUsername))
+            {
+                AddLogMessage("❌ Please enter a username for the service account first");
+                return;
+            }
+            
             var fullUsername = string.IsNullOrWhiteSpace(Domain) || Domain == "."
                 ? $@".\{ServiceAccountUsername}"
                 : $@"{Domain}\{ServiceAccountUsername}";
 
             AddLogMessage($"Granting 'Logon as Service' right to: {fullUsername}");
             
-            var success = await _serviceAccountManager.GrantLogonAsServiceRightAsync(fullUsername);
+            // Get admin credentials if not running as admin
+            string? adminUsername = null;
+            string? adminPassword = null;
+            
+            if (!IsRunningAsAdmin)
+            {
+                AddLogMessage("⚠️ Administrator credentials required to grant logon rights");
+                
+                var adminDialog = new Views.ServiceAccountCredentialDialog("Administrator Account Required", null)
+                {
+                    Title = "Administrator Credentials Required",
+                    Owner = System.Windows.Application.Current.MainWindow
+                };
+                
+                if (adminDialog.ShowDialog() == true)
+                {
+                    adminUsername = adminDialog.Username;
+                    adminPassword = adminDialog.Password;
+                    AddLogMessage("Using provided admin credentials");
+                }
+                else
+                {
+                    AddLogMessage("❌ Admin credentials required but not provided");
+                    return;
+                }
+            }
+            
+            var success = await _serviceAccountManager.GrantLogonAsServiceRightAsync(
+                fullUsername, 
+                adminUsername, 
+                adminPassword);
 
             if (success)
             {
@@ -303,7 +372,7 @@ public partial class ServiceViewModel : ObservableObject
             }
             else
             {
-                AddLogMessage("❌ Failed to grant logon as service right");
+                AddLogMessage("❌ Failed to grant logon as service right. Check the error messages above for details.");
             }
         }
         catch (Exception ex)

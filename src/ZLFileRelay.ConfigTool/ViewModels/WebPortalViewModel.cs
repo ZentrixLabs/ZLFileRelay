@@ -2,6 +2,7 @@ using System.Windows.Controls;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
 using System.IO;
+using System.Linq;
 using ZLFileRelay.ConfigTool.Services;
 using ZLFileRelay.Core.Models;
 
@@ -23,11 +24,11 @@ public partial class WebPortalViewModel : ObservableObject
     [ObservableProperty] private string _allowedGroups = string.Empty;
 
 
-    // Branding Settings (editable)
-    [ObservableProperty] private string _companyName = "Your Company";
-    [ObservableProperty] private string _siteName = "Main Site";
-    [ObservableProperty] private string _supportEmail = "support@example.com";
-    [ObservableProperty] private string _logoPath = "";
+        // Branding Settings (editable)
+        [ObservableProperty] private string _companyName = "Your Company";
+        [ObservableProperty] private string _siteName = "Main Site";
+        [ObservableProperty] private string _supportEmail = "support@example.com";
+        [ObservableProperty] private string _logoPath = "Path to your company logo (relative to web portal root, e.g., 'Assets/logo.png') - Optional";
 
     // Status
     [ObservableProperty] private string _statusMessage = string.Empty;
@@ -55,7 +56,9 @@ public partial class WebPortalViewModel : ObservableObject
         CompanyName = config.Branding.CompanyName;
         SiteName = config.Branding.SiteName;
         SupportEmail = config.Branding.SupportEmail;
-        LogoPath = config.Branding.LogoPath ?? string.Empty;
+        LogoPath = string.IsNullOrWhiteSpace(config.Branding.LogoPath) 
+            ? "Path to your company logo (relative to web portal root, e.g., 'Assets/logo.png') - Optional"
+            : config.Branding.LogoPath;
         
         ValidateConfiguration();
     }
@@ -74,6 +77,33 @@ public partial class WebPortalViewModel : ObservableObject
         {
             CertificatePath = dialog.FileName;
             ValidateConfiguration();
+        }
+    }
+
+    [RelayCommand]
+    private void BrowseGroups()
+    {
+        var dialog = new Views.ActiveDirectoryGroupBrowser
+        {
+            Owner = System.Windows.Application.Current.MainWindow
+        };
+
+        if (dialog.ShowDialog() == true && !string.IsNullOrWhiteSpace(dialog.SelectedGroupName))
+        {
+            // Add the selected group to the list
+            if (string.IsNullOrWhiteSpace(AllowedGroups))
+            {
+                AllowedGroups = dialog.SelectedGroupName;
+            }
+            else
+            {
+                // Check if already in the list
+                var groups = AllowedGroups.Split('\n').Select(g => g.Trim()).ToList();
+                if (!groups.Contains(dialog.SelectedGroupName))
+                {
+                    AllowedGroups += "\n" + dialog.SelectedGroupName;
+                }
+            }
         }
     }
 
@@ -187,10 +217,12 @@ public partial class WebPortalViewModel : ObservableObject
             config.Branding.CompanyName = CompanyName;
             config.Branding.SiteName = SiteName;
             config.Branding.SupportEmail = SupportEmail;
-            config.Branding.LogoPath = string.IsNullOrWhiteSpace(LogoPath) ? null : LogoPath;
+            // Only save logo path if it's not the placeholder text
+            var logoPlaceholder = "Path to your company logo (relative to web portal root, e.g., 'Assets/logo.png') - Optional";
+            config.Branding.LogoPath = string.IsNullOrWhiteSpace(LogoPath) || LogoPath == logoPlaceholder ? null : LogoPath;
 
-            // Check if logo file exists if path is provided
-            if (!string.IsNullOrWhiteSpace(LogoPath) && !File.Exists(LogoPath))
+            // Check if logo file exists if path is provided (and not placeholder)
+            if (!string.IsNullOrWhiteSpace(LogoPath) && LogoPath != logoPlaceholder && !File.Exists(LogoPath))
             {
                 StatusMessage = $"❌ Logo file not found: {LogoPath}";
                 return;

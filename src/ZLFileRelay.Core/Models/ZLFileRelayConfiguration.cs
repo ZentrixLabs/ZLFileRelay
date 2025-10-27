@@ -94,6 +94,7 @@ public class WebPortalSettings
     public bool Enabled { get; set; } = true;
     public bool RequireAuthentication { get; set; } = true;
     public string AuthenticationType { get; set; } = "Windows";
+    public string? AuthenticationDomain { get; set; }
     public List<string> AllowedGroups { get; set; } = new();
     public List<string> AllowedUsers { get; set; } = new();
     public long MaxFileSizeBytes { get; set; } = 4294967295; // ~4GB

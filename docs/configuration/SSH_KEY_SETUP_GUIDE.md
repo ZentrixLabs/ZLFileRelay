@@ -3,6 +3,33 @@
 ## Overview
 This guide clarifies SSH key configuration for the ZL File Relay service, specifically addressing how to set up SSH keys when the Windows Service runs under a service account.
 
+> **New Feature**: The Config Tool now supports browsing and testing SSH keys in the service account's security context. When prompted for service account credentials, the tool can access keys in the service account's profile folder (e.g., `C:\Users\svc_filetransfer\.ssh\`).
+
+## Config Tool Service Account Context
+
+### Why Service Account Context is Needed
+
+When the Config Tool runs as Administrator, it cannot access files that only the service account has permission to read. This is especially true for SSH keys stored in the service account's profile folder or files with restricted NTFS permissions.
+
+### How It Works
+
+1. **Browse for SSH Keys**: When browsing for SSH keys, the tool may prompt for service account credentials to access folders like `C:\Users\svc_filetransfer\.ssh\`. The file browser runs in the service account's security context, allowing access to protected files.
+
+2. **Test SSH Connection**: When testing the SSH connection, the tool uses impersonation to read the SSH private key with the same permissions the service account would have. This ensures the test accurately reflects whether the service can access the key.
+
+### When You'll Be Prompted
+
+You will be prompted for service account credentials when:
+- The SSH key is in the service account's profile folder
+- The SSH key has NTFS permissions that only the service account can read
+- You're testing the SSH connection and the key requires service account access
+
+### Credential Caching
+
+- Credentials are cached in memory for the current session
+- You can check "Remember for this session" to avoid repeated prompts
+- Credentials are never saved to disk and are cleared when the Config Tool closes
+
 ## Understanding SSH Key Authentication
 
 ### Key Pair Concept

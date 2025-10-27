@@ -291,8 +291,47 @@ public class ConfigurationService
         if (string.IsNullOrWhiteSpace(configuration.Branding.SiteName))
             errors.Add("Site name is required");
 
-        if (!string.IsNullOrWhiteSpace(configuration.Branding.LogoPath) && !File.Exists(configuration.Branding.LogoPath))
-            errors.Add($"Logo file not found: {configuration.Branding.LogoPath}");
+        // Logo is optional - don't validate file existence to avoid blocking saves from other tabs
+
+        return Task.FromResult(new ValidationResult
+        {
+            IsValid = errors.Count == 0,
+            Errors = errors
+        });
+    }
+
+    /// <summary>
+    /// Validates only basic configuration integrity without requiring values from other tabs.
+    /// Used for tab-specific saves to allow partial configuration.
+    /// </summary>
+    public Task<ValidationResult> ValidateBasicAsync(ZLFileRelayConfiguration configuration)
+    {
+        var errors = new List<string>();
+
+        // Only validate basic integrity, not completeness
+        // Allow partial configuration to be saved
+        
+        // Validate file paths that exist (if specified)
+        if (!string.IsNullOrWhiteSpace(configuration.Transfer.Ssh.PrivateKeyPath) && 
+            !File.Exists(configuration.Transfer.Ssh.PrivateKeyPath))
+            errors.Add($"SSH private key file not found: {configuration.Transfer.Ssh.PrivateKeyPath}");
+
+        // Note: Certificate and Logo validation removed from basic validation
+        // They belong to Web Portal tab and should only validate on that tab
+
+        // Validate port ranges if ports are specified
+        if (configuration.Transfer.Ssh.Port < 0 || configuration.Transfer.Ssh.Port > 65535)
+            errors.Add("SSH port must be between 0 and 65535");
+
+        if (configuration.WebPortal.Kestrel.HttpPort < 0 || configuration.WebPortal.Kestrel.HttpPort > 65535)
+            errors.Add("Web Portal HTTP port must be between 0 and 65535");
+
+        if (configuration.WebPortal.Kestrel.HttpsPort < 0 || configuration.WebPortal.Kestrel.HttpsPort > 65535)
+            errors.Add("Web Portal HTTPS port must be between 0 and 65535");
+
+        if (configuration.WebPortal.Kestrel.HttpPort > 0 && configuration.WebPortal.Kestrel.HttpsPort > 0 &&
+            configuration.WebPortal.Kestrel.HttpPort == configuration.WebPortal.Kestrel.HttpsPort)
+            errors.Add("Web Portal HTTP and HTTPS ports must be different");
 
         return Task.FromResult(new ValidationResult
         {

@@ -61,6 +61,9 @@ UninstallFilesDir={app}\Uninstall
 ; Misc
 CloseApplications=force
 RestartApplications=no
+; Allow upgrades - when using same AppId, Inno Setup will handle upgrades automatically
+DisableDirPage=no
+DisableReadyPage=no
 
 [Languages]
 Name: "english"; MessagesFile: "compiler:Default.isl"
@@ -81,7 +84,8 @@ Name: "configtool"; Description: "Configuration Tool"; Types: full configtoolonl
 Name: "desktopicon"; Description: "Create desktop shortcut for Configuration Tool"; GroupDescription: "Additional icons:"
 Name: "installservice"; Description: "Install and start File Transfer Service"; GroupDescription: "Services:"; Components: service; Flags: checkedonce
 Name: "installwebservice"; Description: "Install and start Web Portal Service"; GroupDescription: "Services:"; Components: webportal; Flags: checkedonce
-Name: "configurefirewall"; Description: "Configure Windows Firewall for Web Portal (port 8080)"; GroupDescription: "Network:"; Components: webportal; Flags: checkedonce
+Name: "configurefirewall"; Description: "Configure Windows Firewall for Web Portal (ports 8080 & 8443)"; GroupDescription: "Network:"; Components: webportal; Flags: checkedonce
+Name: "resetconfig"; Description: "Reset configuration files to defaults during upgrade (WARNING: Overwrites existing config!)"; Check: IsUpgrade(); GroupDescription: "Upgrade Options:"; Flags: unchecked
 
 [Files]
 ; ═══════════════════════════════════════════════════════════════
@@ -99,7 +103,8 @@ Source: "..\publish\ConfigTool\ZLFileRelay.ConfigTool.exe"; DestDir: "{app}\Conf
 ; ConfigTool needs appsettings.json for fallback defaults
 Source: "..\appsettings.json"; DestDir: "{app}\ConfigTool"; Components: configtool; Flags: ignoreversion onlyifdoesntexist
 
-; Configuration Files
+; Configuration Files (respect existing during upgrades unless resetconfig task is selected)
+Source: "..\appsettings.json"; DestDir: "{commonappdata}\ZLFileRelay"; Flags: uninsneveruninstall; Tasks: resetconfig
 Source: "..\appsettings.json"; DestDir: "{commonappdata}\ZLFileRelay"; Flags: onlyifdoesntexist uninsneveruninstall
 
 ; Documentation
@@ -139,20 +144,22 @@ Root: HKLM; Subkey: "Software\ZLFileRelay"; ValueType: string; ValueName: "Confi
 
 [Run]
 ; Install File Transfer Windows Service
+; Note: Existing services are stopped in InitializeSetup() for upgrade scenarios
 Filename: "sc.exe"; Parameters: "create ZLFileRelay binPath=""{app}\Service\ZLFileRelay.Service.exe"" start=auto DisplayName=""ZL File Relay - File Transfer"""; StatusMsg: "Installing File Transfer Service..."; Flags: runhidden; Components: service; Tasks: installservice
 Filename: "sc.exe"; Parameters: "description ZLFileRelay ""Automated file transfer from DMZ to SCADA networks"""; Flags: runhidden; Components: service; Tasks: installservice
 Filename: "sc.exe"; Parameters: "start ZLFileRelay"; StatusMsg: "Starting File Transfer Service..."; Flags: runhidden; Components: service; Tasks: installservice
 
 ; Install Web Portal Windows Service (Kestrel - NO IIS NEEDED!)
+; Note: Existing services are stopped in InitializeSetup() for upgrade scenarios
 Filename: "sc.exe"; Parameters: "create ZLFileRelay.WebPortal binPath=""{app}\WebPortal\ZLFileRelay.WebPortal.exe"" start=auto DisplayName=""ZL File Relay - Web Portal"""; StatusMsg: "Installing Web Portal Service..."; Flags: runhidden; Components: webportal; Tasks: installwebservice
 Filename: "sc.exe"; Parameters: "description ZLFileRelay.WebPortal ""Web-based file upload interface (Kestrel on port 8080)"""; Flags: runhidden; Components: webportal; Tasks: installwebservice
 Filename: "sc.exe"; Parameters: "start ZLFileRelay.WebPortal"; StatusMsg: "Starting Web Portal Service..."; Flags: runhidden; Components: webportal; Tasks: installwebservice
 
 ; Configure Windows Firewall for Web Portal
-Filename: "netsh.exe"; Parameters: "advfirewall firewall add rule name=""ZL File Relay Web Portal"" dir=in action=allow protocol=TCP localport=8080"; StatusMsg: "Configuring firewall..."; Flags: runhidden; Components: webportal; Tasks: configurefirewall
+Filename: "netsh.exe"; Parameters: "advfirewall firewall add rule name=""ZL File Relay Web Portal (HTTP)"" dir=in action=allow protocol=TCP localport=8080"; StatusMsg: "Configuring firewall..."; Flags: runhidden; Components: webportal; Tasks: configurefirewall
+Filename: "netsh.exe"; Parameters: "advfirewall firewall add rule name=""ZL File Relay Web Portal (HTTPS)"" dir=in action=allow protocol=TCP localport=8443"; StatusMsg: "Configuring firewall..."; Flags: runhidden; Components: webportal; Tasks: configurefirewall
 
-; Launch Config Tool
-Filename: "{app}\ConfigTool\{#MyAppExeName}"; Description: "Launch Configuration Tool"; Flags: postinstall skipifsilent nowait
+; Config Tool launch removed - user can launch manually from shortcuts
 
 [UninstallRun]
 ; Stop and remove Windows Services
@@ -161,8 +168,9 @@ Filename: "sc.exe"; Parameters: "delete ZLFileRelay"; Flags: runhidden
 Filename: "sc.exe"; Parameters: "stop ZLFileRelay.WebPortal"; Flags: runhidden
 Filename: "sc.exe"; Parameters: "delete ZLFileRelay.WebPortal"; Flags: runhidden
 
-; Remove firewall rule
-Filename: "netsh.exe"; Parameters: "advfirewall firewall delete rule name=""ZL File Relay Web Portal"""; Flags: runhidden
+; Remove firewall rules
+Filename: "netsh.exe"; Parameters: "advfirewall firewall delete rule name=""ZL File Relay Web Portal (HTTP)"""; Flags: runhidden
+Filename: "netsh.exe"; Parameters: "advfirewall firewall delete rule name=""ZL File Relay Web Portal (HTTPS)"""; Flags: runhidden
 
 [UninstallDelete]
 ; Clean up log files (optional - user can choose to keep)
@@ -172,11 +180,40 @@ Type: filesandordirs; Name: "C:\FileRelay\logs"
 var
   RequireIIS: Boolean;
 
+function StopService(const ServiceName: String): Boolean;
+var
+  ResultCode: Integer;
+begin
+  Result := True;
+  // Try to stop the service if it's running
+  if Exec('sc.exe', 'stop ' + ServiceName, '', SW_HIDE, ewWaitUntilTerminated, ResultCode) then
+  begin
+    // Service was stopped successfully (or wasn't running)
+    Log('Service ' + ServiceName + ' stopped or not running');
+  end
+  else
+  begin
+    Log('Could not stop service ' + ServiceName + ' (may not exist)');
+  end;
+  // Wait a moment for the service to fully stop
+  Sleep(1000);
+end;
+
+function IsUpgrade(): Boolean;
+begin
+  // Check if appsettings.json already exists (indicating an upgrade)
+  Result := FileExists(ExpandConstant('{commonappdata}\ZLFileRelay\appsettings.json'));
+end;
+
 function InitializeSetup(): Boolean;
 var
   WindowsVersion: TWindowsVersion;
 begin
   Result := True;
+  
+  // Stop existing services if they exist (for upgrade scenarios)
+  StopService('ZLFileRelay');
+  StopService('ZLFileRelay.WebPortal');
   
   // Check for 64-bit Windows
   if not IsWin64 then
@@ -228,8 +265,10 @@ begin
            '✅ Directories created' + #13#10 +
            '✅ Firewall configured' + #13#10 + #13#10 +
            'Access Web Portal at:' + #13#10 +
-           '  http://localhost:8080' + #13#10 +
-           '  http://<server-name>:8080' + #13#10 + #13#10 +
+           '  http://localhost:8080 (HTTP)' + #13#10 +
+           '  https://localhost:8443 (HTTPS)' + #13#10 +
+           '  http://<server-name>:8080 (HTTP)' + #13#10 +
+           '  https://<server-name>:8443 (HTTPS)' + #13#10 + #13#10 +
            'Next steps:' + #13#10 +
            '1. Launch Configuration Tool' + #13#10 +
            '2. Configure SSH keys or SMB credentials' + #13#10 +

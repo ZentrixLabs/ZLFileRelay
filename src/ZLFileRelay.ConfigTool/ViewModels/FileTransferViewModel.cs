@@ -16,7 +16,14 @@ public partial class FileTransferViewModel : ObservableObject
     private readonly ConfigurationService _configurationService;
     private readonly SshKeyGenerator _sshKeyGenerator;
     private readonly ConnectionTester _connectionTester;
+    private readonly ServiceAccountImpersonator _impersonator;
+    private readonly ServiceAccountManager _serviceAccountManager;
     private ZLFileRelayConfiguration _config;
+    
+    // Cached service account credentials for session
+    private string? _cachedServiceAccountUsername;
+    private string? _cachedServiceAccountPassword;
+    private bool _promptedForCredentials;
 
     // Transfer Method
     [ObservableProperty] private bool _isSshMethod = true;
@@ -63,11 +70,15 @@ public partial class FileTransferViewModel : ObservableObject
     public FileTransferViewModel(
         ConfigurationService configurationService,
         SshKeyGenerator sshKeyGenerator,
-        ConnectionTester connectionTester)
+        ConnectionTester connectionTester,
+        ServiceAccountImpersonator impersonator,
+        ServiceAccountManager serviceAccountManager)
     {
         _configurationService = configurationService;
         _sshKeyGenerator = sshKeyGenerator;
         _connectionTester = connectionTester;
+        _impersonator = impersonator;
+        _serviceAccountManager = serviceAccountManager;
         _config = configurationService.CurrentConfiguration ?? configurationService.GetDefaultConfiguration();
 
         _ = LoadConfigurationAsync();
@@ -236,42 +247,186 @@ public partial class FileTransferViewModel : ObservableObject
 
     #region SSH Commands
 
-    [RelayCommand]
-    private void BrowseSshKey()
+    /// <summary>
+    /// Gets service account credentials, prompting the user if not cached.
+    /// </summary>
+    private async Task<(string? Username, string? Password)> GetServiceAccountCredentialsAsync()
     {
-        var dialog = new Microsoft.Win32.OpenFileDialog
+        // Return cached credentials if available
+        if (_promptedForCredentials && 
+            !string.IsNullOrWhiteSpace(_cachedServiceAccountUsername) && 
+            !string.IsNullOrWhiteSpace(_cachedServiceAccountPassword))
         {
-            Title = "Select SSH Private Key (NOT the .pub file)",
-            Filter = "SSH Private Keys (*.key;*.pem;id_*;*_key)|*.key;*.pem;id_*;*_key|" +
-                    "Key Files (*.key)|*.key|" +
-                    "PEM Files (*.pem)|*.pem|" +
-                    "All Files (*.*)|*.*",
-            DefaultExt = "",
-            FilterIndex = 1,
-            CheckFileExists = true
-        };
+            return (_cachedServiceAccountUsername, _cachedServiceAccountPassword);
+        }
 
+        // Get current service account
+        var currentServiceAccount = await _serviceAccountManager.GetCurrentServiceAccountAsync();
+        if (string.IsNullOrWhiteSpace(currentServiceAccount) || 
+            currentServiceAccount.Contains("LocalSystem") ||
+            _impersonator.IsSystemAccount(currentServiceAccount))
+        {
+            // System accounts don't support impersonation
+            return (null, null);
+        }
+
+        // Show credential dialog
+        var dialog = new Views.ServiceAccountCredentialDialog(currentServiceAccount, currentServiceAccount);
+        dialog.Owner = System.Windows.Application.Current.MainWindow;
+        
         if (dialog.ShowDialog() == true)
         {
-            SshKeyPath = dialog.FileName;
+            _cachedServiceAccountUsername = dialog.Username;
+            _cachedServiceAccountPassword = dialog.Password;
+            _promptedForCredentials = true;
             
+            // Only cache if remember checkbox was checked
+            if (!dialog.RememberForSession)
+            {
+                _promptedForCredentials = false;
+            }
+            
+            return (_cachedServiceAccountUsername, _cachedServiceAccountPassword);
+        }
+
+        return (null, null);
+    }
+
+    [RelayCommand]
+    private async Task BrowseSshKey()
+    {
+        try
+        {
+            // Open file browser as admin (can browse anywhere)
+            var dialog = new Microsoft.Win32.OpenFileDialog
+            {
+                Title = "Select SSH Private Key (NOT the .pub file)",
+                Filter = "SSH Private Keys (*.key;*.pem;id_*;*_key)|*.key;*.pem;id_*;*_key|" +
+                        "Key Files (*.key)|*.key|" +
+                        "PEM Files (*.pem)|*.pem|" +
+                        "All Files (*.*)|*.*",
+                DefaultExt = "",
+                FilterIndex = 1,
+                CheckFileExists = true
+            };
+
+            if (dialog.ShowDialog() != true)
+            {
+                return; // User cancelled
+            }
+
+            var selectedFile = dialog.FileName;
+            if (string.IsNullOrWhiteSpace(selectedFile))
+            {
+                return;
+            }
+                
             // Warn if they selected a .pub file by mistake
-            if (dialog.FileName.EndsWith(".pub", StringComparison.OrdinalIgnoreCase))
+            if (selectedFile.EndsWith(".pub", StringComparison.OrdinalIgnoreCase))
             {
                 SshTestResult = "⚠️ Warning: You selected a public key (.pub) file. " +
                               "Please select the PRIVATE key file (without .pub extension) instead.";
+                return;
             }
             // Warn if they selected a .crt or .cer file (certificate, not private key)
-            else if (dialog.FileName.EndsWith(".crt", StringComparison.OrdinalIgnoreCase) ||
-                     dialog.FileName.EndsWith(".cer", StringComparison.OrdinalIgnoreCase))
+            else if (selectedFile.EndsWith(".crt", StringComparison.OrdinalIgnoreCase) ||
+                     selectedFile.EndsWith(".cer", StringComparison.OrdinalIgnoreCase))
             {
                 SshTestResult = "⚠️ Warning: You selected a certificate file (.crt/.cer). " +
                               "Please select the PRIVATE key file (usually .key or .pem) instead.";
+                return;
             }
-            else
+
+            // Get target location for service account
+            var serviceAccountConfigDir = Path.Combine(
+                _config.Paths.ConfigDirectory ?? @"C:\ProgramData\ZLFileRelay",
+                "ssh_keys");
+
+            Directory.CreateDirectory(serviceAccountConfigDir);
+
+            // Copy the file to the service account's config directory
+            var fileName = Path.GetFileName(selectedFile);
+            var targetPath = Path.Combine(serviceAccountConfigDir, fileName);
+
+            try
             {
-                SshTestResult = $"✓ Private key path set to: {dialog.FileName}";
+                // If file already exists, use incremental naming (key-1, key-2, etc) to avoid permission issues
+                if (File.Exists(targetPath))
+                {
+                    var fileNameWithoutExt = Path.GetFileNameWithoutExtension(fileName);
+                    var extension = Path.GetExtension(fileName);
+                    var counter = 1;
+                    
+                    do
+                    {
+                        fileName = $"{fileNameWithoutExt}-{counter}{extension}";
+                        targetPath = Path.Combine(serviceAccountConfigDir, fileName);
+                        counter++;
+                    } while (File.Exists(targetPath));
+                    
+                    SshTestResult = $"ℹ️ Existing key file found, using incremental name: {fileName}";
+                }
+
+                // Copy the file to the target location
+                File.Copy(selectedFile, targetPath);
+
+                // Set permissions: Service account read, admin full control
+                var fileInfo = new FileInfo(targetPath);
+                var fileSecurity = fileInfo.GetAccessControl();
+
+                // Add service account with read access
+                var currentServiceAccount = await _serviceAccountManager.GetCurrentServiceAccountAsync();
+                if (!string.IsNullOrWhiteSpace(currentServiceAccount) && 
+                    !_impersonator.IsSystemAccount(currentServiceAccount))
+                {
+                    var serviceAccountIdentity = currentServiceAccount.Replace(".\\", "");
+                    if (currentServiceAccount.Contains("\\"))
+                    {
+                        // Domain account
+                        var account = new System.Security.Principal.NTAccount(currentServiceAccount);
+                        var sid = (System.Security.Principal.SecurityIdentifier)account.Translate(typeof(System.Security.Principal.SecurityIdentifier));
+                        fileSecurity.SetAccessRule(new System.Security.AccessControl.FileSystemAccessRule(
+                            sid,
+                            System.Security.AccessControl.FileSystemRights.Read,
+                            System.Security.AccessControl.AccessControlType.Allow));
+                    }
+                    else
+                    {
+                        // Local account
+                        fileSecurity.SetAccessRule(new System.Security.AccessControl.FileSystemAccessRule(
+                            serviceAccountIdentity,
+                            System.Security.AccessControl.FileSystemRights.Read,
+                            System.Security.AccessControl.AccessControlType.Allow));
+                    }
+                }
+
+                // Grant admin full control
+                var adminAccount = System.Security.Principal.WindowsIdentity.GetCurrent().Name;
+                fileSecurity.SetAccessRule(new System.Security.AccessControl.FileSystemAccessRule(
+                    adminAccount,
+                    System.Security.AccessControl.FileSystemRights.FullControl,
+                    System.Security.AccessControl.AccessControlType.Allow));
+
+                // Remove inherited permissions and keep only explicit ones
+                fileSecurity.SetAccessRuleProtection(true, false);
+
+                fileInfo.SetAccessControl(fileSecurity);
+
+                // Set the path to the copied file
+                SshKeyPath = targetPath;
+                
+                SshTestResult = $"✅ SSH key copied to service account location:\n{targetPath}\n\n" +
+                              $"Permissions configured for service account access.";
             }
+            catch (Exception ex)
+            {
+                SshTestResult = $"❌ Error copying SSH key: {ex.Message}\n\n" +
+                              $"Make sure you have permissions to copy the file and the service account exists.";
+            }
+        }
+        catch (Exception ex)
+        {
+            SshTestResult = $"❌ Error browsing for SSH key: {ex.Message}";
         }
     }
 
@@ -369,7 +524,10 @@ public partial class FileTransferViewModel : ObservableObject
             _config.Transfer.Ssh.PrivateKeyPath = SshKeyPath;
             _config.Transfer.Ssh.DestinationPath = SshDestinationPath;
 
-            var result = await _connectionTester.TestSshAsync(_config.Transfer.Ssh);
+            // Try to get service account credentials for impersonated testing
+            var (saUsername, saPassword) = await GetServiceAccountCredentialsAsync();
+
+            var result = await _connectionTester.TestSshAsync(_config.Transfer.Ssh, saUsername, saPassword);
 
             if (result.Success)
             {
@@ -437,8 +595,8 @@ public partial class FileTransferViewModel : ObservableObject
         {
             UpdateConfiguration();
 
-            // Validate before saving
-            var validationResult = await _configurationService.ValidateAsync(_config);
+            // Validate only basic integrity (allow partial saves from this tab)
+            var validationResult = await _configurationService.ValidateBasicAsync(_config);
             
             if (!validationResult.IsValid)
             {

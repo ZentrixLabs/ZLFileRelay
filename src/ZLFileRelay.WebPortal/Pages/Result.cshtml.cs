@@ -1,8 +1,10 @@
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc.RazorPages;
 using ZLFileRelay.Core.Models;
 
 namespace ZLFileRelay.WebPortal.Pages
 {
+    [Authorize] // Require authentication for results page
     public class ResultModel : PageModel
     {
         public List<UploadResult> Results { get; set; } = new();

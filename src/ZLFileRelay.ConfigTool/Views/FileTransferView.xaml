@@ -194,6 +194,31 @@
                              ToolTip="Full path on the remote server where files will be transferred"/>
                 </Grid>
 
+                <!-- Remote Server Type -->
+                <Grid Margin="0,10,0,0">
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="150"/>
+                        <ColumnDefinition Width="*"/>
+                    </Grid.ColumnDefinitions>
+                    
+                    <TextBlock Grid.Column="0" Text="Remote Server Type:" VerticalAlignment="Center" FontWeight="SemiBold"/>
+                    <StackPanel Grid.Column="1">
+                        <StackPanel Orientation="Horizontal" Margin="0,0,0,5">
+                            <RadioButton Content="Windows" 
+                                         IsChecked="{Binding IsRemoteServerWindows}" 
+                                         GroupName="ServerType"
+                                         Margin="0,0,20,0"/>
+                            <RadioButton Content="Linux" 
+                                         IsChecked="{Binding IsRemoteServerLinux}" 
+                                         GroupName="ServerType"/>
+                        </StackPanel>
+                        <TextBlock Text="Affects path format: Windows uses backslashes (\), Linux uses forward slashes (/)" 
+                                   FontSize="11" 
+                                   Foreground="Gray"
+                                   TextWrapping="Wrap"/>
+                    </StackPanel>
+                </Grid>
+
                 <!-- SSH Key Management -->
                 <TextBlock Text="SSH Key Authentication" Style="{StaticResource SubtitleTextBlockStyle}" Margin="0,10,0,10"/>
                 
@@ -293,32 +318,11 @@
                                 <RowDefinition Height="Auto"/>
                                 <RowDefinition Height="10"/>
                                 <RowDefinition Height="Auto"/>
-                                <RowDefinition Height="10"/>
-                                <RowDefinition Height="Auto"/>
                             </Grid.RowDefinitions>
                             
-                            <!-- Remote Server Type -->
-                            <TextBlock Grid.Row="0" Grid.Column="0" Text="Remote Server Type:" VerticalAlignment="Center" FontWeight="SemiBold"/>
-                            <StackPanel Grid.Row="0" Grid.Column="1" Orientation="Vertical">
-                                <StackPanel Orientation="Horizontal">
-                                    <RadioButton Content="Windows" 
-                                                 IsChecked="{Binding IsRemoteServerWindows}" 
-                                                 GroupName="ServerType"
-                                                 Margin="0,0,20,0"/>
-                                    <RadioButton Content="Linux" 
-                                                 IsChecked="{Binding IsRemoteServerLinux}" 
-                                                 GroupName="ServerType"/>
-                                </StackPanel>
-                                <TextBlock Text="Affects path format: Windows uses backslashes (\), Linux uses forward slashes (/)" 
-                                           FontSize="11" 
-                                           Foreground="Gray"
-                                           Margin="0,5,0,0"
-                                           TextWrapping="Wrap"/>
-                            </StackPanel>
-                            
                             <!-- SSH Compression -->
-                            <TextBlock Grid.Row="2" Grid.Column="0" Text="Enable Compression:" VerticalAlignment="Center"/>
-                            <StackPanel Grid.Row="2" Grid.Column="1">
+                            <TextBlock Grid.Row="0" Grid.Column="0" Text="Enable Compression:" VerticalAlignment="Center"/>
+                            <StackPanel Grid.Row="0" Grid.Column="1">
                                 <CheckBox IsChecked="{Binding SshCompression}"
                                           Content="Compress data during transfer"/>
                                 <TextBlock Text="Can improve transfer speed for large files on slow connections" 
@@ -328,8 +332,8 @@
                             </StackPanel>
                             
                             <!-- Connection Timeout -->
-                            <TextBlock Grid.Row="4" Grid.Column="0" Text="Connection Timeout:" VerticalAlignment="Center"/>
-                            <StackPanel Grid.Row="4" Grid.Column="1">
+                            <TextBlock Grid.Row="2" Grid.Column="0" Text="Connection Timeout:" VerticalAlignment="Center"/>
+                            <StackPanel Grid.Row="2" Grid.Column="1">
                                 <ui:NumberBox Value="{Binding SshConnectionTimeout, Mode=TwoWay}" 
                                               Minimum="10" 
                                               Maximum="300" 
@@ -342,8 +346,8 @@
                             </StackPanel>
                             
                             <!-- Transfer Timeout -->
-                            <TextBlock Grid.Row="6" Grid.Column="0" Text="Transfer Timeout:" VerticalAlignment="Center"/>
-                            <StackPanel Grid.Row="6" Grid.Column="1">
+                            <TextBlock Grid.Row="4" Grid.Column="0" Text="Transfer Timeout:" VerticalAlignment="Center"/>
+                            <StackPanel Grid.Row="4" Grid.Column="1">
                                 <ui:NumberBox Value="{Binding SshTransferTimeout, Mode=TwoWay}" 
                                               Minimum="60" 
                                               Maximum="3600" 
@@ -356,8 +360,8 @@
                             </StackPanel>
                             
                             <!-- Strict Host Key Checking -->
-                            <TextBlock Grid.Row="8" Grid.Column="0" Text="Strict Host Key Checking:" VerticalAlignment="Center"/>
-                            <StackPanel Grid.Row="8" Grid.Column="1">
+                            <TextBlock Grid.Row="6" Grid.Column="0" Text="Strict Host Key Checking:" VerticalAlignment="Center"/>
+                            <StackPanel Grid.Row="6" Grid.Column="1">
                                 <CheckBox IsChecked="{Binding SshStrictHostKeyChecking}"
                                           Content="Verify server identity (recommended)"/>
                                 <TextBlock Text="Ensures you're connecting to the expected server (disable only for testing)" 

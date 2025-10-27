@@ -1,3 +1,4 @@
+using System.Windows;
 using System.Windows.Controls;
 
 namespace ZLFileRelay.ConfigTool.Views
@@ -11,6 +12,26 @@ namespace ZLFileRelay.ConfigTool.Views
         {
             InitializeComponent();
         }
+
+        private void LogoPathTextBox_GotFocus(object sender, RoutedEventArgs e)
+        {
+            var textBox = LogoPathTextBox;
+            if (textBox.Text == "Path to your company logo (relative to web portal root, e.g., 'Assets/logo.png') - Optional")
+            {
+                textBox.Text = "";
+            }
+        }
+
+        private void LogoPathTextBox_LostFocus(object sender, RoutedEventArgs e)
+        {
+            var textBox = LogoPathTextBox;
+            if (string.IsNullOrWhiteSpace(textBox.Text))
+            {
+                if (textBox.Tag is string placeholder)
+                {
+                    textBox.Text = placeholder;
+                }
+            }
+        }
     }
 }
-

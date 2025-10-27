@@ -108,14 +108,29 @@
                            FontSize="12"
                            Foreground="Gray"/>
                 
-                <TextBlock Text="Allowed Groups (one per line, leave empty to allow all authenticated users):" 
-                           Margin="0,5,0,5"/>
-                <TextBox Text="{Binding AllowedGroups, UpdateSourceTrigger=PropertyChanged}" 
-                         AcceptsReturn="True"
-                         TextWrapping="Wrap"
-                         Height="80"
-                         VerticalScrollBarVisibility="Auto"
-                         ToolTip="Specify Windows groups that are allowed to upload files. Format: DOMAIN\GroupName or COMPUTERNAME\GroupName"/>
+                <Grid>
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="*"/>
+                        <ColumnDefinition Width="Auto"/>
+                    </Grid.ColumnDefinitions>
+                    <StackPanel Grid.Column="0" Margin="0,5,5,5">
+                        <TextBlock Text="Allowed Groups (one per line, leave empty to allow all authenticated users):" 
+                                   Margin="0,0,0,5"/>
+                        <TextBox Text="{Binding AllowedGroups, UpdateSourceTrigger=PropertyChanged}" 
+                                 AcceptsReturn="True"
+                                 TextWrapping="Wrap"
+                                 Height="80"
+                                 VerticalScrollBarVisibility="Auto"
+                                 ToolTip="Specify Windows groups that are allowed to upload files. Format: DOMAIN\GroupName or COMPUTERNAME\GroupName"/>
+                    </StackPanel>
+                    <Button Grid.Column="1" 
+                            Content="Browse Groups"
+                            Command="{Binding BrowseGroupsCommand}"
+                            Margin="0,25,0,0"
+                            VerticalAlignment="Top"
+                            Width="120"
+                            ToolTip="Browse and select Windows security groups from this computer"/>
+                </Grid>
             </ui:SimpleStackPanel>
 
 
@@ -161,10 +176,24 @@
                              ToolTip="Contact email for support inquiries"/>
                     
                     <TextBlock Grid.Row="3" Grid.Column="0" Text="Logo Path:" VerticalAlignment="Center"/>
-                    <TextBox Grid.Row="3" Grid.Column="1"
-                             Text="{Binding LogoPath, UpdateSourceTrigger=PropertyChanged}" 
-                             Margin="0,0,5,0"
-                             ToolTip="Path to your company logo (relative to web portal root, e.g., 'Assets/logo.png')"/>
+                    <Grid Grid.Row="3" Grid.Column="1" Margin="0,0,5,0">
+                        <TextBox x:Name="LogoPathTextBox"
+                                 Text="{Binding LogoPath, UpdateSourceTrigger=PropertyChanged}" 
+                                 Tag="Path to your company logo (relative to web portal root, e.g., 'Assets/logo.png') - Optional"
+                                 GotFocus="LogoPathTextBox_GotFocus"
+                                 LostFocus="LogoPathTextBox_LostFocus">
+                            <TextBox.Style>
+                                <Style TargetType="TextBox" BasedOn="{StaticResource {x:Type TextBox}}">
+                                    <Setter Property="Foreground" Value="Gray"/>
+                                    <Style.Triggers>
+                                        <Trigger Property="IsFocused" Value="True">
+                                            <Setter Property="Foreground" Value="Black"/>
+                                        </Trigger>
+                                    </Style.Triggers>
+                                </Style>
+                            </TextBox.Style>
+                        </TextBox>
+                    </Grid>
                     <Button Grid.Row="3" Grid.Column="2"
                             Command="{Binding BrowseLogoCommand}"
                             Content="Browse..."/>

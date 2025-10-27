@@ -1,0 +1,74 @@
+<Window x:Class="ZLFileRelay.ConfigTool.Views.ActiveDirectoryGroupBrowser"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+        xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+        mc:Ignorable="d"
+        Title="Browse Security Groups"
+        Height="450"
+        Width="550"
+        WindowStartupLocation="CenterOwner"
+        ShowInTaskbar="False"
+        ResizeMode="NoResize">
+    <Grid Margin="15">
+        <Grid.RowDefinitions>
+            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="*"/>
+            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="Auto"/>
+        </Grid.RowDefinitions>
+
+        <!-- Instructions -->
+        <TextBlock Grid.Row="0" 
+                   Text="Select a Windows Security Group to add to the allowed groups list" 
+                   Margin="0,0,0,10"
+                   TextWrapping="Wrap"/>
+
+        <!-- Search -->
+        <Grid Grid.Row="1" Margin="0,0,0,10">
+            <Grid.ColumnDefinitions>
+                <ColumnDefinition Width="Auto"/>
+                <ColumnDefinition Width="*"/>
+                <ColumnDefinition Width="Auto"/>
+            </Grid.ColumnDefinitions>
+            <TextBlock Grid.Column="0" Text="Search:" VerticalAlignment="Center" Margin="0,0,5,0"/>
+            <TextBox Grid.Column="1" x:Name="SearchTextBox" Margin="0,0,5,0" KeyDown="SearchTextBox_KeyDown"/>
+            <Button Grid.Column="2" 
+                    Content="Search" 
+                    Click="SearchButton_Click"
+                    MinWidth="80"/>
+        </Grid>
+
+        <!-- Groups List -->
+        <ListBox Grid.Row="2" 
+                 x:Name="GroupsListBox"
+                 SelectionChanged="GroupsListBox_SelectionChanged"
+                 Margin="0,0,0,10"/>
+
+        <!-- Selected Group -->
+        <TextBlock Grid.Row="3" 
+                   x:Name="SelectedGroupText"
+                   Text="No group selected"
+                   FontWeight="SemiBold"
+                   Foreground="Blue"
+                   Margin="0,0,0,10"/>
+
+        <!-- Buttons -->
+        <StackPanel Grid.Row="4" 
+                    Orientation="Horizontal" 
+                    HorizontalAlignment="Right">
+            <Button Content="Add Selected" 
+                    x:Name="AddButton"
+                    Click="AddButton_Click"
+                    Width="100"
+                    Margin="0,0,10,0"
+                    IsEnabled="False"
+                    IsDefault="True"/>
+            <Button Content="Cancel" 
+                    Click="CancelButton_Click"
+                    Width="80"
+                    IsCancel="True"/>
+        </StackPanel>
+    </Grid>
+</Window>

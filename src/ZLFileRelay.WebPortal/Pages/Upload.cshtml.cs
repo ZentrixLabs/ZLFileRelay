@@ -11,6 +11,7 @@ using ZLFileRelay.WebPortal.ViewModels;
 namespace ZLFileRelay.WebPortal.Pages
 {
     [SupportedOSPlatform("windows")]
+    [Authorize] // Require authentication for upload page
     public class UploadModel : PageModel
     {
         private readonly ILogger<UploadModel> _logger;

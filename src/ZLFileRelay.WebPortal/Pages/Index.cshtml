@@ -1,10 +1,67 @@
 ﻿@page
 @model IndexModel
 @{
-    ViewData["Title"] = "Home page";
+    ViewData["Title"] = $"{Model.SiteName} - Secure File Transfer";
 }
 
-<div class="text-center">
-    <h1 class="display-4">Welcome</h1>
-    <p>Learn about <a href="https://learn.microsoft.com/aspnet/core">building Web apps with ASP.NET Core</a>.</p>
+<div class="container mt-5">
+    <div class="jumbotron bg-light p-5 rounded">
+        <h1 class="display-4">@Model.SiteName</h1>
+        <p class="lead">Secure file transfer between DMZ and SCADA environments</p>
+        <hr class="my-4">
+
+        <div class="row">
+            <div class="col-md-8">
+                <h3>What is this service?</h3>
+                <p>This secure upload portal allows authorized personnel to transfer files between network environments safely:</p>
+
+                <ul class="list-unstyled">
+                    <li><i class="fa-solid fa-check text-success"></i> <strong>DMZ Environment:</strong> Files that remain within the DMZ network</li>
+                    <li><i class="fa-solid fa-check text-success"></i> <strong>SCADA Environment:</strong> Files that need to be transferred to the SCADA network</li>
+                    <li><i class="fa-solid fa-check text-success"></i> <strong>Automated Processing:</strong> Files are automatically scanned and processed</li>
+                    <li><i class="fa-solid fa-check text-success"></i> <strong>Audit Trail:</strong> All transfers are logged for compliance</li>
+                </ul>
+
+                <h4 class="mt-4">Who can use this service?</h4>
+                @if (!string.IsNullOrWhiteSpace(Model.AuthenticationDomain))
+                {
+                    <div class="alert alert-info">
+                        <i class="fa-solid fa-key"></i> <strong>Authentication Required:</strong> You must authenticate with your <strong>@Model.AuthenticationDomain</strong> domain credentials to access the upload service.
+                    </div>
+                }
+                else
+                {
+                    <p>Access is restricted to authorized security groups and users. If you need access, contact IT Support.</p>
+                }
+
+                <div class="mt-4">
+                    <a href="/Upload" class="btn btn-primary btn-lg">
+                        <i class="fa-solid fa-cloud-arrow-up"></i> Start File Upload
+                    </a>
+                </div>
+            </div>
+
+            <div class="col-md-4">
+                <div class="card">
+                    <div class="card-header bg-info text-white">
+                        <h5 class="mb-0"><i class="fa-solid fa-circle-question"></i> Need Help?</h5>
+                    </div>
+                    <div class="card-body">
+                        <p><strong>IT Support</strong></p>
+                        <p><a href="mailto:@Model.ContactEmail"><i class="fa-solid fa-envelope"></i> @Model.ContactEmail</a></p>
+
+                        <hr>
+
+                        <h6>File Requirements:</h6>
+                        <small class="text-muted">
+                            • All files are scanned for malware<br>
+                            • Maximum file size varies by domain<br>
+                            • Transfers may take several minutes<br>
+                            • Executable files (.exe, .dll, .bat, .cmd, .ps1) are blocked
+                        </small>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
 </div>

@@ -49,12 +49,20 @@ public partial class App : Application
                 services.AddSingleton<ConfigurationService>();
                 services.AddSingleton<ServiceManager>();
                 services.AddSingleton<SshKeyGenerator>();
-                services.AddSingleton<ConnectionTester>();
+                services.AddSingleton<ServiceAccountImpersonator>();
                 services.AddSingleton<PowerShellRemotingService>();
                 services.AddSingleton<ServiceAccountManager>();
                 services.AddSingleton<PermissionManager>();
                 services.AddSingleton<INotificationService, NotificationService>();
                 services.AddSingleton<PreFlightCheckService>();
+                
+                // ConnectionTester with impersonator dependency
+                services.AddSingleton<ConnectionTester>(sp =>
+                {
+                    var logger = sp.GetRequiredService<Microsoft.Extensions.Logging.ILogger<ConnectionTester>>();
+                    var impersonator = sp.GetRequiredService<ServiceAccountImpersonator>();
+                    return new ConnectionTester(logger, impersonator);
+                });
 
                 // ViewModels
                 services.AddTransient<MainViewModel>();

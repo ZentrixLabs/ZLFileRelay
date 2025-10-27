@@ -10,13 +10,16 @@ namespace ZLFileRelay.ConfigTool.Services;
 public class ConnectionTester
 {
     private readonly ILogger<ConnectionTester> _logger;
+    private readonly ServiceAccountImpersonator? _impersonator;
 
-    public ConnectionTester(ILogger<ConnectionTester> logger)
+    public ConnectionTester(ILogger<ConnectionTester> logger, ServiceAccountImpersonator? impersonator = null)
     {
         _logger = logger;
+        _impersonator = impersonator;
     }
 
-    public async Task<ConnectionTestResult> TestSshAsync(SshSettings settings)
+    public async Task<ConnectionTestResult> TestSshAsync(SshSettings settings, 
+        string? serviceAccountUsername = null, string? serviceAccountPassword = null)
     {
         var result = new ConnectionTestResult { Method = "SSH/SCP" };
 
@@ -34,9 +37,67 @@ public class ConnectionTester
             {
                 result.Success = false;
                 result.Message = $"SSH private key not found: {settings.PrivateKeyPath}";
+                
+                // If we have service account credentials, check if they can access the file
+                if (_impersonator != null && 
+                    !string.IsNullOrWhiteSpace(serviceAccountUsername) && 
+                    !string.IsNullOrWhiteSpace(serviceAccountPassword))
+                {
+                    try
+                    {
+                        var canAccess = await _impersonator.CanAccessFileAsync(
+                            serviceAccountUsername, 
+                            serviceAccountPassword, 
+                            settings.PrivateKeyPath);
+                        
+                        if (!canAccess)
+                        {
+                            result.Details = "The SSH private key file exists but the service account does not have read access to it.";
+                        }
+                    }
+                    catch (Exception ex)
+                    {
+                        result.Details = $"Error checking file access: {ex.Message}";
+                    }
+                }
+                
                 return result;
             }
 
+            // Test connection - use impersonation if credentials provided
+            if (_impersonator != null && 
+                !string.IsNullOrWhiteSpace(serviceAccountUsername) && 
+                !string.IsNullOrWhiteSpace(serviceAccountPassword))
+            {
+                // Use impersonation to read the key file and test connection as service account
+                return await _impersonator.ImpersonateAsync(serviceAccountUsername, serviceAccountPassword, async () =>
+                {
+                    return await TestSshConnectionInternal(settings);
+                });
+            }
+            else
+            {
+                // Test without impersonation (current user context)
+                return await TestSshConnectionInternal(settings);
+            }
+        }
+        catch (Exception ex)
+        {
+            result.Success = false;
+            result.Message = $"SSH connection failed: {ex.Message}";
+            result.Details = ex.ToString();
+            _logger.LogError(ex, "SSH connection test failed");
+        }
+
+        return result;
+    }
+
+    private async Task<ConnectionTestResult> TestSshConnectionInternal(SshSettings settings)
+    {
+        var result = new ConnectionTestResult { Method = "SSH/SCP" };
+
+        try
+        {
             // Test connection
             var keyFile = new PrivateKeyFile(settings.PrivateKeyPath);
             var connectionInfo = new PrivateKeyConnectionInfo(
@@ -73,7 +134,6 @@ public class ConnectionTester
             result.Success = false;
             result.Message = $"SSH connection failed: {ex.Message}";
             result.Details = ex.ToString();
-            _logger.LogError(ex, "SSH connection test failed");
         }
 
         return result;
@@ -150,4 +210,3 @@ public class ConnectionTestResult
     public string Message { get; set; } = string.Empty;
     public string? Details { get; set; }
 }
-

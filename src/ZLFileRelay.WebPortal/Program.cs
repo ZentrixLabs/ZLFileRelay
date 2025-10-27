@@ -1,5 +1,6 @@
 using Microsoft.AspNetCore.Authentication.Negotiate;
 using Microsoft.AspNetCore.RateLimiting;
+using Microsoft.AspNetCore.Server.HttpSys;
 using Microsoft.AspNetCore.Server.IISIntegration;
 using Serilog;
 using System.Threading.RateLimiting;
@@ -30,6 +31,18 @@ try
         builder.Services.AddWindowsService(options =>
         {
             options.ServiceName = "ZLFileRelay.WebPortal";
+        });
+        
+        // Configure HttpSys for Windows Authentication support
+        builder.WebHost.UseHttpSys(options =>
+        {
+            options.Authentication.Schemes = Microsoft.AspNetCore.Server.HttpSys.AuthenticationSchemes.NTLM | 
+                                               Microsoft.AspNetCore.Server.HttpSys.AuthenticationSchemes.Negotiate;
+            options.Authentication.AllowAnonymous = true; // Allow anonymous on landing page
+            options.MaxAccepts = 5;
+            options.MaxConnections = 100;
+            options.RequestQueueMode = Microsoft.AspNetCore.Server.HttpSys.RequestQueueMode.CreateOrAttach;
+            options.RequestQueueName = "ZLFileRelay";
         });
     }
 
@@ -101,7 +114,11 @@ try
     }
 
     // Add authorization (always needed for [Authorize] attribute)
-    builder.Services.AddAuthorization();
+    builder.Services.AddAuthorization(options =>
+    {
+        // Configure authorization to require authentication for protected routes
+        options.FallbackPolicy = null; // Don't require auth globally
+    });
 
     // Configure IIS integration for Windows Authentication
     if (OperatingSystem.IsWindows())
