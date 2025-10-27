@@ -11,6 +11,7 @@ namespace ZLFileRelay.ConfigTool.ViewModels;
 public partial class WebPortalViewModel : ObservableObject
 {
     private readonly ConfigurationService _configurationService;
+    private readonly ServiceManager _serviceManager;
 
     // Kestrel Server Settings
     [ObservableProperty] private int _httpPort = 8080;
@@ -34,9 +35,10 @@ public partial class WebPortalViewModel : ObservableObject
     [ObservableProperty] private string _statusMessage = string.Empty;
     [ObservableProperty] private bool _isValid = true;
 
-    public WebPortalViewModel(ConfigurationService configurationService)
+    public WebPortalViewModel(ConfigurationService configurationService, ServiceManager serviceManager)
     {
         _configurationService = configurationService;
+        _serviceManager = serviceManager;
         LoadFromConfiguration();
     }
 
@@ -165,14 +167,21 @@ public partial class WebPortalViewModel : ObservableObject
     {
         try
         {
-            StatusMessage = "⚠️ Restarting web service... (Feature not yet implemented)";
-            // TODO: Implement web service restart logic
-            await Task.Delay(1000);
-            StatusMessage = "Web service restart would occur here. For now, manually restart the service.";
+            StatusMessage = "🔄 Restarting web service...";
+            var success = await _serviceManager.RestartAsync();
+            
+            if (success)
+            {
+                StatusMessage = "✅ Web service restarted successfully";
+            }
+            else
+            {
+                StatusMessage = "❌ Failed to restart web service. Check permissions and try again.";
+            }
         }
         catch (Exception ex)
         {
-            StatusMessage = $"❌ Error: {ex.Message}";
+            StatusMessage = $"❌ Error restarting service: {ex.Message}";
         }
     }
 

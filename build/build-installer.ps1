@@ -78,7 +78,7 @@ if ($LASTEXITCODE -ne 0) {
 Write-Host "✅ Installer compiled successfully!" -ForegroundColor Green
 
 # Find the output installer
-$outputDir = "installer\output"
+$outputDir = "../installer/output"
 if (Test-Path $outputDir) {
     $installer = Get-ChildItem $outputDir -Filter "*.exe" | Sort-Object LastWriteTime -Descending | Select-Object -First 1
     

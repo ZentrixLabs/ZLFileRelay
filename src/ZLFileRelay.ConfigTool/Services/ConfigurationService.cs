@@ -20,7 +20,11 @@ public class ConfigurationService
     {
         _logger = logger;
         _remoteServerProvider = remoteServerProvider;
-        _configPath = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "appsettings.json");
+        
+        // Initialize to shared config path (will be updated by UpdateConfigPath if remote)
+        var configDir = @"C:\ProgramData\ZLFileRelay";
+        Directory.CreateDirectory(configDir); // Ensure directory exists
+        _configPath = Path.Combine(configDir, "appsettings.json");
         
         // Subscribe to server changes
         _remoteServerProvider.ServerChanged += OnServerChanged;
@@ -38,8 +42,11 @@ public class ConfigurationService
     {
         if (!_remoteServerProvider.IsRemote || string.IsNullOrWhiteSpace(_remoteServerProvider.ServerName))
         {
-            // Local mode
-            _configPath = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "appsettings.json");
+            // Local mode - use shared configuration directory
+            var configDir = @"C:\ProgramData\ZLFileRelay";
+            Directory.CreateDirectory(configDir); // Ensure directory exists
+            _configPath = Path.Combine(configDir, "appsettings.json");
+            _logger.LogInformation("Local mode, using shared config path: {Path}", _configPath);
         }
         else
         {
@@ -53,7 +60,7 @@ public class ConfigurationService
                 throw new ArgumentException($"Invalid server name format: {serverName}. Please use a valid hostname or IP address.");
             }
             
-            _configPath = $@"\\{serverName}\c$\Program Files\ZLFileRelay\appsettings.json";
+            _configPath = $@"\\{serverName}\c$\ProgramData\ZLFileRelay\appsettings.json";
             
             _logger.LogInformation("Remote mode enabled, using UNC path: {Path}", _configPath);
         }

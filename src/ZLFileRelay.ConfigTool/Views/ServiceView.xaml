@@ -76,14 +76,44 @@
                             <TextBlock Text="Uninstall Service" VerticalAlignment="Center"/>
                         </StackPanel>
                     </Button>
+                    <!-- Start Button (shown when service is not running) -->
                     <Button Command="{Binding StartServiceCommand}"
-                            Style="{StaticResource PrimaryButton}"
                             Margin="0,0,10,10">
+                        <Button.Style>
+                            <Style TargetType="Button" BasedOn="{StaticResource PrimaryButton}">
+                                <Setter Property="Visibility" Value="Collapsed"/>
+                                <Style.Triggers>
+                                    <DataTrigger Binding="{Binding IsServiceRunning}" Value="False">
+                                        <Setter Property="Visibility" Value="Visible"/>
+                                    </DataTrigger>
+                                </Style.Triggers>
+                            </Style>
+                        </Button.Style>
                         <StackPanel Orientation="Horizontal">
                             <TextBlock FontFamily="Segoe MDL2 Assets" Text="&#xE768;" FontSize="16" Margin="0,0,8,0" VerticalAlignment="Center"/>
                             <TextBlock Text="Start Service" VerticalAlignment="Center"/>
                         </StackPanel>
                     </Button>
+                    
+                    <!-- Restart Button (shown when service is running) -->
+                    <Button Command="{Binding RestartServiceCommand}"
+                            Margin="0,0,10,10">
+                        <Button.Style>
+                            <Style TargetType="Button" BasedOn="{StaticResource PrimaryButton}">
+                                <Setter Property="Visibility" Value="Collapsed"/>
+                                <Style.Triggers>
+                                    <DataTrigger Binding="{Binding IsServiceRunning}" Value="True">
+                                        <Setter Property="Visibility" Value="Visible"/>
+                                    </DataTrigger>
+                                </Style.Triggers>
+                            </Style>
+                        </Button.Style>
+                        <StackPanel Orientation="Horizontal">
+                            <TextBlock FontFamily="Segoe MDL2 Assets" Text="&#xE72C;" FontSize="16" Margin="0,0,8,0" VerticalAlignment="Center"/>
+                            <TextBlock Text="Restart Service" VerticalAlignment="Center"/>
+                        </StackPanel>
+                    </Button>
+                    
                     <Button Command="{Binding StopServiceCommand}"
                             Margin="0,0,10,10"
                             Style="{StaticResource SecondaryButton}">

@@ -20,9 +20,29 @@ try
 
     var builder = WebApplication.CreateBuilder(args);
 
-    // Load configuration first
+    // Load configuration from shared location first, then fall back to embedded appsettings.json
     var appConfig = new ZLFileRelayConfiguration();
     builder.Configuration.GetSection("ZLFileRelay").Bind(appConfig);
+    
+    // Try to load from shared configuration file (ConfigDirectory from embedded config or C:\ProgramData\ZLFileRelay)
+    var configDir = appConfig.Paths?.ConfigDirectory ?? @"C:\ProgramData\ZLFileRelay";
+    var sharedConfigPath = Path.Combine(configDir, "appsettings.json");
+    
+    if (File.Exists(sharedConfigPath))
+    {
+        Log.Information("Loading configuration from shared location: {Path}", sharedConfigPath);
+        builder.Configuration.AddJsonFile(sharedConfigPath, optional: false, reloadOnChange: true);
+        
+        // Reload configuration from the shared file
+        appConfig = new ZLFileRelayConfiguration();
+        builder.Configuration.GetSection("ZLFileRelay").Bind(appConfig);
+        Log.Information("Configuration loaded successfully from: {Path}", sharedConfigPath);
+    }
+    else
+    {
+        Log.Information("Shared configuration not found at {Path}, using embedded appsettings.json", sharedConfigPath);
+    }
+    
     builder.Services.AddSingleton(appConfig);
 
     // Configure as Windows Service (no IIS needed!)
@@ -32,28 +52,13 @@ try
         {
             options.ServiceName = "ZLFileRelay.WebPortal";
         });
-        
-        // Configure HttpSys for Windows Authentication support
-        builder.WebHost.UseHttpSys(options =>
-        {
-            options.Authentication.Schemes = Microsoft.AspNetCore.Server.HttpSys.AuthenticationSchemes.NTLM | 
-                                               Microsoft.AspNetCore.Server.HttpSys.AuthenticationSchemes.Negotiate;
-            options.Authentication.AllowAnonymous = true; // Allow anonymous on landing page
-            options.MaxAccepts = 5;
-            options.MaxConnections = 100;
-            options.RequestQueueMode = Microsoft.AspNetCore.Server.HttpSys.RequestQueueMode.CreateOrAttach;
-            options.RequestQueueName = "ZLFileRelay";
-        });
     }
 
     // Configure Kestrel to listen on ports from configuration
-    var httpUrl = $"http://*:{appConfig.WebPortal.Kestrel.HttpPort}";
-    var httpsUrl = $"https://*:{appConfig.WebPortal.Kestrel.HttpsPort}";
+    // Note: UseUrls is not used here because we configure listeners explicitly below
     
     if (appConfig.WebPortal.Kestrel.EnableHttps)
     {
-        builder.WebHost.UseUrls(httpUrl, httpsUrl);
-        
         // Configure HTTPS certificate if provided
         if (!string.IsNullOrWhiteSpace(appConfig.WebPortal.Kestrel.CertificatePath))
         {
@@ -62,32 +67,72 @@ try
                 // SECURITY FIX (MEDIUM-1): Set request body size limit at Kestrel level
                 options.Limits.MaxRequestBodySize = appConfig.Security.MaxUploadSizeBytes;
                 
-                options.ConfigureHttpsDefaults(httpsOptions =>
+                // Configure HTTPS listener with certificate
+                options.ListenAnyIP(appConfig.WebPortal.Kestrel.HttpsPort, listenOptions =>
                 {
-                    httpsOptions.ServerCertificate = new System.Security.Cryptography.X509Certificates.X509Certificate2(
-                        appConfig.WebPortal.Kestrel.CertificatePath,
-                        appConfig.WebPortal.Kestrel.CertificatePassword);
+                    listenOptions.Protocols = Microsoft.AspNetCore.Server.Kestrel.Core.HttpProtocols.Http1AndHttp2;
+                    
+                    try
+                    {
+                        var cert = new System.Security.Cryptography.X509Certificates.X509Certificate2(
+                            appConfig.WebPortal.Kestrel.CertificatePath,
+                            appConfig.WebPortal.Kestrel.CertificatePassword);
+                        
+                        listenOptions.UseHttps(cert);
+                        Log.Information("✅ HTTPS certificate loaded successfully from: {Path}", appConfig.WebPortal.Kestrel.CertificatePath);
+                        Log.Information("Certificate subject: {Subject}, valid until: {Expiry}", 
+                            cert.Subject, cert.NotAfter);
+                    }
+                    catch (Exception ex)
+                    {
+                        Log.Error(ex, "❌ Failed to load HTTPS certificate from: {Path}", appConfig.WebPortal.Kestrel.CertificatePath);
+                        throw new InvalidOperationException($"Failed to load HTTPS certificate: {ex.Message}", ex);
+                    }
                 });
+                
+                // Configure HTTP listener
+                options.ListenAnyIP(appConfig.WebPortal.Kestrel.HttpPort, listenOptions =>
+                {
+                    listenOptions.Protocols = Microsoft.AspNetCore.Server.Kestrel.Core.HttpProtocols.Http1AndHttp2;
+                });
+                
+                Log.Information("HTTP listener configured on port {Port}", appConfig.WebPortal.Kestrel.HttpPort);
             });
         }
         else
         {
+            // HTTPS enabled but no certificate provided
             builder.WebHost.ConfigureKestrel(options =>
             {
                 // SECURITY FIX (MEDIUM-1): Set request body size limit at Kestrel level
                 options.Limits.MaxRequestBodySize = appConfig.Security.MaxUploadSizeBytes;
+                
+                // Still configure HTTP listener
+                options.ListenAnyIP(appConfig.WebPortal.Kestrel.HttpPort, listenOptions =>
+                {
+                    listenOptions.Protocols = Microsoft.AspNetCore.Server.Kestrel.Core.HttpProtocols.Http1AndHttp2;
+                });
+                
+                Log.Warning("⚠️ HTTPS enabled but no certificate path specified. Only HTTP will be available on port {Port}", 
+                    appConfig.WebPortal.Kestrel.HttpPort);
             });
         }
     }
     else
     {
-        // HTTP only
-        builder.WebHost.UseUrls(httpUrl);
-        
+        // HTTP only - configure listener explicitly
         builder.WebHost.ConfigureKestrel(options =>
         {
             // SECURITY FIX (MEDIUM-1): Set request body size limit at Kestrel level
             options.Limits.MaxRequestBodySize = appConfig.Security.MaxUploadSizeBytes;
+            
+            // Configure HTTP listener
+            options.ListenAnyIP(appConfig.WebPortal.Kestrel.HttpPort, listenOptions =>
+            {
+                listenOptions.Protocols = Microsoft.AspNetCore.Server.Kestrel.Core.HttpProtocols.Http1AndHttp2;
+            });
+            
+            Log.Information("HTTP listener configured on port {Port}", appConfig.WebPortal.Kestrel.HttpPort);
         });
     }
 

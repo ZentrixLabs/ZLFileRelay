@@ -7,27 +7,27 @@ namespace ZLFileRelay.ConfigTool.ViewModels;
 
 public partial class DashboardViewModel : ObservableObject
 {
-    private readonly ServiceManagementViewModel _serviceViewModel;
-    private readonly ConfigurationViewModel _configurationViewModel;
-    private readonly SshSettingsViewModel _sshViewModel;
+    private readonly ServiceViewModel _serviceViewModel;
+    private readonly FileTransferViewModel _fileTransferViewModel;
+    private readonly WebPortalViewModel _webPortalViewModel;
     private DateTime? _serviceStartTime;
     private System.Threading.Timer? _uptimeUpdateTimer;
     
     public DashboardViewModel(
-        ServiceManagementViewModel serviceViewModel,
-        ConfigurationViewModel configurationViewModel,
-        SshSettingsViewModel sshViewModel)
+        ServiceViewModel serviceViewModel,
+        FileTransferViewModel fileTransferViewModel,
+        WebPortalViewModel webPortalViewModel)
     {
         _serviceViewModel = serviceViewModel;
-        _configurationViewModel = configurationViewModel;
-        _sshViewModel = sshViewModel;
+        _fileTransferViewModel = fileTransferViewModel;
+        _webPortalViewModel = webPortalViewModel;
         
         RecentActivities = new ObservableCollection<ActivityItem>();
         
         // Subscribe to changes
         _serviceViewModel.PropertyChanged += (s, e) => UpdateHealthStatus();
-        _configurationViewModel.PropertyChanged += (s, e) => UpdateHealthStatus();
-        _sshViewModel.PropertyChanged += (s, e) => UpdateHealthStatus();
+        _fileTransferViewModel.PropertyChanged += (s, e) => UpdateHealthStatus();
+        _webPortalViewModel.PropertyChanged += (s, e) => UpdateHealthStatus();
         
         // Initial update
         UpdateHealthStatus();
@@ -152,7 +152,7 @@ public partial class DashboardViewModel : ObservableObject
     private void UpdateHealthStatus()
     {
         // Service Health
-        var serviceStatus = _serviceViewModel.ServiceStatusText?.ToLowerInvariant() ?? "unknown";
+        var serviceStatus = _serviceViewModel.ServiceStatus?.ToLowerInvariant() ?? "unknown";
         if (serviceStatus.Contains("running"))
         {
             ServiceHealthStatus = HealthStatus.Good;
@@ -166,7 +166,7 @@ public partial class DashboardViewModel : ObservableObject
             ServiceHealthText = "Service stopped";
             ServiceUptime = "Not running";
         }
-        else if (serviceStatus.Contains("not installed"))
+        else if (serviceStatus.Contains("not") && serviceStatus.Contains("installed"))
         {
             ServiceHealthStatus = HealthStatus.Error;
             ServiceHealthText = "Not installed";
@@ -180,28 +180,44 @@ public partial class DashboardViewModel : ObservableObject
         }
         
         // Configuration Health
-        var hasUploadDirectory = !string.IsNullOrWhiteSpace(_configurationViewModel.UploadDirectory);
-        var hasWatchDirectory = !string.IsNullOrWhiteSpace(_configurationViewModel.WatchDirectory);
+        var hasSshConfig = !string.IsNullOrWhiteSpace(_fileTransferViewModel.SshHost);
+        var hasSmbConfig = !string.IsNullOrWhiteSpace(_fileTransferViewModel.SmbServer);
         
-        if (hasUploadDirectory && hasWatchDirectory)
+        if (hasSshConfig || hasSmbConfig)
         {
             ConfigurationHealthStatus = HealthStatus.Good;
             ConfigurationHealthText = "Configuration valid";
         }
-        else if (hasUploadDirectory || hasWatchDirectory)
+        else
         {
-            ConfigurationHealthStatus = HealthStatus.Warning;
-            ConfigurationHealthText = "Missing required settings";
+            ConfigurationHealthStatus = HealthStatus.Unknown;
+            ConfigurationHealthText = "Not configured";
+        }
+        
+        // SSH Health - based on test results from File Transfer tab
+        var testResult = _fileTransferViewModel.SshTestResult?.ToLowerInvariant() ?? "";
+        if (string.IsNullOrWhiteSpace(_fileTransferViewModel.SshTestResult) || 
+            testResult.Contains("click 'test") || 
+            testResult.Contains("not tested"))
+        {
+            SshHealthStatus = HealthStatus.Unknown;
+            SshHealthText = "Not tested";
+        }
+        else if (testResult.Contains("✅") || testResult.Contains("success"))
+        {
+            SshHealthStatus = HealthStatus.Good;
+            SshHealthText = "Connection successful";
+        }
+        else if (testResult.Contains("❌") || testResult.Contains("failed") || testResult.Contains("error"))
+        {
+            SshHealthStatus = HealthStatus.Error;
+            SshHealthText = "Connection failed";
         }
         else
         {
-            ConfigurationHealthStatus = HealthStatus.Error;
-            ConfigurationHealthText = "Configuration not loaded";
+            SshHealthStatus = HealthStatus.Warning;
+            SshHealthText = "Status unknown";
         }
-        
-        // SSH Health (simplified - would need actual SSH status)
-        SshHealthStatus = HealthStatus.Warning;
-        SshHealthText = "Not tested";
         
         // Web Portal Health (simplified)
         WebPortalHealthStatus = HealthStatus.Good;
@@ -271,7 +287,7 @@ public partial class DashboardViewModel : ObservableObject
     private void UpdateUptimeIfRunning()
     {
         // Only update uptime if service is running and we have a start time
-        var serviceStatus = _serviceViewModel.ServiceStatusText?.ToLowerInvariant() ?? "unknown";
+        var serviceStatus = _serviceViewModel.ServiceStatus?.ToLowerInvariant() ?? "unknown";
         if (serviceStatus.Contains("running") && _serviceStartTime.HasValue)
         {
             var uptime = DateTime.Now - _serviceStartTime.Value;

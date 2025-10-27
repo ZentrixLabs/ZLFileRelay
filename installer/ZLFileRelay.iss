@@ -107,8 +107,8 @@ Source: "..\appsettings.json"; DestDir: "{app}\ConfigTool"; Components: configto
 Source: "..\appsettings.json"; DestDir: "{commonappdata}\ZLFileRelay"; Flags: uninsneveruninstall; Tasks: resetconfig
 Source: "..\appsettings.json"; DestDir: "{commonappdata}\ZLFileRelay"; Flags: onlyifdoesntexist uninsneveruninstall
 
-; Documentation
-Source: "..\docs\*"; DestDir: "{app}\docs"; Flags: ignoreversion recursesubdirs createallsubdirs
+; Documentation (selective copy - excludes development & archive folders)
+Source: "..\publish\docs\*"; DestDir: "{app}\docs"; Flags: ignoreversion recursesubdirs createallsubdirs
 
 [Dirs]
 ; Application directories
@@ -163,23 +163,20 @@ Filename: "netsh.exe"; Parameters: "advfirewall firewall add rule name=""ZL File
 
 [UninstallRun]
 ; Stop and remove Windows Services
-Filename: "sc.exe"; Parameters: "stop ZLFileRelay"; Flags: runhidden
-Filename: "sc.exe"; Parameters: "delete ZLFileRelay"; Flags: runhidden
-Filename: "sc.exe"; Parameters: "stop ZLFileRelay.WebPortal"; Flags: runhidden
-Filename: "sc.exe"; Parameters: "delete ZLFileRelay.WebPortal"; Flags: runhidden
+Filename: "sc.exe"; Parameters: "stop ZLFileRelay"; Flags: runhidden; RunOnceId: "StopService"
+Filename: "sc.exe"; Parameters: "delete ZLFileRelay"; Flags: runhidden; RunOnceId: "DeleteService"
+Filename: "sc.exe"; Parameters: "stop ZLFileRelay.WebPortal"; Flags: runhidden; RunOnceId: "StopWebPortal"
+Filename: "sc.exe"; Parameters: "delete ZLFileRelay.WebPortal"; Flags: runhidden; RunOnceId: "DeleteWebPortal"
 
 ; Remove firewall rules
-Filename: "netsh.exe"; Parameters: "advfirewall firewall delete rule name=""ZL File Relay Web Portal (HTTP)"""; Flags: runhidden
-Filename: "netsh.exe"; Parameters: "advfirewall firewall delete rule name=""ZL File Relay Web Portal (HTTPS)"""; Flags: runhidden
+Filename: "netsh.exe"; Parameters: "advfirewall firewall delete rule name=""ZL File Relay Web Portal (HTTP)"""; Flags: runhidden; RunOnceId: "RemoveFirewallHTTP"
+Filename: "netsh.exe"; Parameters: "advfirewall firewall delete rule name=""ZL File Relay Web Portal (HTTPS)"""; Flags: runhidden; RunOnceId: "RemoveFirewallHTTPS"
 
 [UninstallDelete]
 ; Clean up log files (optional - user can choose to keep)
 Type: filesandordirs; Name: "C:\FileRelay\logs"
 
 [Code]
-var
-  RequireIIS: Boolean;
-
 function StopService(const ServiceName: String): Boolean;
 var
   ResultCode: Integer;

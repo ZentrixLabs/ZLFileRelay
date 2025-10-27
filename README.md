@@ -190,22 +190,37 @@ ZLFileRelay/
 
 ## Building from Source
 
+For a complete build that creates an installer:
+
 ```powershell
 # Clone repository
 git clone https://github.com/your-org/ZLFileRelay.git
 cd ZLFileRelay
 
-# Restore dependencies
-dotnet restore
+# Build installer (requires Inno Setup and .NET 8 SDK)
+.\build\build-installer.ps1
+```
 
-# Build all projects
+This will:
+1. Publish all components with .NET 8 runtime included
+2. Create installer in `installer/output/`
+
+**📖 See [Build Process Guide](docs/development/BUILD_PROCESS.md) for complete details**
+
+### Quick Commands
+
+```powershell
+# Just build projects (no installer)
 dotnet build --configuration Release
 
 # Run tests
 dotnet test
 
-# Build installer (requires Inno Setup)
-.\build\build-installer.ps1
+# Run ConfigTool for development
+dotnet run --project src/ZLFileRelay.ConfigTool
+
+# Run WebPortal for development
+dotnet run --project src/ZLFileRelay.WebPortal
 ```
 
 ## Documentation

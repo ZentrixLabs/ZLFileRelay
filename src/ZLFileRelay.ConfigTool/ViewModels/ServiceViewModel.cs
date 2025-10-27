@@ -28,6 +28,9 @@ public partial class ServiceViewModel : ObservableObject
     [ObservableProperty]
     private bool _isRunningAsAdmin;
 
+    [ObservableProperty]
+    private bool _isServiceRunning = false;
+
     // Service Account Properties
     [ObservableProperty]
     private string _currentServiceAccount = "Loading...";
@@ -76,6 +79,7 @@ public partial class ServiceViewModel : ObservableObject
         {
             var status = await _serviceManager.GetStatusAsync();
             ServiceStatus = status.ToString();
+            IsServiceRunning = (status == Services.ServiceStatus.Running);
             
             // Refresh service account info
             CurrentServiceAccount = await _serviceAccountManager.GetCurrentServiceAccountAsync() 
@@ -228,6 +232,30 @@ public partial class ServiceViewModel : ObservableObject
             else
             {
                 AddLogMessage("❌ Failed to stop service");
+            }
+        }
+        catch (Exception ex)
+        {
+            AddLogMessage($"ERROR: {ex.Message}");
+        }
+    }
+
+    [RelayCommand]
+    private async Task RestartServiceAsync()
+    {
+        try
+        {
+            AddLogMessage("Restarting service...");
+            var success = await _serviceManager.RestartAsync();
+            
+            if (success)
+            {
+                AddLogMessage("✅ Service restarted successfully");
+                await RefreshStatusAsync();
+            }
+            else
+            {
+                AddLogMessage("❌ Failed to restart service");
             }
         }
         catch (Exception ex)

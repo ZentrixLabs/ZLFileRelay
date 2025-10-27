@@ -88,11 +88,48 @@ Write-Host "📄 Copying configuration templates..." -ForegroundColor Cyan
 Copy-Item "../appsettings.json" "$PublishDir/appsettings.json"
 Write-Host "✅ Configuration copied" -ForegroundColor Green
 
-# Copy documentation
-Write-Host "`n📚 Copying documentation..." -ForegroundColor Cyan
+# Copy essential user documentation only (exclude development and archive)
+Write-Host "`n📚 Copying user documentation..." -ForegroundColor Cyan
 if (Test-Path "../docs") {
-    Copy-Item "../docs" "$PublishDir/docs" -Recurse -Force
-    Write-Host "✅ Documentation copied" -ForegroundColor Green
+    # Create docs directory in publish
+    $docsDir = "$PublishDir/docs"
+    New-Item -ItemType Directory -Force -Path $docsDir | Out-Null
+    
+    # Copy README.md
+    if (Test-Path "../docs/README.md") {
+        Copy-Item "../docs/README.md" "$docsDir/README.md" -Force
+    }
+    
+    # Copy entire folders (getting-started, configuration, user-guides, reference)
+    $foldersToCopy = @("getting-started", "configuration", "user-guides", "reference")
+    foreach ($folder in $foldersToCopy) {
+        $sourcePath = "../docs/$folder"
+        if (Test-Path $sourcePath) {
+            Copy-Item $sourcePath "$docsDir/$folder" -Recurse -Force
+        }
+    }
+    
+    # Copy specific deployment files only (exclude changelogs and summaries)
+    $deploymentSource = "../docs/deployment"
+    $deploymentTarget = "$docsDir/deployment"
+    if (Test-Path $deploymentSource) {
+        New-Item -ItemType Directory -Force -Path $deploymentTarget | Out-Null
+        $deploymentFiles = @(
+            "DEPLOYMENT.md",
+            "DMZ_DEPLOYMENT.md",
+            "QUICK_REFERENCE.md",
+            "PRODUCTION_COEXISTENCE.md",
+            "SIDE_BY_SIDE_TESTING.md"
+        )
+        foreach ($file in $deploymentFiles) {
+            $sourceFile = "$deploymentSource/$file"
+            if (Test-Path $sourceFile) {
+                Copy-Item $sourceFile "$deploymentTarget/$file" -Force
+            }
+        }
+    }
+    
+    Write-Host "✅ User documentation copied (excluded development & archive folders)" -ForegroundColor Green
 }
 
 # Generate deployment summary
