@@ -5,6 +5,17 @@ All notable changes to ZL File Relay will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [Unreleased]
+
+### Fixed
+- **Upload Timeout Issue** - Fixed timeouts on large file uploads (multi-GB files)
+  - Disabled Kestrel's minimum data rate requirement (was 240 bytes/sec)
+  - Increased keep-alive timeout from 130 seconds to 10 minutes
+  - Increased request headers timeout to 2 minutes
+  - Configured form options for large multipart uploads
+  - Now supports slow connections and multi-hour uploads
+  - See `docs/UPLOAD_TIMEOUT_FIX.md` for detailed information
+
 ## [1.1.0] - 2025-10-31
 
 ### 🚀 Major Architecture Changes

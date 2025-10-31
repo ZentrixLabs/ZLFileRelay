@@ -266,6 +266,24 @@ try
         // SECURITY FIX (MEDIUM-1): Set request body size limit
         options.Limits.MaxRequestBodySize = initialConfig.Security.MaxUploadSizeBytes;
         
+        // Configure timeouts for long file uploads
+        // For 5GB files on slower connections, we need generous timeouts
+        options.Limits.KeepAliveTimeout = TimeSpan.FromMinutes(10); // 10 minutes keep-alive
+        options.Limits.RequestHeadersTimeout = TimeSpan.FromMinutes(2); // 2 minutes for headers
+        
+        // Disable minimum data rate requirement for file uploads
+        // This allows slow connections to upload large files without timing out
+        options.Limits.MinRequestBodyDataRate = null;
+        options.Limits.MinResponseDataRate = null;
+        
+        Log.Information("✅ Kestrel configured for large file uploads:");
+        Log.Information("   - Max request body: {MaxSize} bytes ({MaxSizeGB:F2} GB)", 
+            initialConfig.Security.MaxUploadSizeBytes,
+            initialConfig.Security.MaxUploadSizeBytes / 1024.0 / 1024.0 / 1024.0);
+        Log.Information("   - Keep-alive timeout: 10 minutes");
+        Log.Information("   - Request headers timeout: 2 minutes");
+        Log.Information("   - Data rate limits: disabled (allows slow connections)");
+        
         // Configure HTTP endpoint
         options.ListenAnyIP(kestrel.HttpPort, listenOptions =>
         {
@@ -476,6 +494,22 @@ try
             
             await context.HttpContext.Response.WriteAsync(message, cancellationToken);
         };
+    });
+
+    // Configure form options for large file uploads
+    builder.Services.Configure<Microsoft.AspNetCore.Http.Features.FormOptions>(options =>
+    {
+        // Set generous limits for large file uploads
+        options.MultipartBodyLengthLimit = initialConfig.Security.MaxUploadSizeBytes;
+        options.ValueLengthLimit = int.MaxValue;
+        options.MultipartHeadersLengthLimit = int.MaxValue;
+        
+        // Increase buffer threshold for better performance with large files
+        options.MemoryBufferThreshold = 1024 * 1024 * 10; // 10 MB buffer before writing to disk
+        
+        Log.Information("✅ Form options configured for large uploads:");
+        Log.Information("   - Multipart body length limit: {Limit} bytes", options.MultipartBodyLengthLimit);
+        Log.Information("   - Memory buffer threshold: 10 MB");
     });
 
     // Add Razor Pages with Microsoft Identity UI (for Entra ID login pages)

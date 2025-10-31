@@ -272,6 +272,26 @@ For technical support:
 Copyright © 2025 ZentrixLabs
 Licensed under the GNU Lesser General Public License v3.0 or later (LGPL-3.0-or-later) – see [LICENSE](LICENSE) for details.
 
+## Troubleshooting
+
+### Upload Timeouts on Large Files
+
+If you experience timeouts when uploading large files (multi-GB):
+- ✅ **Fixed** in latest version with optimized Kestrel timeout settings
+- See [`docs/UPLOAD_TIMEOUT_FIX.md`](docs/UPLOAD_TIMEOUT_FIX.md) for detailed information
+- Configuration supports up to 5 GB file uploads by default
+- No minimum data rate requirement - works with slow connections
+- 10-minute keep-alive timeout for network interruptions
+
+### Common Issues
+
+For more troubleshooting information, check:
+- Web Portal logs: `C:\FileRelay\logs\zlfilerelay-web-YYYYMMDD.log`
+- Service logs: `C:\FileRelay\logs\zlfilerelay-service-YYYYMMDD.log`
+- Windows Event Log: Application → ZLFileRelay
+
+---
+
 ## Version History
 
 ### Version 2.0.0 (Current)
@@ -285,6 +305,7 @@ Licensed under the GNU Lesser General Public License v3.0 or later (LGPL-3.0-or-
 - ⚙️ Unified configuration tool
 - 🔄 Improved retry logic and error handling
 - 📝 Enhanced logging and monitoring
+- 🚀 **NEW:** Optimized timeout settings for large file uploads (no timeout on slow connections)
 
 ### Version 1.x (Legacy)
 - Separate DMZFileTransferService and DMZUploader products
