@@ -262,7 +262,7 @@ dotnet run --project src/ZLFileRelay.WebPortal
 ## Support
 
 For technical support:
-- 📧 Email: support@yourdomain.com
+- 📧 Email: zlfilerelay_help@zentrixlabs.net
 - 📖 Documentation: See `docs/` folder
 - 🐛 Issues: GitHub Issues
 - 📝 Logs: Check `C:\FileRelay\logs` or Windows Event Log
