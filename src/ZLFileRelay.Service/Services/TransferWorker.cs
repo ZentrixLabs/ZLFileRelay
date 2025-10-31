@@ -188,6 +188,9 @@ namespace ZLFileRelay.Service.Services
                         // Transfer the file
                         try
                         {
+                            // Send "Transferring" status update BEFORE starting transfer
+                            await WriteStartingStatusAsync(filePath);
+                            
                             var transferService = _fileTransferServiceFactory.CreateTransferService();
                             var result = await transferService.TransferFileAsync(filePath, null, _serviceCancellationToken);
                             
@@ -202,7 +205,7 @@ namespace ZLFileRelay.Service.Services
                                     result.FileName, result.ErrorMessage);
                             }
 
-                            // Write status notification for WebPortal
+                            // Write final status notification for WebPortal
                             await WriteStatusNotificationAsync(filePath, result);
 
                             _fileQueue.Remove(filePath);
@@ -259,6 +262,47 @@ namespace ZLFileRelay.Service.Services
             }
         }
 
+        private async Task WriteStartingStatusAsync(string sourceFilePath)
+        {
+            try
+            {
+                // Generate transfer ID
+                var transferId = GenerateTransferId(sourceFilePath);
+                
+                // Create a "starting" status notification
+                var startingResult = new TransferResult
+                {
+                    SourcePath = sourceFilePath,
+                    FileName = Path.GetFileName(sourceFilePath),
+                    StartTime = DateTime.Now,
+                    TransferMethod = _config.Service.TransferMethod.ToUpperInvariant(),
+                    // Use a special marker to indicate "transferring" state
+                    ErrorMessage = "__TRANSFERRING__" // WebPortal will interpret this as Transferring status
+                };
+                
+                // Create status directory if it doesn't exist
+                var statusDirectory = Path.Combine(_config.Service.WatchDirectory, ".status");
+                if (!Directory.Exists(statusDirectory))
+                {
+                    Directory.CreateDirectory(statusDirectory);
+                }
+                
+                // Write status file
+                var statusFilePath = Path.Combine(statusDirectory, $"{transferId}.status.json");
+                var statusJson = System.Text.Json.JsonSerializer.Serialize(startingResult, new System.Text.Json.JsonSerializerOptions
+                {
+                    WriteIndented = true
+                });
+                
+                await File.WriteAllTextAsync(statusFilePath, statusJson);
+                _logger.LogDebug("Wrote 'Transferring' status for: {FileName}", Path.GetFileName(sourceFilePath));
+            }
+            catch (Exception ex)
+            {
+                _logger.LogWarning(ex, "Failed to write starting status notification for {SourcePath}", sourceFilePath);
+            }
+        }
+
         private async Task WriteStatusNotificationAsync(string sourceFilePath, TransferResult result)
         {
             try
@@ -282,7 +326,7 @@ namespace ZLFileRelay.Service.Services
                 });
 
                 await File.WriteAllTextAsync(statusFilePath, statusJson);
-                _logger.LogDebug("Wrote status notification: {StatusFile}", statusFilePath);
+                _logger.LogDebug("Wrote final status notification: {StatusFile}", statusFilePath);
             }
             catch (Exception ex)
             {

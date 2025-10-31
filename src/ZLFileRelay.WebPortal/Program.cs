@@ -497,6 +497,10 @@ try
     });
 
     // Configure form options for large file uploads
+    Log.Information("🔍 Configuring FormOptions with MaxUploadSizeBytes from config: {MaxSize} bytes ({MaxSizeGB:F2} GB)",
+        initialConfig.Security.MaxUploadSizeBytes,
+        initialConfig.Security.MaxUploadSizeBytes / 1024.0 / 1024.0 / 1024.0);
+    
     builder.Services.Configure<Microsoft.AspNetCore.Http.Features.FormOptions>(options =>
     {
         // Set generous limits for large file uploads
@@ -508,7 +512,9 @@ try
         options.MemoryBufferThreshold = 1024 * 1024 * 10; // 10 MB buffer before writing to disk
         
         Log.Information("✅ Form options configured for large uploads:");
-        Log.Information("   - Multipart body length limit: {Limit} bytes", options.MultipartBodyLengthLimit);
+        Log.Information("   - Multipart body length limit: {Limit} bytes ({LimitGB:F2} GB)", 
+            options.MultipartBodyLengthLimit,
+            options.MultipartBodyLengthLimit / 1024.0 / 1024.0 / 1024.0);
         Log.Information("   - Memory buffer threshold: 10 MB");
     });
 

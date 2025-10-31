@@ -120,12 +120,26 @@ namespace ZLFileRelay.WebPortal.Services
                 // Extract transfer ID from filename (format: {transferId}.status.json)
                 var fileName = Path.GetFileNameWithoutExtension(Path.GetFileNameWithoutExtension(filePath));
                 
+                // Determine the actual status
+                // Special marker "__TRANSFERRING__" indicates the transfer is starting
+                TransferStatus status;
+                string? errorMessage = transferResult.ErrorMessage;
+                
+                if (errorMessage == "__TRANSFERRING__")
+                {
+                    status = TransferStatus.Transferring;
+                    errorMessage = null; // Clear the marker, not a real error
+                }
+                else
+                {
+                    status = transferResult.Success ? TransferStatus.Completed : TransferStatus.Failed;
+                }
+                
                 // Update the transfer status
-                var status = transferResult.Success ? TransferStatus.Completed : TransferStatus.Failed;
                 await _statusService.UpdateStatusAsync(
                     fileName,
                     status,
-                    transferResult.ErrorMessage,
+                    errorMessage,
                     transferResult.DestinationPath);
 
                 _logger.LogInformation("Processed status update for transfer {TransferId}: {Status}", 

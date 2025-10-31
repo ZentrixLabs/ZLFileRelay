@@ -11,6 +11,10 @@ using ZLFileRelay.WebPortal.ViewModels;
 namespace ZLFileRelay.WebPortal.Pages
 {
     [Authorize] // Require authentication for upload page
+    // CRITICAL: These attributes override ASP.NET Core's default 128 MB multipart body limit
+    // Must be at class level for Razor Pages (not on handler methods)
+    [RequestSizeLimit(10_737_418_240)] // 10 GB
+    [RequestFormLimits(MultipartBodyLengthLimit = 10_737_418_240)] // 10 GB
     public class UploadModel : PageModel
     {
         private readonly ILogger<UploadModel> _logger;
