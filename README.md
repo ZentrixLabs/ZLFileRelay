@@ -239,32 +239,25 @@ dotnet run --project src/ZLFileRelay.WebPortal
 
 ## Documentation
 
-📚 **[Complete Documentation](docs/)** - All guides organized by category
+📚 **[Documentation Hub](docs/)** - Everything you need to get started
 
-### Quick Access
-- 🚀 **[Quick Start](docs/getting-started/QUICK_START.md)** - Get started in 15 minutes
-- 📦 **[Installation](docs/getting-started/INSTALLATION.md)** - Step-by-step installation
-- ⚙️ **[Configuration](docs/configuration/CONFIGURATION.md)** - Configuration reference
-- 🔐 **[Entra ID Setup](docs/deployment/ENTRA_ID_SETUP.md)** - Azure AD authentication setup
-- 👤 **[User Management](docs/deployment/USER_MANAGEMENT.md)** - Managing local accounts
-- 🚀 **[Deployment](docs/deployment/DEPLOYMENT.md)** - Production deployment
-- 🔐 **[Security](docs/configuration/SECURITY.md)** - Security best practices
-- 🌐 **[DMZ Deployment](docs/deployment/DMZ_DEPLOYMENT.md)** - Air-gapped deployment
-- 🧪 **[Testing Guide](docs/deployment/SIDE_BY_SIDE_TESTING.md)** - Test alongside existing systems
+### Essential Guides
 
-### Documentation Structure
-```
-docs/
-├── getting-started/     # Installation and quick start
-├── configuration/       # Configuration and security
-├── deployment/          # Deployment scenarios
-├── user-guides/        # End-user documentation
-├── development/        # Developer resources
-└── reference/          # Technical references
-```
+| Guide | Description |
+|-------|-------------|
+| 📖 **[Setup Guide](docs/SETUP.md)** | Complete installation and configuration guide |
+| 🔐 **[Entra ID Setup](docs/ENTRA_ID_SETUP.md)** | Azure AD (Entra ID) authentication configuration |
+| 🔑 **[SSH Target Server](docs/SSH_TARGET_SERVER.md)** | Setting up SSH on destination servers |
 
-### ⚠️ Remote Management Note
-To manage remote servers with ConfigTool, **WinRM must be enabled** on target servers. See [WinRM Setup Guide](docs/configuration/WINRM_SETUP.md) for details.
+### Quick Navigation
+
+**New Installation?** → Start with [Setup Guide](docs/SETUP.md)
+
+**Azure AD Authentication?** → See [Entra ID Setup](docs/ENTRA_ID_SETUP.md)
+
+**SSH Configuration?** → See [SSH Target Server](docs/SSH_TARGET_SERVER.md)
+
+**Troubleshooting?** → Check the Troubleshooting sections in each guide above
 
 ## Support
 
