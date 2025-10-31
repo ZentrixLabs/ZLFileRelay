@@ -7,7 +7,7 @@
 ZL File Relay is a unified enterprise solution for secure, automated file transfer between DMZ and SCADA networks. It combines three powerful components into a single deployable package:
 
 1. **🔄 File Transfer Service** - Automated Windows Service that watches directories and securely transfers files via SSH/SCP or SMB
-2. **🌐 Web Upload Portal** - User-friendly web interface for file uploads with Windows Authentication
+2. **🌐 Web Upload Portal** - User-friendly web interface with hybrid authentication (Entra ID + Local Accounts)
 3. **⚙️ Configuration Tool** - Intuitive WPF application for unified configuration and service management
 
 ## Key Features
@@ -25,20 +25,21 @@ ZL File Relay is a unified enterprise solution for secure, automated file transf
 - ✅ Modern responsive web interface
 - ✅ Hybrid authentication: Entra ID (Azure AD) SSO + Local Accounts
 - ✅ Works in air-gapped networks with local authentication
-- ✅ Role-based authorization (Admin/Uploader)
+- ✅ Simplified authorization: All authenticated users can upload
 - ✅ Multi-file upload support
-- ✅ Upload progress tracking
+- ✅ Real-time upload progress tracking
 - ✅ User-specific upload directories
-- ✅ IIS hosted for enterprise reliability
+- ✅ Kestrel web server with flexible SSL configuration
 
 ### Configuration Tool
-- ✅ Unified configuration interface for both components
+- ✅ Unified configuration interface for all components
 - ✅ SSH key generation and management
 - ✅ Service installation and management
-- ✅ IIS configuration automation
+- ✅ Entra ID Setup Wizard with automatic hostname detection
+- ✅ Certificate Store Browser for SSL configuration
 - ✅ Real-time service status monitoring
 - ✅ Credential encryption with Windows DPAPI
-- ✅ Configuration validation
+- ✅ Configuration validation with mutual exclusivity enforcement
 
 ## Architecture
 
@@ -100,14 +101,16 @@ ZL File Relay is a unified enterprise solution for secure, automated file transf
    - Enter SSH host, username, and destination path
    - Test connection
 
-4. Configure **Web Portal**:
+4. Configure **Web Portal Authentication**:
+   - Choose authentication method: Entra ID (Azure AD) or Local Accounts
+   - For Entra ID: Use Setup Wizard to configure OAuth/OIDC
+   - For Local Accounts: Enable user registration
    - Set site name and branding
-   - Configure Active Directory groups for access
-   - Set upload limits and policies
+   - Configure SSL certificate (via Certificate Store Browser)
 
 5. **Install & Start Services**:
    - Click "Install Service" to register Windows Service
-   - Click "Configure IIS" to set up web portal
+   - Start the Web Portal (runs on Kestrel)
    - Click "Start Service" to begin file monitoring
 
 ## Configuration
@@ -136,6 +139,14 @@ C:\ProgramData\ZLFileRelay\appsettings.json
       "TransferMethod": "ssh",
       "RetryAttempts": 3
     },
+    "WebPortal": {
+      "Authentication": {
+        "EnableEntraId": true,
+        "EnableLocalAccounts": false,
+        "EntraIdTenantId": "your-tenant-id",
+        "EntraIdClientId": "your-client-id"
+      }
+    },
     "Transfer": {
       "Ssh": {
         "Host": "scada-server.example.com",
@@ -154,11 +165,13 @@ See [Configuration Reference](docs/configuration/CONFIGURATION.md) for complete 
 
 - 🔐 **Windows DPAPI Encryption** - Credentials encrypted at rest
 - 🔑 **SSH Key Authentication** - Public key auth preferred over passwords
-- 🛡️ **Windows Authentication** - Web portal integrated with Active Directory
+- 🛡️ **Hybrid Authentication** - Entra ID (Azure AD) OAuth/OIDC + Local Accounts with ASP.NET Core Identity
+- 🔒 **Authorization Code Flow** - Secure OAuth 2.0 flow for Entra ID
 - ✅ **File Integrity Verification** - SHA-256 checksums for all transfers
 - 📝 **Comprehensive Audit Logging** - All operations logged for security monitoring
 - 🚧 **Input Validation** - All inputs sanitized and validated
 - 🔒 **Secure Defaults** - Security-first configuration out of the box
+- 🌐 **SSL/TLS Support** - Certificate store integration for secure HTTPS
 
 ## Deployment Scenarios
 
@@ -232,9 +245,10 @@ dotnet run --project src/ZLFileRelay.WebPortal
 - 🚀 **[Quick Start](docs/getting-started/QUICK_START.md)** - Get started in 15 minutes
 - 📦 **[Installation](docs/getting-started/INSTALLATION.md)** - Step-by-step installation
 - ⚙️ **[Configuration](docs/configuration/CONFIGURATION.md)** - Configuration reference
+- 🔐 **[Entra ID Setup](docs/deployment/ENTRA_ID_SETUP.md)** - Azure AD authentication setup
+- 👤 **[User Management](docs/deployment/USER_MANAGEMENT.md)** - Managing local accounts
 - 🚀 **[Deployment](docs/deployment/DEPLOYMENT.md)** - Production deployment
 - 🔐 **[Security](docs/configuration/SECURITY.md)** - Security best practices
-- 👤 **[User Guides](docs/user-guides/)** - Using ConfigTool and Web Portal
 - 🌐 **[DMZ Deployment](docs/deployment/DMZ_DEPLOYMENT.md)** - Air-gapped deployment
 - 🧪 **[Testing Guide](docs/deployment/SIDE_BY_SIDE_TESTING.md)** - Test alongside existing systems
 
@@ -270,6 +284,9 @@ Licensed under the GNU Lesser General Public License v3.0 or later (LGPL-3.0-or-
 ### Version 2.0.0 (Current)
 - ✨ Unified product combining Service + Web Portal
 - ⬆️ Upgraded to .NET 8.0
+- 🔐 **NEW:** Hybrid authentication (Entra ID + Local Accounts)
+- 🌐 **NEW:** Switched from HTTP.sys to Kestrel for flexibility
+- 🧙 **NEW:** Entra ID Setup Wizard with automatic hostname detection
 - 🎨 Professional branding and configuration
 - 📦 Single installer for all components
 - ⚙️ Unified configuration tool
