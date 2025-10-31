@@ -20,6 +20,12 @@ Get-ChildItem Cert:\CurrentUser\My -CodeSigningCert
 
 ## 🚀 Common Commands
 
+### Update Version (Automated)
+```powershell
+cd build
+.\update-version.ps1 -Version "1.2.3"
+```
+
 ### Build Only (No Signing)
 ```powershell
 cd build
@@ -82,6 +88,11 @@ SignTool=signtool
 
 ## ⚡ Script Options
 
+### update-version.ps1
+```powershell
+.\update-version.ps1 -Version "X.Y.Z"
+```
+
 ### build-app.ps1
 ```powershell
 .\build-app.ps1 [-Configuration Release] [-Runtime win-x64]
@@ -129,8 +140,7 @@ SignTool=signtool
 ## 🎯 Typical Release Workflow
 
 ```powershell
-# 1. Update versions in .csproj files and ZLFileRelay.iss
-# 2. Run release script
+# 1. Run release script (it updates versions automatically)
 cd build
 .\release.ps1 -Version "1.0.0" -Sign
 

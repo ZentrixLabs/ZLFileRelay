@@ -38,16 +38,17 @@ Write-Host "`n" + ("═" * 70) -ForegroundColor DarkCyan
 Write-Host "  STEP 1: Update Version" -ForegroundColor Cyan
 Write-Host ("═" * 70) -ForegroundColor DarkCyan
 
-Write-Host "`n⚠️  Manual step required:" -ForegroundColor Yellow
-Write-Host "  Please update version in these files to: $Version" -ForegroundColor White
-Write-Host "  • src/ZLFileRelay.Service/ZLFileRelay.Service.csproj" -ForegroundColor Gray
-Write-Host "  • src/ZLFileRelay.WebPortal/ZLFileRelay.WebPortal.csproj" -ForegroundColor Gray
-Write-Host "  • src/ZLFileRelay.ConfigTool/ZLFileRelay.ConfigTool.csproj" -ForegroundColor Gray
-Write-Host "  • src/ZLFileRelay.Core/ZLFileRelay.Core.csproj" -ForegroundColor Gray
-Write-Host "  • installer/ZLFileRelay.iss (AppVersion)" -ForegroundColor Gray
-Write-Host "  • CHANGELOG.md" -ForegroundColor Gray
+Write-Host "`n🔄 Automatically updating version numbers..." -ForegroundColor Cyan
+& "$PSScriptRoot\update-version.ps1" -Version $Version
 
-Read-Host "`nPress Enter after updating version numbers"
+if ($LASTEXITCODE -ne 0) {
+    throw "Version update failed"
+}
+
+Write-Host "`n⚠️  Don't forget to update:" -ForegroundColor Yellow
+Write-Host "  • CHANGELOG.md (add release notes for version $Version)" -ForegroundColor White
+
+Read-Host "`nPress Enter after updating CHANGELOG.md"
 
 # Step 2: Build all components
 if (-not $SkipBuild) {

@@ -8,7 +8,17 @@ param(
 )
 
 $ErrorActionPreference = "Stop"
-$PublishDir = "../publish"
+
+# Ensure we're in the repo root
+try {
+    $repoRoot = (& git rev-parse --show-toplevel 2>$null)
+    if ($repoRoot) { 
+        Set-Location -Path $repoRoot 
+        Write-Host "Working Directory: $repoRoot" -ForegroundColor DarkGray
+    }
+} catch { }
+
+$PublishDir = "publish"
 
 Write-Host "`n╔══════════════════════════════════════════════════════════════╗" -ForegroundColor Green
 Write-Host "║  🚀 ZL FILE RELAY - SELF-CONTAINED PUBLISH                  ║" -ForegroundColor Green
@@ -30,7 +40,7 @@ New-Item -ItemType Directory -Force -Path $PublishDir | Out-Null
 # Publish Service
 Write-Host "`n━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━" -ForegroundColor DarkGray
 Write-Host "📦 Publishing File Transfer Service (with .NET 8)..." -ForegroundColor Cyan
-dotnet publish ../src/ZLFileRelay.Service/ZLFileRelay.Service.csproj `
+dotnet publish src/ZLFileRelay.Service/ZLFileRelay.Service.csproj `
     -c $Configuration `
     -r $Runtime `
     --self-contained true `
@@ -48,7 +58,7 @@ Write-Host "✅ Service published" -ForegroundColor Green
 # Publish Web Portal
 Write-Host "`n━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━" -ForegroundColor DarkGray
 Write-Host "🌐 Publishing Web Portal (with .NET 8)..." -ForegroundColor Cyan
-dotnet publish ../src/ZLFileRelay.WebPortal/ZLFileRelay.WebPortal.csproj `
+dotnet publish src/ZLFileRelay.WebPortal/ZLFileRelay.WebPortal.csproj `
     -c $Configuration `
     -r $Runtime `
     --self-contained true `
@@ -66,7 +76,7 @@ Write-Host "✅ Web Portal published" -ForegroundColor Green
 # Publish Config Tool (single file)
 Write-Host "`n━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━" -ForegroundColor DarkGray
 Write-Host "🔧 Publishing Configuration Tool (single file with .NET 8)..." -ForegroundColor Cyan
-dotnet publish ../src/ZLFileRelay.ConfigTool/ZLFileRelay.ConfigTool.csproj `
+dotnet publish src/ZLFileRelay.ConfigTool/ZLFileRelay.ConfigTool.csproj `
     -c $Configuration `
     -r $Runtime `
     --self-contained true `
@@ -85,32 +95,32 @@ Write-Host "✅ Config Tool published" -ForegroundColor Green
 # Copy configuration file
 Write-Host "`n━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━" -ForegroundColor DarkGray
 Write-Host "📄 Copying configuration templates..." -ForegroundColor Cyan
-Copy-Item "../appsettings.json" "$PublishDir/appsettings.json"
+Copy-Item "appsettings.json" "$PublishDir/appsettings.json"
 Write-Host "✅ Configuration copied" -ForegroundColor Green
 
 # Copy essential user documentation only (exclude development and archive)
 Write-Host "`n📚 Copying user documentation..." -ForegroundColor Cyan
-if (Test-Path "../docs") {
+if (Test-Path "docs") {
     # Create docs directory in publish
     $docsDir = "$PublishDir/docs"
     New-Item -ItemType Directory -Force -Path $docsDir | Out-Null
     
     # Copy README.md
-    if (Test-Path "../docs/README.md") {
-        Copy-Item "../docs/README.md" "$docsDir/README.md" -Force
+    if (Test-Path "docs/README.md") {
+        Copy-Item "docs/README.md" "$docsDir/README.md" -Force
     }
     
     # Copy entire folders (getting-started, configuration, user-guides, reference)
     $foldersToCopy = @("getting-started", "configuration", "user-guides", "reference")
     foreach ($folder in $foldersToCopy) {
-        $sourcePath = "../docs/$folder"
+        $sourcePath = "docs/$folder"
         if (Test-Path $sourcePath) {
             Copy-Item $sourcePath "$docsDir/$folder" -Recurse -Force
         }
     }
     
     # Copy specific deployment files only (exclude changelogs and summaries)
-    $deploymentSource = "../docs/deployment"
+    $deploymentSource = "docs/deployment"
     $deploymentTarget = "$docsDir/deployment"
     if (Test-Path $deploymentSource) {
         New-Item -ItemType Directory -Force -Path $deploymentTarget | Out-Null

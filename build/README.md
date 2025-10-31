@@ -17,6 +17,23 @@ This directory contains PowerShell scripts for building, signing, and releasing 
 
 ## Scripts Overview
 
+### `update-version.ps1` - Update Version Numbers
+Automatically updates version across all project files and installer.
+
+```powershell
+# Update to version 1.2.3
+.\update-version.ps1 -Version "1.2.3"
+```
+
+**Files Updated:**
+- `src/ZLFileRelay.Core/ZLFileRelay.Core.csproj`
+- `src/ZLFileRelay.Service/ZLFileRelay.Service.csproj`
+- `src/ZLFileRelay.WebPortal/ZLFileRelay.WebPortal.csproj`
+- `src/ZLFileRelay.ConfigTool/ZLFileRelay.ConfigTool.csproj`
+- `installer/ZLFileRelay.iss` (MyAppVersion)
+
+**Note:** CHANGELOG.md still needs to be updated manually.
+
 ### `build-app.ps1` - Build All Components
 Builds all ZLFileRelay components (Service, WebPortal, ConfigTool) in Release configuration.
 
@@ -245,15 +262,22 @@ For automated builds in CI/CD:
 
 ## Version Management
 
-Update version in these files before release:
-- `src/ZLFileRelay.Service/ZLFileRelay.Service.csproj`
-- `src/ZLFileRelay.WebPortal/ZLFileRelay.WebPortal.csproj`
-- `src/ZLFileRelay.ConfigTool/ZLFileRelay.ConfigTool.csproj`
-- `src/ZLFileRelay.Core/ZLFileRelay.Core.csproj`
-- `installer/ZLFileRelay.iss` (AppVersion)
-- `CHANGELOG.md`
+### Automated Version Update
 
-The `release.ps1` script will remind you to update these.
+Use the `update-version.ps1` script to automatically update all project files:
+
+```powershell
+.\update-version.ps1 -Version "1.2.3"
+```
+
+This updates:
+- ✅ All 4 .csproj files (Core, Service, WebPortal, ConfigTool)
+- ✅ Inno Setup installer script (MyAppVersion)
+
+Manual update still required:
+- ⚠️ `CHANGELOG.md` - Add release notes
+
+The `release.ps1` script calls `update-version.ps1` automatically.
 
 ## Output Structure
 

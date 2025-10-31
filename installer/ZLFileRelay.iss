@@ -4,7 +4,7 @@
 ; Features: Hybrid Authentication (Entra ID + Local Accounts), Air-Gapped Support
 
 #define MyAppName "ZL File Relay"
-#define MyAppVersion "1.0.0"
+#define MyAppVersion "1.1.0"
 #define MyAppPublisher "ZentrixLabs"
 #define MyAppURL "https://zentrixlabs.com"
 #define MyAppExeName "ZLFileRelay.ConfigTool.exe"
@@ -71,7 +71,7 @@ DisableReadyPage=no
 ; Uncomment and configure the line below in Inno Setup IDE:
 ; Tools → Configure Sign Tools... → Add SignTool named "signtool"
 ; Then uncomment this line to enable automatic installer signing:
-; SignTool=signtool
+SignTool=SignTool
 ; 
 ; SignTool command example:
 ; "C:\Program Files (x86)\Windows Kits\10\bin\10.0.22621.0\x64\signtool.exe" sign /fd SHA256 /td SHA256 /tr http://timestamp.digicert.com /sha1 YOUR_CERT_THUMBPRINT /d "ZL File Relay Setup" /du "https://github.com/ZentrixLabs/ZLFileRelay" $f

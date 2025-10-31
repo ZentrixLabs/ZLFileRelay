@@ -1,4 +1,4 @@
-﻿<Project Sdk="Microsoft.NET.Sdk">
+<Project Sdk="Microsoft.NET.Sdk">
 
   <ItemGroup>
     <ProjectReference Include="..\ZLFileRelay.Core\ZLFileRelay.Core.csproj" />
@@ -20,6 +20,7 @@
   </ItemGroup>
 
   <PropertyGroup>
+    <Version>1.1.0</Version>
     <OutputType>WinExe</OutputType>
     <TargetFramework>net8.0-windows</TargetFramework>
     <Nullable>enable</Nullable>
@@ -46,6 +47,7 @@
 
   <!-- Application Icon -->
   <PropertyGroup>
+    <Version>1.1.0</Version>
     <ApplicationIcon>Assets\ZLFileRelay.ico</ApplicationIcon>
   </PropertyGroup>
 
