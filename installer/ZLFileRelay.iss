@@ -67,6 +67,15 @@ RestartApplications=no
 DisableDirPage=no
 DisableReadyPage=no
 
+; Code Signing
+; Uncomment and configure the line below in Inno Setup IDE:
+; Tools → Configure Sign Tools... → Add SignTool named "signtool"
+; Then uncomment this line to enable automatic installer signing:
+; SignTool=signtool
+; 
+; SignTool command example:
+; "C:\Program Files (x86)\Windows Kits\10\bin\10.0.22621.0\x64\signtool.exe" sign /fd SHA256 /td SHA256 /tr http://timestamp.digicert.com /sha1 YOUR_CERT_THUMBPRINT /d "ZL File Relay Setup" /du "https://github.com/ZentrixLabs/ZLFileRelay" $f
+
 [Languages]
 Name: "english"; MessagesFile: "compiler:Default.isl"
 

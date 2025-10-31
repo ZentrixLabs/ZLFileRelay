@@ -1,6 +1,7 @@
-# Font Awesome Pro files (not committed to git due to license)
-fontawesome/
+# Font Awesome Free can be committed to git (open source license)
+# Files should be downloaded from https://fontawesome.com/download
+# and placed in wwwroot/lib/fontawesome/ directory
 
-# Keep this file and the setup instructions
+# Keep setup instructions
 !.gitignore
 !FONTAWESOME_SETUP.md

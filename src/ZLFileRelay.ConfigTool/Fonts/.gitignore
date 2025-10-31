@@ -1,9 +1,0 @@
-# Font Awesome Pro font files (not committed to git due to license)
-*.otf
-*.ttf
-*.woff
-*.woff2
-
-# Keep the README
-!README.md
-!.gitignore

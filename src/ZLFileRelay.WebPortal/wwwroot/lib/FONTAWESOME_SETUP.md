@@ -1,117 +1,219 @@
-# Font Awesome Pro Setup Instructions
+# Font Awesome Free Setup for Web Portal
 
-## Self-Hosted Font Awesome Pro Integration
+This guide explains how to set up Font Awesome Free for the ZLFileRelay Web Portal.
 
-Since this application may be deployed in air-gapped/DMZ environments, Font Awesome is self-hosted rather than using a CDN.
+## Overview
 
-## Installation Steps
+Font Awesome Free is **open source** and includes 2,000+ free icons - more than enough for this project!
 
-### 1. Download Font Awesome Pro
+- ✅ **No account required**
+- ✅ **No subscription cost**
+- ✅ **Can be committed to git**
+- ✅ **SIL OFL 1.1 License** (fonts)
+- ✅ **CC BY 4.0 License** (icons)
+- ✅ **MIT License** (code)
+
+---
+
+## Quick Setup
+
+### Step 1: Download Font Awesome Free
 
 1. Go to https://fontawesome.com/download
-2. Log in with your Font Awesome Pro account
-3. Download **Font Awesome Pro for Web** (latest version)
-4. Extract the downloaded zip file
+2. Click **"Free for Web"** download button (no account needed)
+3. Extract the ZIP file
 
-### 2. Copy Files to Project
+### Step 2: Copy Files to Project
 
-From the extracted Font Awesome package, copy the following folders into `src/ZLFileRelay.WebPortal/wwwroot/lib/fontawesome/`:
+Copy the contents of the extracted `fontawesome-free-6.x.x-web` folder to:
 
 ```
-fontawesome/
+src/ZLFileRelay.WebPortal/wwwroot/lib/fontawesome/
+```
+
+The structure should be:
+
+```
+wwwroot/lib/fontawesome/
 ├── css/
-│   ├── all.min.css          (Required - includes all styles)
-│   ├── fontawesome.min.css  (Core styles)
-│   ├── solid.min.css        (Solid icons)
-│   ├── regular.min.css      (Regular icons)
-│   └── brands.min.css       (Brand icons - optional)
-└── webfonts/
-    ├── fa-solid-900.woff2    (Solid font files)
-    ├── fa-solid-900.ttf
-    ├── fa-regular-400.woff2  (Regular font files)
-    ├── fa-regular-400.ttf
-    └── fa-brands-400.woff2   (Brand font files - optional)
-        fa-brands-400.ttf
+│   ├── all.min.css           (Main stylesheet - includes all styles)
+│   ├── fontawesome.min.css   (Core Font Awesome CSS)
+│   ├── solid.min.css         (Solid style)
+│   ├── regular.min.css       (Regular style)
+│   └── brands.min.css        (Brand logos)
+├── webfonts/
+│   ├── fa-solid-900.woff2    (Solid font files)
+│   ├── fa-solid-900.ttf
+│   ├── fa-regular-400.woff2  (Regular font files)
+│   ├── fa-regular-400.ttf
+│   ├── fa-brands-400.woff2   (Brand font files)
+│   └── fa-brands-400.ttf
+└── js/
+    ├── all.min.js            (Optional JavaScript)
+    └── fontawesome.min.js
 ```
 
-### 3. What to Copy
+### Step 3: Verify in _Layout.cshtml
 
-**Minimum Required:**
-- `css/all.min.css` - Main CSS file (includes all icon styles)
-- `webfonts/` folder - All font files (*.woff2, *.woff, *.ttf, *.eot)
+The stylesheet reference should already be in `Pages/Shared/_Layout.cshtml`:
 
-**Recommended:**
-Copy the entire `css/` and `webfonts/` folders for maximum compatibility.
-
-### 4. Directory Structure After Setup
-
-```
-wwwroot/lib/
-├── bootstrap/
-├── jquery/
-├── fontawesome/                 ← Create this folder
-│   ├── css/
-│   │   └── all.min.css         ← Required
-│   ├── webfonts/               ← Required (all font files)
-│   └── LICENSE.txt             ← Include Font Awesome license
-└── FONTAWESOME_SETUP.md        ← This file
+```html
+<link rel="stylesheet" href="~/lib/fontawesome/css/all.min.css" />
 ```
 
-### 5. Verify Installation
+### Step 4: Test
 
-After copying files, the application will automatically use Font Awesome icons instead of Bootstrap Icons.
+Run the web portal and verify icons are showing:
 
-Check that these files exist:
-- `wwwroot/lib/fontawesome/css/all.min.css`
-- `wwwroot/lib/fontawesome/webfonts/fa-solid-900.woff2`
+```bash
+dotnet run --project src/ZLFileRelay.WebPortal
+```
 
-### 6. License Compliance
+Navigate to http://localhost:8080 and check that icons display correctly.
 
-Since you have a Font Awesome Pro subscription:
-- Include the `LICENSE.txt` file from the Font Awesome package
-- Font Awesome Pro licenses allow self-hosting
-- Keep your subscription active for updates and support
+---
 
-## Icon Migration Reference
+## Alternative: CDN Setup (Not Recommended for DMZ)
 
-The application has been migrated from Bootstrap Icons to Font Awesome:
+If you're NOT in a DMZ environment, you can use the Font Awesome CDN:
 
-| Bootstrap Icon | Font Awesome | Usage |
-|---------------|--------------|-------|
-| `bi-hdd-network` | `fa-solid fa-network-wired` | Product branding |
-| `bi-upload` | `fa-solid fa-cloud-arrow-up` | Upload actions |
-| `bi-person-circle` | `fa-solid fa-circle-user` | User profile |
-| `bi-shield-check` | `fa-solid fa-shield-check` | Security |
-| `bi-envelope` | `fa-solid fa-envelope` | Contact email |
+```html
+<!-- In _Layout.cshtml -->
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css" />
+```
 
-## Updates
+**Note:** CDN won't work in air-gapped/DMZ environments. Use local files instead.
 
-When updating Font Awesome to a newer version:
-1. Download the latest Font Awesome Pro package
-2. Replace the `css/` and `webfonts/` folders
-3. Test the application to ensure all icons display correctly
-4. Update this README with the new version number
+---
 
-## Current Version
+## Icons Used in Web Portal
 
-Font Awesome Pro Version: **6.x** (Update this after installation)
+All icons used in ZLFileRelay Web Portal are available in Font Awesome Free:
+
+### Solid Style Icons (fa-solid)
+- ✅ `fa-circle-check` - Success indicator
+- ✅ `fa-triangle-exclamation` - Warning
+- ✅ `fa-clipboard-list` - Lists
+- ✅ `fa-circle-xmark` - Error
+- ✅ `fa-folder` - Folders
+- ✅ `fa-clock` - Timestamp
+- ✅ `fa-server` - Server
+- ✅ `fa-circle-exclamation` - Alert
+- ✅ `fa-note-sticky` - Notes
+- ✅ `fa-cloud-arrow-up` - Upload
+- ✅ `fa-house` - Home
+- ✅ `fa-user` - User
+- ✅ `fa-spinner` - Loading
+- ✅ `fa-network-wired` - Network
+- ✅ `fa-circle-user` - Profile
+- ✅ `fa-location-dot` - Location
+- ✅ `fa-right-to-bracket` - Login
+- ✅ `fa-user-plus` - Register
+- ✅ `fa-circle-info` - Information
+- ✅ `fa-key` - Authentication
+- ✅ `fa-circle-question` - Help
+- ✅ `fa-envelope` - Email
+- ✅ `fa-file-lines` - Documents
+- ✅ `fa-circle-arrow-right` - Transfer
+- ✅ `fa-shield-halved` - Security
+- ✅ `fa-check` - Checkmark
+
+### Brands Style Icons (fa-brands)
+- ✅ `fa-microsoft` - Microsoft logo
+
+**All icons are FREE!** No Pro subscription needed.
+
+---
+
+## File Size
+
+Font Awesome Free download is approximately:
+- **CSS:** ~100 KB (minified)
+- **Fonts:** ~500 KB total (woff2 format)
+- **Total:** ~600 KB
+
+Much smaller than Font Awesome Pro and includes everything we need!
+
+---
+
+## Migration from Font Awesome Pro
+
+If you previously had Font Awesome Pro installed:
+
+1. **Delete old Pro files:**
+   ```bash
+   rm -rf wwwroot/lib/fontawesome/
+   ```
+
+2. **Download Font Awesome Free** (see Step 1 above)
+
+3. **Copy Free files** (see Step 2 above)
+
+4. **Test** that all icons still display correctly
+
+All icon names are the same, so no code changes needed (already done)!
+
+---
+
+## License Information
+
+Font Awesome Free is licensed under multiple open source licenses:
+
+| Component | License | Can Commit to Git? |
+|-----------|---------|-------------------|
+| **Fonts (webfonts/)** | SIL OFL 1.1 | ✅ Yes |
+| **Icons (SVGs)** | CC BY 4.0 | ✅ Yes |
+| **CSS/Code** | MIT | ✅ Yes |
+
+**✅ You CAN commit these files to git**  
+**✅ You CAN distribute them freely**  
+**✅ Perfect for open source and commercial projects**
+
+See: https://fontawesome.com/license/free
+
+---
 
 ## Troubleshooting
 
-**Icons not showing:**
-- Verify `all.min.css` exists in `wwwroot/lib/fontawesome/css/`
-- Verify `webfonts/` folder contains all font files
-- Check browser console for 404 errors
-- Ensure paths in `_Layout.cshtml` are correct
+### Icons not showing (shows squares/boxes)
 
-**Performance:**
-- The `all.min.css` file includes all icon styles (~80KB gzipped)
-- Font files are loaded on-demand by the browser
-- Consider using only specific style files (solid.min.css) if you want to optimize size
+**Cause:** Font files not found or incorrect path
 
-## Alternative: Font Awesome Free
+**Solution:**
+1. Verify files exist in `wwwroot/lib/fontawesome/webfonts/`
+2. Check `_Layout.cshtml` has correct stylesheet path
+3. Clear browser cache (Ctrl+F5)
+4. Check browser console for 404 errors
 
-If you only need basic icons and don't have a Pro subscription, you can use Font Awesome Free:
-1. Download from: https://fontawesome.com/download (Free for Web)
-2. Follow the same installation steps above
-3. Some Pro icons in the app may not be available (will fall back to solid style)
+### Wrong icons displaying
+
+**Cause:** Using Pro icon names that don't exist in Free
+
+**Solution:** All icons have been updated to Free-compatible versions. Rebuild and test.
+
+### Icons too small/large
+
+**Solution:** Use Font Awesome sizing classes:
+```html
+<i class="fa-solid fa-check fa-2x"></i>  <!-- 2x size -->
+<i class="fa-solid fa-check fa-lg"></i>  <!-- Large -->
+<i class="fa-solid fa-check fa-xs"></i>  <!-- Extra small -->
+```
+
+---
+
+## Additional Resources
+
+- **Font Awesome Free Icons:** https://fontawesome.com/search?o=r&m=free
+- **Documentation:** https://docs.fontawesome.com/
+- **Download:** https://fontawesome.com/download
+- **License:** https://fontawesome.com/license/free
+
+---
+
+**Need Help?**
+
+All 2,000+ Font Awesome Free icons can be searched here:
+https://fontawesome.com/search?o=r&m=free
+
+Just filter by "Free" to see what's available!

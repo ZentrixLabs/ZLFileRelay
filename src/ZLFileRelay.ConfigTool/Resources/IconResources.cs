@@ -39,7 +39,7 @@ public static class IconResources
     public static IconChar Server => IconChar.Server;                // Server
     public static IconChar Remote => IconChar.NetworkWired;          // Remote connection
     public static IconChar Connect => IconChar.Plug;                 // Connect
-    public static IconChar Disconnect => IconChar.PlugCircleXmark;   // Disconnect
+    public static IconChar Disconnect => IconChar.PlugCircleExclamation; // Disconnect (Free alternative)
 
     // User & Account Icons
     public static IconChar Contact => IconChar.User;                 // User/contact

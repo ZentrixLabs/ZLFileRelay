@@ -27,6 +27,60 @@ iscc installer\ZLFileRelay.iss
 
 ---
 
+## ✍️ Code Signing (Optional but Recommended)
+
+### Setup Code Signing in Inno Setup
+
+1. **Configure SignTool in Inno Setup IDE**
+   - Open Inno Setup IDE
+   - Go to **Tools → Configure Sign Tools...**
+   - Click **Add**
+   - Name: `signtool`
+   - Command:
+     ```
+     "C:\Program Files (x86)\Windows Kits\10\bin\10.0.22621.0\x64\signtool.exe" sign /fd SHA256 /td SHA256 /tr http://timestamp.digicert.com /sha1 YOUR_CERT_THUMBPRINT /d "ZL File Relay Setup" /du "https://github.com/ZentrixLabs/ZLFileRelay" $f
+     ```
+   - Replace `YOUR_CERT_THUMBPRINT` with your certificate thumbprint
+   - Adjust Windows SDK version path if different
+
+2. **Enable Signing in Inno Script**
+   - Open `installer/ZLFileRelay.iss`
+   - Find the `[Setup]` section
+   - Uncomment this line: `SignTool=signtool`
+
+3. **Build Signed Installer**
+   ```powershell
+   # Build and sign app components first
+   .\build\build-app.ps1
+   .\build\sign-app.ps1
+   
+   # Publish signed components
+   .\build\publish-selfcontained.ps1
+   
+   # Build installer (will auto-sign if configured)
+   iscc installer\ZLFileRelay.iss
+   ```
+
+### Finding Your Certificate Thumbprint
+
+```powershell
+# List code signing certificates
+Get-ChildItem Cert:\CurrentUser\My -CodeSigningCert
+
+# Copy the Thumbprint (40-character hex string)
+```
+
+### Verify Installer Signature
+
+```powershell
+# Using signtool
+signtool verify /pa installer\output\ZLFileRelay-Setup-*.exe
+
+# Or right-click installer → Properties → Digital Signatures tab
+```
+
+---
+
 ## 📊 Installer Details
 
 ### What's Included
