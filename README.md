@@ -23,8 +23,9 @@ ZL File Relay is a unified enterprise solution for secure, automated file transf
 
 ### Web Upload Portal
 - ✅ Modern responsive web interface
-- ✅ Windows Authentication (NTLM/Kerberos)
-- ✅ Active Directory group authorization
+- ✅ Hybrid authentication: Entra ID (Azure AD) SSO + Local Accounts
+- ✅ Works in air-gapped networks with local authentication
+- ✅ Role-based authorization (Admin/Uploader)
 - ✅ Multi-file upload support
 - ✅ Upload progress tracking
 - ✅ User-specific upload directories
@@ -262,7 +263,7 @@ For technical support:
 ## License
 
 Copyright © 2025 ZentrixLabs
-Licensed under the MIT License - see [LICENSE](LICENSE) for details.
+Licensed under the GNU Lesser General Public License v3.0 or later (LGPL-3.0-or-later) – see [LICENSE](LICENSE) for details.
 
 ## Version History
 

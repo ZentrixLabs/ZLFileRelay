@@ -90,7 +90,7 @@ public partial class SshSettingsViewModel : ObservableObject
                 Directory.CreateDirectory(directory);
             }
 
-            var keyPair = await _sshKeyGenerator.GenerateAsync(SshKeyType.ED25519, keyPath);
+            var keyPair = await _sshKeyGenerator.GenerateAsync(SshKeyType.ED25519, keyPath, null, null);
 
             PrivateKeyPath = keyPair.PrivateKeyPath;
             PublicKeyPath = keyPair.PublicKeyPath;

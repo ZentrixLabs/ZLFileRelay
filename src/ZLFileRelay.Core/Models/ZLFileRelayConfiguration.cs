@@ -12,6 +12,7 @@ public class ZLFileRelayConfiguration
     public WebPortalSettings WebPortal { get; set; } = new();
     public TransferSettings Transfer { get; set; } = new();
     public SecuritySettings Security { get; set; } = new();
+    public ConfigurationStatusSettings Status { get; set; } = new();
 }
 
 /// <summary>
@@ -92,11 +93,15 @@ public class ServiceSettings
 public class WebPortalSettings
 {
     public bool Enabled { get; set; } = true;
-    public bool RequireAuthentication { get; set; } = true;
-    public string AuthenticationType { get; set; } = "Windows";
-    public string? AuthenticationDomain { get; set; }
-    public List<string> AllowedGroups { get; set; } = new();
-    public List<string> AllowedUsers { get; set; } = new();
+    
+    /// <summary>
+    /// Authentication configuration (Entra ID + Local Accounts)
+    /// Note: Authorization is handled by:
+    /// - Entra ID: Enterprise App assignment controls access
+    /// - Local Accounts: All authenticated users are allowed
+    /// </summary>
+    public AuthenticationSettings Authentication { get; set; } = new();
+    
     public long MaxFileSizeBytes { get; set; } = 4294967295; // ~4GB
     public int MaxConcurrentUploads { get; set; } = 10;
     public List<string> AllowedFileExtensions { get; set; } = new();
@@ -111,6 +116,52 @@ public class WebPortalSettings
 }
 
 /// <summary>
+/// Authentication settings for hybrid Entra ID + Local Accounts
+/// </summary>
+public class AuthenticationSettings
+{
+    /// <summary>
+    /// Enable Entra ID (Azure AD) authentication for SSO
+    /// </summary>
+    public bool EnableEntraId { get; set; } = false;
+    
+    /// <summary>
+    /// Enable local user accounts (ASP.NET Core Identity)
+    /// </summary>
+    public bool EnableLocalAccounts { get; set; } = true;
+    
+    /// <summary>
+    /// Entra ID Tenant ID (from Azure AD app registration)
+    /// </summary>
+    public string? EntraIdTenantId { get; set; }
+    
+    /// <summary>
+    /// Entra ID Client ID (Application ID from Azure AD app registration)
+    /// </summary>
+    public string? EntraIdClientId { get; set; }
+    
+    /// <summary>
+    /// Entra ID Client Secret (from Azure AD app registration)
+    /// </summary>
+    public string? EntraIdClientSecret { get; set; }
+    
+    /// <summary>
+    /// Database connection string for Identity (SQLite by default)
+    /// </summary>
+    public string ConnectionString { get; set; } = "Data Source=C:\\ProgramData\\ZLFileRelay\\zlfilerelay.db";
+    
+    /// <summary>
+    /// Require email confirmation for local accounts
+    /// </summary>
+    public bool RequireEmailConfirmation { get; set; } = false;
+    
+    /// <summary>
+    /// New local accounts require admin approval before they can upload
+    /// </summary>
+    public bool RequireApproval { get; set; } = true;
+}
+
+/// <summary>
 /// Kestrel web server settings (when running as Windows Service)
 /// </summary>
 public class KestrelSettings
@@ -118,8 +169,34 @@ public class KestrelSettings
     public int HttpPort { get; set; } = 8080;
     public int HttpsPort { get; set; } = 8443;
     public bool EnableHttps { get; set; } = false;
+    
+    /// <summary>
+    /// Preferred: Certificate thumbprint for loading from Windows certificate store
+    /// </summary>
+    public string? CertificateThumbprint { get; set; }
+    
+    /// <summary>
+    /// Certificate store location (default: LocalMachine/My)
+    /// Valid values: "LocalMachine", "CurrentUser"
+    /// </summary>
+    public string CertificateStoreLocation { get; set; } = "LocalMachine";
+    
+    /// <summary>
+    /// Certificate store name (default: My)
+    /// Common values: "My", "Personal", "WebHosting"
+    /// </summary>
+    public string CertificateStoreName { get; set; } = "My";
+    
+    /// <summary>
+    /// Fallback: File path to certificate (.pfx or .p12) if not using certificate store
+    /// </summary>
     public string? CertificatePath { get; set; }
+    
+    /// <summary>
+    /// Certificate file password (only used if CertificatePath is specified)
+    /// </summary>
     public string? CertificatePassword { get; set; }
+    
     public bool UseWindowsAuth { get; set; } = true;
 }
 
@@ -186,4 +263,40 @@ public class SecuritySettings
     public bool AllowExecutableFiles { get; set; } = true;
     public bool AllowHiddenFiles { get; set; } = false;
     public long MaxUploadSizeBytes { get; set; } = 5L * 1024 * 1024 * 1024; // 5GB
+}
+
+/// <summary>
+/// Configuration status and completion tracking
+/// </summary>
+public class ConfigurationStatusSettings
+{
+    /// <summary>
+    /// Indicates if configuration is complete (all required fields filled)
+    /// </summary>
+    public bool IsConfigurationComplete { get; set; } = false;
+    
+    /// <summary>
+    /// Indicates if connection testing has been completed successfully
+    /// </summary>
+    public bool IsTestingComplete { get; set; } = false;
+    
+    /// <summary>
+    /// Date/time when configuration was last saved
+    /// </summary>
+    public DateTime? LastConfigurationSaved { get; set; }
+    
+    /// <summary>
+    /// Date/time when connection was last tested successfully
+    /// </summary>
+    public DateTime? LastTestDate { get; set; }
+    
+    /// <summary>
+    /// Result of last connection test ("Success", "Failed", or null if not tested)
+    /// </summary>
+    public string? LastTestResult { get; set; }
+    
+    /// <summary>
+    /// Transfer method that was last tested ("ssh" or "smb")
+    /// </summary>
+    public string? LastTestedMethod { get; set; }
 }

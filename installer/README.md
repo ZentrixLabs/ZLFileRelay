@@ -61,30 +61,34 @@ This is a **self-contained installer** that includes:
 - ✅ ASP.NET Core 8 Runtime  
 - ✅ All dependencies
 - ✅ Built-in Kestrel web server
+- ✅ SQLite database for local authentication
 
 **Target machines need:**
 - ✅ Windows Server 2019+ (or Windows 10/11)
 - ✅ 500MB disk space
 - ❌ **NO .NET framework required!**
 - ❌ **NO IIS required!** (Web portal runs as Windows Service)
-- ❌ **NO internet connection required!**
+- ❌ **NO internet connection required!** (Local authentication works offline)
+- ❌ **NO Active Directory required!** (Role-based auth with local accounts)
 
 ---
 
 ## 🔒 DMZ/OT Deployment
 
 Perfect for:
-- Air-gapped networks
-- DMZ environments
-- OT/SCADA networks
-- Restricted security zones
-- Offline installations
+- Air-gapped networks (local authentication, no cloud dependencies)
+- DMZ environments (works across domains without trust)
+- OT/SCADA networks (isolated operational technology)
+- Restricted security zones (classified environments)
+- Offline installations (no internet required for local auth)
 
 **Process:**
 1. Build installer on development machine
 2. Copy `ZLFileRelay-Setup-v1.0.0-SelfContained.exe` to USB/approved transfer
 3. Run installer on target (no internet needed)
 4. Configure via Config Tool
+   - Enable **Local Authentication** for air-gapped deployment
+   - (Optional) Configure **Entra ID** for cloud-connected deployments
 5. Done!
 
 ---
@@ -132,15 +136,23 @@ Before distributing installer:
 - [ ] Test on Windows Server 2019 (no .NET installed)
 - [ ] Test on Windows Server 2022 (no .NET installed)
 - [ ] Test on Windows Server Core (headless)
-- [ ] Test on air-gapped VM
+- [ ] Test on air-gapped VM (no internet)
 - [ ] Verify File Transfer Service installs and starts
 - [ ] Verify Web Portal Service installs and starts (port 8080)
 - [ ] Verify web portal accessible via browser (no IIS needed)
-- [ ] Verify ConfigTool launches
+- [ ] Test local authentication (air-gapped mode)
+  - [ ] User registration works
+  - [ ] User login works
+  - [ ] Admin approval workflow works (if enabled)
+- [ ] Test Entra ID authentication (if cloud-connected)
+  - [ ] SSO works with Microsoft account
+  - [ ] Configuration via wizard works
+- [ ] Verify ConfigTool launches and configures auth
 - [ ] Test complete file transfer workflow
 - [ ] Test uninstaller (clean removal)
 - [ ] Verify no .NET installation required
 - [ ] Verify no IIS required for web portal
+- [ ] Verify no internet required for local authentication
 - [ ] Check installer size acceptable (~150MB)
 
 ---

@@ -4,8 +4,14 @@
              xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006" 
              xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
              xmlns:ui="http://schemas.modernwpf.com/2019"
+             xmlns:converters="clr-namespace:ZLFileRelay.ConfigTool.Converters"
              mc:Ignorable="d" 
              d:DesignHeight="700" d:DesignWidth="900">
+    <UserControl.Resources>
+        <BooleanToVisibilityConverter x:Key="BooleanToVisibilityConverter"/>
+        <converters:InverseBoolConverter x:Key="InverseBoolConverter"/>
+        <converters:InverseBooleanToVisibilityConverter x:Key="InverseBooleanToVisibilityConverter"/>
+    </UserControl.Resources>
     
     <ScrollViewer VerticalScrollBarVisibility="Auto">
         <StackPanel Margin="20">
@@ -59,13 +65,95 @@
             <ui:SimpleStackPanel Spacing="10" Margin="0,0,0,20">
                 <TextBlock Text="SSL Certificate (Required for HTTPS)" Style="{StaticResource SubtitleTextBlockStyle}"/>
                 
-                <Grid>
+                <!-- Certificate Method Selection -->
+                <GroupBox Header="Certificate Source" Margin="0,0,0,10">
+                    <StackPanel>
+                        <RadioButton Content="Certificate Store (Recommended - More Secure)" 
+                                     IsChecked="{Binding UseCertificateStore, Mode=TwoWay}"
+                                     Margin="5"
+                                     ToolTip="Use a certificate from the Windows certificate store. More secure and better for production."/>
+                        <RadioButton Content="File Path (Fallback)" 
+                                     IsChecked="{Binding UseCertificateStore, Mode=TwoWay, Converter={StaticResource InverseBoolConverter}}"
+                                     Margin="5,0,5,5"
+                                     ToolTip="Load certificate from a .pfx or .p12 file. Useful for testing or when store access is not available."/>
+                    </StackPanel>
+                </GroupBox>
+                
+                <!-- Certificate Store Mode -->
+                <Grid x:Name="CertificateStoreMode" 
+                      Visibility="{Binding UseCertificateStore, Converter={StaticResource BooleanToVisibilityConverter}}"
+                      Margin="0,0,0,10">
                     <Grid.ColumnDefinitions>
                         <ColumnDefinition Width="120"/>
                         <ColumnDefinition Width="*"/>
                         <ColumnDefinition Width="Auto"/>
                     </Grid.ColumnDefinitions>
                     <Grid.RowDefinitions>
+                        <RowDefinition Height="Auto"/>
+                        <RowDefinition Height="Auto"/>
+                        <RowDefinition Height="Auto"/>
+                        <RowDefinition Height="10"/>
+                        <RowDefinition Height="Auto"/>
+                    </Grid.RowDefinitions>
+                    
+                    <TextBlock Grid.Row="0" Grid.Column="0" Text="Thumbprint:" VerticalAlignment="Center"/>
+                    <TextBox Grid.Row="0" Grid.Column="1" 
+                             Text="{Binding CertificateThumbprint, UpdateSourceTrigger=PropertyChanged}" 
+                             Margin="0,0,5,5"
+                             ToolTip="Certificate thumbprint (from certificate store)"/>
+                    <Button Grid.Row="0" Grid.Column="2" 
+                            Command="{Binding BrowseCertificateStoreCommand}"
+                            Content="Browse Store..." 
+                            Margin="0,0,0,5"
+                            ToolTip="Browse certificates in the Windows certificate store"/>
+                    
+                    <TextBlock Grid.Row="1" Grid.Column="0" Text="Store Location:" VerticalAlignment="Center"/>
+                    <ComboBox Grid.Row="1" Grid.Column="1" 
+                             SelectedValue="{Binding CertificateStoreLocation, Mode=TwoWay}"
+                             SelectedValuePath="Content"
+                             Margin="0,0,5,5">
+                        <ComboBox.Items>
+                            <ComboBoxItem Content="LocalMachine"/>
+                            <ComboBoxItem Content="CurrentUser"/>
+                        </ComboBox.Items>
+                    </ComboBox>
+                    
+                    <TextBlock Grid.Row="2" Grid.Column="0" Text="Store Name:" VerticalAlignment="Center"/>
+                    <ComboBox Grid.Row="2" Grid.Column="1" 
+                             Text="{Binding CertificateStoreName, Mode=TwoWay}"
+                             IsEditable="True"
+                             Margin="0,0,5,5"
+                             ToolTip="Certificate store name (default: My)">
+                        <ComboBox.Items>
+                            <ComboBoxItem Content="My"/>
+                            <ComboBoxItem Content="Personal"/>
+                            <ComboBoxItem Content="WebHosting"/>
+                        </ComboBox.Items>
+                    </ComboBox>
+                    
+                    <Button Grid.Row="2" Grid.Column="2" 
+                            Command="{Binding TestCertificateCommand}"
+                            CommandParameter="{Binding ElementName=CertPasswordBox}"
+                            Content="Test Cert"
+                            Margin="0,0,0,5"
+                            ToolTip="Test if the certificate is valid and accessible"/>
+                    
+                    <TextBlock Grid.Row="4" Grid.Column="0" Grid.ColumnSpan="3" 
+                               Text="{Binding CertificateStatus}"
+                               Foreground="Gray"/>
+                </Grid>
+                
+                <!-- File Path Mode -->
+                <Grid x:Name="FilePathMode" 
+                      Visibility="{Binding UseCertificateStore, Converter={StaticResource InverseBooleanToVisibilityConverter}}"
+                      Margin="0,0,0,10">
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="120"/>
+                        <ColumnDefinition Width="*"/>
+                        <ColumnDefinition Width="Auto"/>
+                    </Grid.ColumnDefinitions>
+                    <Grid.RowDefinitions>
+                        <RowDefinition Height="Auto"/>
                         <RowDefinition Height="Auto"/>
                         <RowDefinition Height="Auto"/>
                         <RowDefinition Height="10"/>
@@ -84,13 +172,24 @@
                     
                     <TextBlock Grid.Row="1" Grid.Column="0" Text="Password:" VerticalAlignment="Center"/>
                     <PasswordBox Grid.Row="1" Grid.Column="1" 
-                                 x:Name="CertPasswordBox"/>
+                                 x:Name="CertPasswordBox"
+                                 Margin="0,0,5,5"/>
                     <Button Grid.Row="1" Grid.Column="2" 
+                            Command="{Binding ImportCertificateCommand}"
+                            CommandParameter="{Binding ElementName=CertPasswordBox}"
+                            Content="Import to Store"
+                            Margin="0,0,0,5"
+                            ToolTip="Import this certificate to the certificate store (recommended)"/>
+                    
+                    <Button Grid.Row="2" Grid.Column="1" 
                             Command="{Binding TestCertificateCommand}"
                             CommandParameter="{Binding ElementName=CertPasswordBox}"
-                            Content="Test Cert"/>
+                            Content="Test Certificate"
+                            Margin="0,0,5,0"
+                            HorizontalAlignment="Left"
+                            ToolTip="Test if the certificate file is valid"/>
                     
-                    <TextBlock Grid.Row="3" Grid.Column="0" Grid.ColumnSpan="3" 
+                    <TextBlock Grid.Row="4" Grid.Column="0" Grid.ColumnSpan="3" 
                                Text="{Binding CertificateStatus}"
                                Foreground="Gray"/>
                 </Grid>
@@ -99,37 +198,130 @@
             <!-- Authentication Settings -->
             <ui:SimpleStackPanel Spacing="10" Margin="0,0,0,20">
                 <TextBlock Text="Authentication" Style="{StaticResource SubtitleTextBlockStyle}"/>
+                <TextBlock Text="Select your authentication method. When Entra ID is enabled, Local Accounts are automatically disabled." 
+                           TextWrapping="Wrap"
+                           Margin="0,0,0,5"
+                           FontSize="12"
+                           Foreground="Gray"/>
                 
-                <CheckBox Content="Require Windows Authentication"
-                          IsChecked="{Binding RequireAuthentication}"/>
-                <TextBlock Text="When enabled, users must authenticate with their Windows credentials to access the upload portal." 
+                <!-- Entra ID (Azure AD) Configuration -->
+                <CheckBox Content="Enable Entra ID (Azure AD) Authentication"
+                          IsChecked="{Binding EnableEntraId}"/>
+                <TextBlock Text="Allow users to sign in with their Microsoft 365 / Azure AD accounts (SSO). When enabled, Local Accounts are automatically disabled." 
                            TextWrapping="Wrap"
                            Margin="25,0,0,10"
                            FontSize="12"
                            Foreground="Gray"/>
                 
+                <Button Content="📋 Open Azure Portal - Setup Guide"
+                        Command="{Binding OpenEntraIdSetupCommand}"
+                        Margin="25,0,0,15"
+                        HorizontalAlignment="Left"
+                        ToolTip="Opens Azure Portal and displays step-by-step setup instructions"/>
+                
+                <Grid Margin="25,0,0,10">
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="140"/>
+                        <ColumnDefinition Width="*"/>
+                    </Grid.ColumnDefinitions>
+                    <Grid.RowDefinitions>
+                        <RowDefinition Height="Auto"/>
+                        <RowDefinition Height="Auto"/>
+                        <RowDefinition Height="Auto"/>
+                    </Grid.RowDefinitions>
+                    
+                    <TextBlock Grid.Row="0" Grid.Column="0" Text="Tenant ID:" VerticalAlignment="Center"/>
+                    <TextBox Grid.Row="0" Grid.Column="1" 
+                             Text="{Binding EntraIdTenantId, UpdateSourceTrigger=PropertyChanged}" 
+                             Margin="0,0,0,5"
+                             ToolTip="Your Azure AD Tenant ID (GUID from Azure Portal)"/>
+                    
+                    <TextBlock Grid.Row="1" Grid.Column="0" Text="Client ID:" VerticalAlignment="Center"/>
+                    <TextBox Grid.Row="1" Grid.Column="1" 
+                             Text="{Binding EntraIdClientId, UpdateSourceTrigger=PropertyChanged}" 
+                             Margin="0,0,0,5"
+                             ToolTip="Application (Client) ID from Azure AD app registration"/>
+                    
+                    <TextBlock Grid.Row="2" Grid.Column="0" Text="Client Secret:" VerticalAlignment="Center"/>
+                    <PasswordBox Grid.Row="2" Grid.Column="1" 
+                                 x:Name="ClientSecretBox"
+                                 ToolTip="Client Secret from Azure AD app registration (keep secure!)"/>
+                </Grid>
+                
+                <!-- Local Accounts Configuration -->
+                <CheckBox Content="Enable Local Account Registration"
+                          IsChecked="{Binding EnableLocalAccounts}"
+                          IsEnabled="{Binding EnableEntraId, Converter={StaticResource InverseBoolConverter}}"
+                          Margin="0,10,0,0"/>
+                <TextBlock Text="Allow users to create local accounts (not tied to Azure AD). Automatically disabled when Entra ID is enabled." 
+                           TextWrapping="Wrap"
+                           Margin="25,0,0,10"
+                           FontSize="12"
+                           Foreground="Gray"/>
+                
+                <Grid Margin="25,0,0,10">
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="200"/>
+                        <ColumnDefinition Width="*"/>
+                    </Grid.ColumnDefinitions>
+                    <Grid.RowDefinitions>
+                        <RowDefinition Height="Auto"/>
+                        <RowDefinition Height="Auto"/>
+                        <RowDefinition Height="Auto"/>
+                    </Grid.RowDefinitions>
+                    
+                    <CheckBox Grid.Row="0" Grid.ColumnSpan="2" Content="Require Admin Approval for New Accounts"
+                              IsChecked="{Binding RequireApproval}"
+                              Margin="0,0,0,5"
+                              ToolTip="New local accounts cannot upload until approved by admin"/>
+                    
+                    <CheckBox Grid.Row="1" Grid.ColumnSpan="2" Content="Require Email Confirmation"
+                              IsChecked="{Binding RequireEmailConfirmation}"
+                              Margin="0,0,0,5"
+                              ToolTip="Users must confirm email before signing in"/>
+                    
+                    <TextBlock Grid.Row="2" Grid.Column="0" Text="Database Connection String:" VerticalAlignment="Center"/>
+                    <TextBox Grid.Row="2" Grid.Column="1" 
+                             Text="{Binding ConnectionString, UpdateSourceTrigger=PropertyChanged}" 
+                             ToolTip="SQLite database path for user accounts"/>
+                </Grid>
+            </ui:SimpleStackPanel>
+            
+            <!-- Authorization Settings -->
+            <ui:SimpleStackPanel Spacing="10" Margin="0,0,0,20">
+                <TextBlock Text="Authorization (Role-Based)" Style="{StaticResource SubtitleTextBlockStyle}"/>
+                
+                <StackPanel Margin="0,5,0,10">
+                    <TextBlock Text="Admin Emails (one per line, always have full access):" 
+                               Margin="0,0,0,5"/>
+                    <TextBox Text="{Binding AdminEmails, UpdateSourceTrigger=PropertyChanged}" 
+                             AcceptsReturn="True"
+                             TextWrapping="Wrap"
+                             Height="60"
+                             VerticalScrollBarVisibility="Auto"
+                             ToolTip="Users with these email addresses always have admin access"/>
+                </StackPanel>
+                
                 <Grid>
                     <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="140"/>
                         <ColumnDefinition Width="*"/>
-                        <ColumnDefinition Width="Auto"/>
                     </Grid.ColumnDefinitions>
-                    <StackPanel Grid.Column="0" Margin="0,5,5,5">
-                        <TextBlock Text="Allowed Groups (one per line, leave empty to allow all authenticated users):" 
-                                   Margin="0,0,0,5"/>
-                        <TextBox Text="{Binding AllowedGroups, UpdateSourceTrigger=PropertyChanged}" 
-                                 AcceptsReturn="True"
-                                 TextWrapping="Wrap"
-                                 Height="80"
-                                 VerticalScrollBarVisibility="Auto"
-                                 ToolTip="Specify Windows groups that are allowed to upload files. Format: DOMAIN\GroupName or COMPUTERNAME\GroupName"/>
-                    </StackPanel>
-                    <Button Grid.Column="1" 
-                            Content="Browse Groups"
-                            Command="{Binding BrowseGroupsCommand}"
-                            Margin="0,25,0,0"
-                            VerticalAlignment="Top"
-                            Width="120"
-                            ToolTip="Browse and select Windows security groups from this computer"/>
+                    <Grid.RowDefinitions>
+                        <RowDefinition Height="Auto"/>
+                        <RowDefinition Height="Auto"/>
+                    </Grid.RowDefinitions>
+                    
+                    <TextBlock Grid.Row="0" Grid.Column="0" Text="Admin Roles:" VerticalAlignment="Center"/>
+                    <TextBox Grid.Row="0" Grid.Column="1" 
+                             Text="{Binding AdminRoles, UpdateSourceTrigger=PropertyChanged}" 
+                             Margin="0,0,0,5"
+                             ToolTip="Comma-separated role names that have admin access (default: Admin)"/>
+                    
+                    <TextBlock Grid.Row="1" Grid.Column="0" Text="Uploader Roles:" VerticalAlignment="Center"/>
+                    <TextBox Grid.Row="1" Grid.Column="1" 
+                             Text="{Binding UploaderRoles, UpdateSourceTrigger=PropertyChanged}" 
+                             ToolTip="Comma-separated role names that can upload files (default: Uploader, Admin)"/>
                 </Grid>
             </ui:SimpleStackPanel>
 

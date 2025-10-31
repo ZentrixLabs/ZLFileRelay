@@ -39,8 +39,9 @@ Updated the web portal authentication flow to require a public landing page that
 
 ### 5. Program Configuration
 **File:** `src/ZLFileRelay.WebPortal/Program.cs`
-- Added HttpSys configuration for Windows Authentication support
-- Configured Negotiate and NTLM authentication schemes
+- Uses Kestrel web server with Negotiate authentication handler
+- Simple `.AddNegotiate()` configuration (matches proven DMZUploader pattern)
+- Automatically uses NTLM when Kerberos is unavailable (cross-domain scenarios)
 - Allows anonymous access for landing page
 - Authorization policy set to require authentication only on protected routes
 
@@ -101,6 +102,8 @@ Updated the web portal authentication flow to require a public landing page that
 
 1. **Clearer UX**: Users know which domain to use before authenticating
 2. **Security**: Public landing page provides information without security risk
-3. **Proper Authentication Flow**: HttpSys ensures Windows authentication works correctly with Kestrel
-4. **Flexibility**: Domain is configurable per installation
+3. **Proper Authentication Flow**: Kestrel with Negotiate handler provides Windows authentication support
+4. **Cross-Domain Support**: Negotiate handler automatically uses NTLM when Kerberos unavailable (no configuration needed)
+5. **Simplicity**: Matches proven DMZUploader pattern - no complex custom handlers
+6. **Flexibility**: Domain is configurable per installation
 

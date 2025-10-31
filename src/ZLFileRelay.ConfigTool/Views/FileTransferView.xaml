@@ -260,10 +260,16 @@
                              Text="{Binding SshKeyPath, UpdateSourceTrigger=PropertyChanged}" 
                              Margin="0,0,5,0"
                              ToolTip="Path to SSH private key. Formats: OpenSSH (no extension), PEM (.pem), or Key (.key)"/>
-                    <Button Grid.Row="0" Grid.Column="2" 
-                            Command="{Binding BrowseSshKeyCommand}"
-                            Content="Browse..."
-                            ToolTip="Select the PRIVATE key file (not .pub, .crt, or .cer files)"/>
+                    <StackPanel Grid.Row="0" Grid.Column="2" Orientation="Horizontal">
+                        <Button Command="{Binding BrowseSshKeyCommand}"
+                                Content="Browse..."
+                                Margin="0,0,5,0"
+                                ToolTip="Select the PRIVATE key file (not .pub, .crt, or .cer files)"/>
+                        <Button Command="{Binding FixSshKeyPermissionsCommand}"
+                                Content="Fix Permissions"
+                                Style="{StaticResource SecondaryButton}"
+                                ToolTip="Fix SSH key permissions if SSH is rejecting the key due to 'permissions too open'"/>
+                    </StackPanel>
                     
                     <TextBlock Grid.Row="2" Grid.Column="0" Grid.ColumnSpan="3"
                                FontSize="11" 

@@ -2,6 +2,7 @@ using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
 using System.Collections.ObjectModel;
 using System.Windows.Media;
+using ZLFileRelay.ConfigTool.Services;
 
 namespace ZLFileRelay.ConfigTool.ViewModels;
 
@@ -10,17 +11,20 @@ public partial class DashboardViewModel : ObservableObject
     private readonly ServiceViewModel _serviceViewModel;
     private readonly FileTransferViewModel _fileTransferViewModel;
     private readonly WebPortalViewModel _webPortalViewModel;
+    private readonly ConfigurationService _configurationService;
     private DateTime? _serviceStartTime;
     private System.Threading.Timer? _uptimeUpdateTimer;
     
     public DashboardViewModel(
         ServiceViewModel serviceViewModel,
         FileTransferViewModel fileTransferViewModel,
-        WebPortalViewModel webPortalViewModel)
+        WebPortalViewModel webPortalViewModel,
+        ConfigurationService configurationService)
     {
         _serviceViewModel = serviceViewModel;
         _fileTransferViewModel = fileTransferViewModel;
         _webPortalViewModel = webPortalViewModel;
+        _configurationService = configurationService;
         
         RecentActivities = new ObservableCollection<ActivityItem>();
         
@@ -140,6 +144,12 @@ public partial class DashboardViewModel : ObservableObject
     [RelayCommand]
     private async Task RefreshAllStatusAsync()
     {
+        // Reload configuration to get latest status
+        await _configurationService.LoadAsync();
+        
+        // Force ViewModels to reload their config
+        await _fileTransferViewModel.LoadConfigurationAsync();
+        
         await _serviceViewModel.RefreshStatusCommand.ExecuteAsync(null);
         UpdateHealthStatus();
         AddActivity("All status refreshed", ActivityType.Info);
@@ -151,6 +161,23 @@ public partial class DashboardViewModel : ObservableObject
     
     private void UpdateHealthStatus()
     {
+        // Get current configuration (should be loaded in App.OnStartup, but reload if null)
+        var config = _configurationService.CurrentConfiguration;
+        
+        // If config is null, the file might not have loaded properly - use defaults
+        // (This shouldn't happen if App.OnStartup ran correctly, but handle gracefully)
+        if (config == null)
+        {
+            config = _configurationService.GetDefaultConfiguration();
+            // Trigger background reload for next time
+            _ = Task.Run(async () =>
+            {
+                await _configurationService.LoadAsync();
+                // Update UI on main thread after load completes
+                System.Windows.Application.Current.Dispatcher.BeginInvoke(new Action(UpdateHealthStatus));
+            });
+        }
+        
         // Service Health
         var serviceStatus = _serviceViewModel.ServiceStatus?.ToLowerInvariant() ?? "unknown";
         if (serviceStatus.Contains("running"))
@@ -179,44 +206,120 @@ public partial class DashboardViewModel : ObservableObject
             ServiceUptime = "Unknown";
         }
         
-        // Configuration Health
-        var hasSshConfig = !string.IsNullOrWhiteSpace(_fileTransferViewModel.SshHost);
-        var hasSmbConfig = !string.IsNullOrWhiteSpace(_fileTransferViewModel.SmbServer);
-        
-        if (hasSshConfig || hasSmbConfig)
+        // Configuration Health - check persisted status first, then fallback to ViewModel
+        if (config?.Status != null && config.Status.IsConfigurationComplete)
         {
             ConfigurationHealthStatus = HealthStatus.Good;
-            ConfigurationHealthText = "Configuration valid";
+            ConfigurationHealthText = "Configuration complete";
+            
+            // Show last saved date if available
+            if (config.Status.LastConfigurationSaved.HasValue)
+            {
+                var saveDate = config.Status.LastConfigurationSaved.Value;
+                var timeAgo = DateTime.Now - saveDate;
+                if (timeAgo.TotalHours < 1)
+                {
+                    ConfigurationHealthText += $" (saved {timeAgo.TotalMinutes:F0} min ago)";
+                }
+                else if (timeAgo.TotalDays < 1)
+                {
+                    ConfigurationHealthText += $" (saved {timeAgo.TotalHours:F1} hours ago)";
+                }
+                else
+                {
+                    ConfigurationHealthText += $" (saved {saveDate:yyyy-MM-dd})";
+                }
+            }
         }
         else
         {
-            ConfigurationHealthStatus = HealthStatus.Unknown;
-            ConfigurationHealthText = "Not configured";
+            // Fallback: check if we have valid configuration in ViewModel
+            var hasSshConfig = !string.IsNullOrWhiteSpace(_fileTransferViewModel.SshHost) &&
+                              !string.IsNullOrWhiteSpace(_fileTransferViewModel.SshUsername) &&
+                              !string.IsNullOrWhiteSpace(_fileTransferViewModel.SshKeyPath);
+            var hasSmbConfig = !string.IsNullOrWhiteSpace(_fileTransferViewModel.SmbServer) &&
+                              !string.IsNullOrWhiteSpace(_fileTransferViewModel.SmbSharePath);
+            
+            if (hasSshConfig || hasSmbConfig)
+            {
+                ConfigurationHealthStatus = HealthStatus.Warning;
+                ConfigurationHealthText = "Configuration present, not marked complete";
+            }
+            else
+            {
+                ConfigurationHealthStatus = HealthStatus.Unknown;
+                ConfigurationHealthText = "Not configured";
+            }
         }
         
-        // SSH Health - based on test results from File Transfer tab
-        var testResult = _fileTransferViewModel.SshTestResult?.ToLowerInvariant() ?? "";
-        if (string.IsNullOrWhiteSpace(_fileTransferViewModel.SshTestResult) || 
-            testResult.Contains("click 'test") || 
-            testResult.Contains("not tested"))
+        // SSH Health - check persisted test status first, then fallback to ViewModel
+        var sshConfigured = !string.IsNullOrWhiteSpace(_fileTransferViewModel.SshHost) &&
+                           !string.IsNullOrWhiteSpace(_fileTransferViewModel.SshUsername);
+        
+        if (!sshConfigured)
         {
             SshHealthStatus = HealthStatus.Unknown;
-            SshHealthText = "Not tested";
+            SshHealthText = "Not configured";
         }
-        else if (testResult.Contains("✅") || testResult.Contains("success"))
+        else if (config?.Status != null && config.Status.IsTestingComplete && 
+                 config.Status.LastTestResult == "Success" && 
+                 config.Status.LastTestedMethod == "ssh")
         {
+            // Use persisted successful test result
             SshHealthStatus = HealthStatus.Good;
-            SshHealthText = "Connection successful";
+            if (config.Status.LastTestDate.HasValue)
+            {
+                var testDate = config.Status.LastTestDate.Value;
+                var timeAgo = DateTime.Now - testDate;
+                if (timeAgo.TotalHours < 24)
+                {
+                    SshHealthText = $"Tested successfully ({timeAgo.TotalHours:F1} hours ago)";
+                }
+                else
+                {
+                    SshHealthText = $"Tested successfully ({testDate:yyyy-MM-dd})";
+                }
+            }
+            else
+            {
+                SshHealthText = "Connection tested successfully";
+            }
         }
-        else if (testResult.Contains("❌") || testResult.Contains("failed") || testResult.Contains("error"))
+        else if (config?.Status != null && config.Status.LastTestResult == "Failed" &&
+                 config.Status.LastTestedMethod == "ssh")
         {
+            // Use persisted failed test result
             SshHealthStatus = HealthStatus.Error;
-            SshHealthText = "Connection failed";
+            SshHealthText = "Connection test failed";
         }
         else
         {
-            SshHealthStatus = HealthStatus.Warning;
-            SshHealthText = "Status unknown";
+            // Fallback: check ViewModel test result
+            var testResult = _fileTransferViewModel.SshTestResult?.ToLowerInvariant() ?? "";
+            
+            if (string.IsNullOrWhiteSpace(testResult) || 
+                testResult.Contains("click 'test") || 
+                testResult.Contains("not tested") ||
+                testResult.Contains("click 'test ssh connection"))
+            {
+                SshHealthStatus = HealthStatus.Warning;
+                SshHealthText = "Configured, not tested";
+            }
+            else if (testResult.Contains("✅") || testResult.Contains("success"))
+            {
+                SshHealthStatus = HealthStatus.Good;
+                SshHealthText = "Connection successful";
+            }
+            else if (testResult.Contains("❌") || testResult.Contains("failed") || testResult.Contains("error"))
+            {
+                SshHealthStatus = HealthStatus.Error;
+                SshHealthText = "Connection failed";
+            }
+            else
+            {
+                SshHealthStatus = HealthStatus.Warning;
+                SshHealthText = "Status unknown";
+            }
         }
         
         // Web Portal Health (simplified)

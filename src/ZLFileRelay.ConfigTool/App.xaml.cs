@@ -6,6 +6,7 @@ using Microsoft.Extensions.Configuration;
 using ZLFileRelay.Core.Models;
 using ZLFileRelay.Core.Interfaces;
 using ZLFileRelay.Core.Services;
+using ZLFileRelay.Core.Constants;
 using ZLFileRelay.ConfigTool.Services;
 using ZLFileRelay.ConfigTool.ViewModels;
 
@@ -23,7 +24,22 @@ public partial class App : Application
         _host = Host.CreateDefaultBuilder()
             .ConfigureAppConfiguration((context, config) =>
             {
-                config.AddJsonFile("appsettings.json", optional: true, reloadOnChange: true);
+                // Load configuration from SINGLE shared location
+                // ConfigTool READS from and WRITES to this location
+                var sharedConfigPath = ApplicationConstants.Configuration.SharedConfigPath;
+                
+                // Ensure directory exists
+                var configDir = Path.GetDirectoryName(sharedConfigPath);
+                if (configDir != null && !Directory.Exists(configDir))
+                {
+                    Directory.CreateDirectory(configDir);
+                }
+                
+                if (File.Exists(sharedConfigPath))
+                {
+                    config.AddJsonFile(sharedConfigPath, optional: false, reloadOnChange: true);
+                }
+                // If file doesn't exist, ConfigurationService will create it on first save
             })
             .ConfigureServices((context, services) =>
             {
@@ -80,8 +96,7 @@ public partial class App : Application
                 services.AddTransient<SshSettingsViewModel>();
                 services.AddTransient<ServiceAccountViewModel>();
 
-                // Main Window
-                services.AddSingleton<MainWindow>();
+                // Main Window - NOT registered as singleton, created manually after config loads
             })
             .Build();
     }
@@ -90,11 +105,21 @@ public partial class App : Application
     {
         await _host.StartAsync();
 
-        // Load configuration on startup
+        // CRITICAL: Load configuration FIRST before creating any ViewModels
+        // ViewModels read from CurrentConfiguration in their constructors
         var configService = _host.Services.GetRequiredService<ConfigurationService>();
         await configService.LoadAsync();
 
-        var mainWindow = _host.Services.GetRequiredService<MainWindow>();
+        // Now create MainWindow (which creates ViewModels) after config is loaded
+        // Create manually since we don't register it as singleton
+        var mainWindow = new MainWindow(
+            _host.Services.GetRequiredService<DashboardViewModel>(),
+            _host.Services.GetRequiredService<ServiceViewModel>(),
+            _host.Services.GetRequiredService<FileTransferViewModel>(),
+            _host.Services.GetRequiredService<WebPortalViewModel>(),
+            _host.Services.GetRequiredService<RemoteServerViewModel>(),
+            _host.Services.GetRequiredService<INotificationService>());
+        
         mainWindow.Show();
 
         base.OnStartup(e);

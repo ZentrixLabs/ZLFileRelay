@@ -1,9 +1,13 @@
 # Authentication Flow Changes - Summary
 
-## Issue
+> **⚠️ IMPORTANT: This document describes the OLD Windows Authentication flow. The application now uses Entra ID and Local Accounts authentication instead. See CONFIGURATION.md for current authentication setup.**
+
+## Historical Context (Deprecated Windows Authentication)
+
+### Issue
 When accessing `localhost:8080`, users were immediately redirected to the upload page without being prompted for Windows authentication. This bypassed the security model and didn't inform users which domain credentials to use.
 
-## Solution
+### Solution
 Implemented a public landing page flow similar to DMZUploader, where users first see information about the service and domain requirements, then authenticate when accessing protected pages.
 
 ## Changes Summary
@@ -38,8 +42,8 @@ Implemented a public landing page flow similar to DMZUploader, where users first
    - Added `[Authorize]` attribute
 
 8. **`src/ZLFileRelay.WebPortal/Program.cs`**
-   - Added HttpSys configuration for Windows Authentication
-   - Configured Negotiate and NTLM schemes
+   - Configured Kestrel with Negotiate authentication handler
+   - Simple authentication setup (no custom handlers)
    - Allows anonymous for landing page
    - Requires authentication only on protected routes
 
@@ -85,11 +89,12 @@ Implemented a public landing page flow similar to DMZUploader, where users first
 
 ## Technical Details
 
-### HttpSys Configuration
-- Uses Windows HTTP Server API (HttpSys) for Windows Authentication
-- Supports Negotiate and NTLM authentication schemes
+### Kestrel + Negotiate Handler Configuration
+- Uses Kestrel web server with Negotiate authentication handler
+- Simple `.AddNegotiate()` configuration (matches proven DMZUploader pattern)
 - Allows anonymous access on landing page
 - Enforces authentication on routes with `[Authorize]` attribute
+- Automatically uses NTLM when Kerberos is unavailable (cross-domain scenarios)
 
 ### Page Protection
 - **Public Pages**: Index (landing page), Error, NotAuthorized

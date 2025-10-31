@@ -171,11 +171,14 @@ namespace ZLFileRelay.Service.Services
             result.DestinationPath = finalRemotePath;
 
             // Transfer the file
-            bool transferSuccess = await ExecuteScpTransfer(sourceFile, finalRemotePath);
+            var transferResult = await ExecuteScpTransfer(sourceFile, finalRemotePath);
 
-            if (!transferSuccess)
+            if (!transferResult.Success)
             {
-                throw new InvalidOperationException($"SCP transfer failed for {Path.GetFileName(sourceFile)}");
+                var errorMsg = string.IsNullOrWhiteSpace(transferResult.ErrorMessage)
+                    ? $"SCP transfer failed for {Path.GetFileName(sourceFile)}"
+                    : $"SCP transfer failed for {Path.GetFileName(sourceFile)}: {transferResult.ErrorMessage}";
+                throw new InvalidOperationException(errorMsg);
             }
 
             _logger.LogInformation("SCP transfer completed successfully to: {RemotePath}", finalRemotePath);
@@ -308,7 +311,7 @@ namespace ZLFileRelay.Service.Services
             }
         }
 
-        private async Task<bool> ExecuteScpTransfer(string localPath, string remotePath)
+        private async Task<(bool Success, string? ErrorMessage)> ExecuteScpTransfer(string localPath, string remotePath)
         {
             try
             {
@@ -337,7 +340,9 @@ namespace ZLFileRelay.Service.Services
                 if (!completed)
                 {
                     process.Kill();
-                    throw new TimeoutException($"SCP transfer timed out after {timeout} seconds");
+                    var timeoutError = $"SCP transfer timed out after {timeout} seconds";
+                    _logger.LogError(timeoutError);
+                    return (false, timeoutError);
                 }
 
                 string output = await process.StandardOutput.ReadToEndAsync();
@@ -345,19 +350,30 @@ namespace ZLFileRelay.Service.Services
 
                 if (process.ExitCode == 0)
                 {
-                    return true;
+                    if (!string.IsNullOrWhiteSpace(output))
+                    {
+                        _logger.LogDebug("SCP transfer output: {Output}", output);
+                    }
+                    return (true, null);
                 }
                 else
                 {
-                    _logger.LogError("SCP transfer failed with exit code {ExitCode}. Error: {Error}",
-                        process.ExitCode, error);
-                    return false;
+                    // Extract user-friendly error message from SCP output
+                    var errorMessage = ExtractUserFriendlyErrorMessage(error, process.ExitCode);
+                    
+                    // Log detailed error information for debugging
+                    _logger.LogError("SCP transfer failed with exit code {ExitCode}. " +
+                                   "Local path: {LocalPath}, Remote path: {RemotePath}. " +
+                                   "Output: {Output}, Error: {Error}",
+                        process.ExitCode, localPath, remotePath, output, error);
+                    
+                    return (false, errorMessage);
                 }
             }
             catch (Exception ex)
             {
                 _logger.LogError(ex, "SCP transfer failed for {LocalPath} to {RemotePath}", localPath, remotePath);
-                throw;
+                return (false, ex.Message);
             }
         }
 
@@ -378,7 +394,19 @@ namespace ZLFileRelay.Service.Services
             }
 
             args.Add("-o BatchMode=yes");
-            args.Add("-o StrictHostKeyChecking=yes");
+            
+            // Configure host key checking based on settings
+            // Use accept-new when enabled (auto-accepts new hosts but verifies on subsequent connections)
+            // Use no when disabled (less secure, no verification)
+            var hostKeyCheckingValue = _config.Transfer.Ssh.StrictHostKeyChecking ? "accept-new" : "no";
+            args.Add($"-o StrictHostKeyChecking={hostKeyCheckingValue}");
+            
+            // Use service-account-specific known_hosts file location
+            var knownHostsPath = Path.Combine(
+                _config.Paths.ConfigDirectory ?? @"C:\ProgramData\ZLFileRelay",
+                "known_hosts");
+            args.Add($"-o UserKnownHostsFile=\"{knownHostsPath}\"");
+            
             args.Add($"\"{localPath}\"");
             args.Add($"\"{safeUsername}@{safeHost}:{safeRemotePath}\"");
 
@@ -395,7 +423,17 @@ namespace ZLFileRelay.Service.Services
             args.Add($"-p {_config.Transfer.Ssh.Port}");
             args.Add($"-i \"{_config.Transfer.Ssh.PrivateKeyPath}\"");
             args.Add($"-o ConnectTimeout={_config.Transfer.Ssh.ConnectionTimeout}");
-            args.Add("-o StrictHostKeyChecking=yes");
+            
+            // Configure host key checking based on settings
+            var hostKeyCheckingValue = _config.Transfer.Ssh.StrictHostKeyChecking ? "accept-new" : "no";
+            args.Add($"-o StrictHostKeyChecking={hostKeyCheckingValue}");
+            
+            // Use service-account-specific known_hosts file location
+            var knownHostsPath = Path.Combine(
+                _config.Paths.ConfigDirectory ?? @"C:\ProgramData\ZLFileRelay",
+                "known_hosts");
+            args.Add($"-o UserKnownHostsFile=\"{knownHostsPath}\"");
+            
             args.Add("-o PasswordAuthentication=no");
             args.Add("-o PubkeyAuthentication=yes");
             args.Add("-o BatchMode=yes");
@@ -519,15 +557,139 @@ namespace ZLFileRelay.Service.Services
 
             remotePath = remotePath.Trim();
 
+            // Prevent path traversal/dangerous sequences
             if (remotePath.Contains("..") || remotePath.Contains("//"))
                 throw new ArgumentException($"Potentially dangerous path detected: {remotePath}");
 
+            // Normalize separators first
             remotePath = remotePath.Replace('\\', '/');
 
+            // Handle Windows-style destination (e.g., F:/Transfer)
+            // When using Windows OpenSSH as the server, scp expects 'F:/path' (no leading slash)
+            // When using Linux server and a Windows-like path was supplied, map to '/f/path'
+            if (remotePath.Length >= 2 && char.IsLetter(remotePath[0]) && remotePath[1] == ':')
+            {
+                char driveLetter = remotePath[0];
+                string pathPart = remotePath.Substring(2); // already with forward slashes
+
+                bool isWindowsServer = _config.Transfer.Ssh.RemoteServerType?.Equals("Windows", StringComparison.OrdinalIgnoreCase) == true;
+
+                if (isWindowsServer)
+                {
+                    // Windows server: 'F:/path' (uppercase drive, no leading slash)
+                    driveLetter = char.ToUpperInvariant(driveLetter);
+                    // Ensure single leading slash on path part is removed
+                    if (pathPart.StartsWith("/")) pathPart = pathPart.TrimStart('/');
+                    return $"{driveLetter}:{pathPart}";
+                }
+                else
+                {
+                    // Linux server: map to '/f/path'
+                    driveLetter = char.ToLowerInvariant(driveLetter);
+                    // Ensure path part starts with '/'
+                    if (!pathPart.StartsWith("/")) pathPart = "/" + pathPart;
+                    return $"/{driveLetter}{pathPart}";
+                }
+            }
+
+            // Non-drive paths: ensure forward slashes and leading slash once
             if (!remotePath.StartsWith("/"))
                 remotePath = "/" + remotePath;
 
             return remotePath;
+        }
+
+        /// <summary>
+        /// Extracts a user-friendly error message from SCP error output
+        /// </summary>
+        private static string ExtractUserFriendlyErrorMessage(string errorOutput, int exitCode)
+        {
+            if (string.IsNullOrWhiteSpace(errorOutput))
+            {
+                return $"SCP transfer failed (exit code: {exitCode})";
+            }
+
+            var error = errorOutput.Trim();
+
+            // Common SSH/SCP error patterns - extract the most useful message
+            if (error.Contains("bad permissions", StringComparison.OrdinalIgnoreCase) ||
+                error.Contains("permissions are too open", StringComparison.OrdinalIgnoreCase))
+            {
+                // Extract the key path if present
+                var keyMatch = System.Text.RegularExpressions.Regex.Match(error, @"'([^']+\.(pem|key))'");
+                var keyPath = keyMatch.Success ? keyMatch.Groups[1].Value : "SSH key";
+                
+                return $"SSH key permissions are too open. The key file '{keyPath}' must only be readable by the service account. Use the 'Fix Permissions' button in the Config Tool.";
+            }
+
+            if (error.Contains("Permission denied", StringComparison.OrdinalIgnoreCase) ||
+                error.Contains("permission denied", StringComparison.OrdinalIgnoreCase))
+            {
+                if (error.Contains("publickey", StringComparison.OrdinalIgnoreCase))
+                {
+                    return "SSH authentication failed. Check that:\n" +
+                           "• The SSH key file has correct permissions (only service account can read)\n" +
+                           "• The public key is installed on the remote server\n" +
+                           "• The service account has access to the key file仁义";
+                }
+                return "Permission denied. Check SSH key permissions and remote server access.";
+            }
+
+            if (error.Contains("Host key verification failed", StringComparison.OrdinalIgnoreCase) ||
+                error.Contains("No ED25519 host key is known", StringComparison.OrdinalIgnoreCase))
+            {
+                return "Host key verification failed. The remote server's host key is not trusted. This should be automatically resolved on first connection.";
+            }
+
+            if (error.Contains("Connection refused", StringComparison.OrdinalIgnoreCase) ||
+                error.Contains("Connection closed", StringComparison.OrdinalIgnoreCase))
+            {
+                return "Could not connect to remote server. Check that:\n" +
+                       "• The server is accessible on the network\n" +
+                       "• The SSH port is correct and open\n" +
+                       "• The SSH service is running on the remote server";
+            }
+
+            if (error.Contains("No such file or directory", StringComparison.OrdinalIgnoreCase))
+            {
+                return "Destination directory does not exist on remote server. The directory may need to be created first.";
+            }
+
+            if (error.Contains("No space left on device", StringComparison.OrdinalIgnoreCase))
+            {
+                return "Remote server is out of disk space. Free up space on the destination server.";
+            }
+
+            // Extract the last meaningful line (usually the actual error)
+            var lines = error.Split(new[] { '\r', '\n' }, StringSplitOptions.RemoveEmptyEntries);
+            var lastMeaningfulLine = lines.LastOrDefault(line => 
+                !string.IsNullOrWhiteSpace(line) && 
+                !line.Contains("Load key", StringComparison.OrdinalIgnoreCase) &&
+                !line.Contains("scp.exe:", StringComparison.OrdinalIgnoreCase));
+
+            if (!string.IsNullOrWhiteSpace(lastMeaningfulLine))
+            {
+                // Clean up the message
+                var cleaned = lastMeaningfulLine.Trim();
+                if (cleaned.Contains(':'))
+                {
+                    // Take part after the colon (error message part)
+                    var parts = cleaned.Split(':', 2);
+                    if (parts.Length > 1)
+                    {
+                        cleaned = parts[1].Trim();
+                    }
+                }
+                return cleaned;
+            }
+
+            // Fallback to full error (truncated if too long)
+            if (error.Length > 200)
+            {
+                return error.Substring(0, 200) + "...";
+            }
+
+            return error;
         }
     }
 }

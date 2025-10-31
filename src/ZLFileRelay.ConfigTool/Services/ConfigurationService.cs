@@ -3,6 +3,7 @@ using System.Text.Json;
 using System.Threading.Tasks;
 using Microsoft.Extensions.Logging;
 using ZLFileRelay.Core.Models;
+using ZLFileRelay.Core.Constants;
 using ZLFileRelay.ConfigTool.Interfaces;
 
 namespace ZLFileRelay.ConfigTool.Services;
@@ -22,9 +23,9 @@ public class ConfigurationService
         _remoteServerProvider = remoteServerProvider;
         
         // Initialize to shared config path (will be updated by UpdateConfigPath if remote)
-        var configDir = @"C:\ProgramData\ZLFileRelay";
+        var configDir = ApplicationConstants.Configuration.DefaultConfigDirectory;
         Directory.CreateDirectory(configDir); // Ensure directory exists
-        _configPath = Path.Combine(configDir, "appsettings.json");
+        _configPath = ApplicationConstants.Configuration.SharedConfigPath;
         
         // Subscribe to server changes
         _remoteServerProvider.ServerChanged += OnServerChanged;
@@ -43,9 +44,9 @@ public class ConfigurationService
         if (!_remoteServerProvider.IsRemote || string.IsNullOrWhiteSpace(_remoteServerProvider.ServerName))
         {
             // Local mode - use shared configuration directory
-            var configDir = @"C:\ProgramData\ZLFileRelay";
+            var configDir = ApplicationConstants.Configuration.DefaultConfigDirectory;
             Directory.CreateDirectory(configDir); // Ensure directory exists
-            _configPath = Path.Combine(configDir, "appsettings.json");
+            _configPath = ApplicationConstants.Configuration.SharedConfigPath;
             _logger.LogInformation("Local mode, using shared config path: {Path}", _configPath);
         }
         else
@@ -60,6 +61,7 @@ public class ConfigurationService
                 throw new ArgumentException($"Invalid server name format: {serverName}. Please use a valid hostname or IP address.");
             }
             
+            // Use UNC path for remote config - same structure as local
             _configPath = $@"\\{serverName}\c$\ProgramData\ZLFileRelay\appsettings.json";
             
             _logger.LogInformation("Remote mode enabled, using UNC path: {Path}", _configPath);
@@ -138,11 +140,18 @@ public class ConfigurationService
             
             _currentConfiguration = new ZLFileRelayConfiguration();
             
-            if (root.RootElement.TryGetProperty("ZLFileRelay", out var zlSection))
+            // Try both casing variations (save uses CamelCase which produces "zlFileRelay")
+            JsonElement zlSection;
+            if (root.RootElement.TryGetProperty("ZLFileRelay", out zlSection) || 
+                root.RootElement.TryGetProperty("zlFileRelay", out zlSection))
             {
                 _currentConfiguration = JsonSerializer.Deserialize<ZLFileRelayConfiguration>(
                     zlSection.GetRawText(),
                     new JsonSerializerOptions { PropertyNameCaseInsensitive = true });
+            }
+            else
+            {
+                _logger.LogWarning("Configuration section 'ZLFileRelay' or 'zlFileRelay' not found in JSON. Using defaults.");
             }
 
             _logger.LogInformation("Configuration loaded successfully from {Path}", _configPath);
@@ -155,14 +164,30 @@ public class ConfigurationService
         }
     }
 
-    public async Task<bool> SaveAsync(ZLFileRelayConfiguration configuration)
+    public async Task<bool> SaveAsync(ZLFileRelayConfiguration configuration, bool skipFullValidation = false, bool webPortalOnly = false)
     {
         try
         {
             _logger.LogInformation("Starting configuration save to {Path}", _configPath);
 
-            // Validate configuration first
-            var validationResult = await ValidateAsync(configuration);
+            // Validate configuration based on context
+            ValidationResult validationResult;
+            if (webPortalOnly)
+            {
+                // Only validate Web Portal settings when saving from Web Portal tab
+                validationResult = await ValidateWebPortalAsync(configuration);
+            }
+            else if (skipFullValidation)
+            {
+                // Use basic validation for tab-specific saves
+                validationResult = await ValidateBasicAsync(configuration);
+            }
+            else
+            {
+                // Full validation for complete configuration saves
+                validationResult = await ValidateAsync(configuration);
+            }
+                
             if (!validationResult.IsValid)
             {
                 var errorMessage = string.Join(", ", validationResult.Errors);
@@ -196,6 +221,9 @@ public class ConfigurationService
                 PropertyNamingPolicy = JsonNamingPolicy.CamelCase
             };
 
+            // Update configuration status before saving
+            UpdateConfigurationStatus(configuration);
+            
             _logger.LogDebug("Serializing configuration to JSON");
             var json = JsonSerializer.Serialize(wrapper, options);
             
@@ -282,13 +310,53 @@ public class ConfigurationService
             if (configuration.WebPortal.Kestrel.HttpPort == configuration.WebPortal.Kestrel.HttpsPort)
                 errors.Add("Web Portal HTTP and HTTPS ports must be different");
 
-            if (configuration.WebPortal.Kestrel.EnableHttps && string.IsNullOrWhiteSpace(configuration.WebPortal.Kestrel.CertificatePath))
-                errors.Add("Certificate path is required when HTTPS is enabled for Web Portal");
-
-            if (configuration.WebPortal.Kestrel.EnableHttps && 
-                !string.IsNullOrWhiteSpace(configuration.WebPortal.Kestrel.CertificatePath) && 
-                !File.Exists(configuration.WebPortal.Kestrel.CertificatePath))
-                errors.Add($"Certificate file not found: {configuration.WebPortal.Kestrel.CertificatePath}");
+            // Check for certificate configuration - either certificate store (thumbprint) or file path
+            if (configuration.WebPortal.Kestrel.EnableHttps)
+            {
+                bool hasThumbprint = !string.IsNullOrWhiteSpace(configuration.WebPortal.Kestrel.CertificateThumbprint);
+                bool hasFilePath = !string.IsNullOrWhiteSpace(configuration.WebPortal.Kestrel.CertificatePath);
+                
+                if (!hasThumbprint && !hasFilePath)
+                {
+                    errors.Add("Certificate thumbprint or certificate path is required when HTTPS is enabled for Web Portal");
+                }
+                
+                // Validate file path if provided (but not required if thumbprint is used)
+                if (hasFilePath && !File.Exists(configuration.WebPortal.Kestrel.CertificatePath))
+                {
+                    errors.Add($"Certificate file not found: {configuration.WebPortal.Kestrel.CertificatePath}");
+                }
+            }
+            
+            // Validate authentication configuration
+            var authConfig = configuration.WebPortal.Authentication;
+            
+            // At least one authentication method must be enabled
+            if (!authConfig.EnableEntraId && !authConfig.EnableLocalAccounts)
+            {
+                errors.Add("At least one authentication method must be enabled (either Entra ID or Local Accounts)");
+            }
+            
+            // When Entra ID is enabled, validate required fields
+            if (authConfig.EnableEntraId)
+            {
+                if (string.IsNullOrWhiteSpace(authConfig.EntraIdTenantId))
+                {
+                    errors.Add("Entra ID Tenant ID is required when Entra ID authentication is enabled");
+                }
+                
+                if (string.IsNullOrWhiteSpace(authConfig.EntraIdClientId))
+                {
+                    errors.Add("Entra ID Client ID is required when Entra ID authentication is enabled");
+                }
+            }
+            
+            // Warn if both are enabled (Entra ID should be exclusive, but allow for graceful degradation)
+            if (authConfig.EnableEntraId && authConfig.EnableLocalAccounts)
+            {
+                // This is a warning, not an error - log it but don't block save
+                _logger?.LogWarning("⚠️ Both Entra ID and Local Accounts are enabled. Recommended: disable Local Accounts when using Entra ID.");
+            }
         }
 
         // Validate Branding settings
@@ -347,9 +415,98 @@ public class ConfigurationService
         });
     }
 
+    /// <summary>
+    /// Validates only Web Portal-specific settings.
+    /// Used when saving from Web Portal tab to avoid validating SSH/SMB settings.
+    /// </summary>
+    public Task<ValidationResult> ValidateWebPortalAsync(ZLFileRelayConfiguration configuration)
+    {
+        var errors = new List<string>();
+
+        // Only validate Web Portal-specific settings
+        
+        // Validate port ranges
+        if (configuration.WebPortal.Kestrel.HttpPort < 1 || configuration.WebPortal.Kestrel.HttpPort > 65535)
+            errors.Add("Web Portal HTTP port must be between 1 and 65535");
+
+        if (configuration.WebPortal.Kestrel.HttpsPort < 1 || configuration.WebPortal.Kestrel.HttpsPort > 65535)
+            errors.Add("Web Portal HTTPS port must be between 1 and 65535");
+
+        if (configuration.WebPortal.Kestrel.HttpPort > 0 && configuration.WebPortal.Kestrel.HttpsPort > 0 &&
+            configuration.WebPortal.Kestrel.HttpPort == configuration.WebPortal.Kestrel.HttpsPort)
+            errors.Add("Web Portal HTTP and HTTPS ports must be different");
+
+        // Check for certificate configuration - either certificate store (thumbprint) or file path
+        if (configuration.WebPortal.Kestrel.EnableHttps)
+        {
+            bool hasThumbprint = !string.IsNullOrWhiteSpace(configuration.WebPortal.Kestrel.CertificateThumbprint);
+            bool hasFilePath = !string.IsNullOrWhiteSpace(configuration.WebPortal.Kestrel.CertificatePath);
+            
+            if (!hasThumbprint && !hasFilePath)
+            {
+                errors.Add("Certificate thumbprint or certificate path is required when HTTPS is enabled for Web Portal");
+            }
+            
+            // Validate file path if provided (but not required if thumbprint is used)
+            if (hasFilePath && !File.Exists(configuration.WebPortal.Kestrel.CertificatePath))
+            {
+                errors.Add($"Certificate file not found: {configuration.WebPortal.Kestrel.CertificatePath}");
+            }
+        }
+
+        // Validate Branding settings (these are on Web Portal tab)
+        if (string.IsNullOrWhiteSpace(configuration.Branding.CompanyName))
+            errors.Add("Company name is required");
+
+        if (string.IsNullOrWhiteSpace(configuration.Branding.SiteName))
+            errors.Add("Site name is required");
+
+        return Task.FromResult(new ValidationResult
+        {
+            IsValid = errors.Count == 0,
+            Errors = errors
+        });
+    }
+
     public string GetConfigurationPath()
     {
         return _configPath;
+    }
+
+    /// <summary>
+    /// Updates configuration status flags based on current configuration state
+    /// </summary>
+    private void UpdateConfigurationStatus(ZLFileRelayConfiguration configuration)
+    {
+        // Check if configuration is complete based on required fields
+        bool isComplete = false;
+        
+        if (configuration.Service.TransferMethod.Equals("ssh", StringComparison.OrdinalIgnoreCase))
+        {
+            // For SSH: need host, username, key path, and destination
+            isComplete = !string.IsNullOrWhiteSpace(configuration.Transfer.Ssh.Host) &&
+                        !string.IsNullOrWhiteSpace(configuration.Transfer.Ssh.Username) &&
+                        !string.IsNullOrWhiteSpace(configuration.Transfer.Ssh.PrivateKeyPath) &&
+                        !string.IsNullOrWhiteSpace(configuration.Transfer.Ssh.DestinationPath);
+        }
+        else if (configuration.Service.TransferMethod.Equals("smb", StringComparison.OrdinalIgnoreCase))
+        {
+            // For SMB: need server and share path
+            isComplete = !string.IsNullOrWhiteSpace(configuration.Transfer.Smb.Server) &&
+                        !string.IsNullOrWhiteSpace(configuration.Transfer.Smb.SharePath);
+        }
+        
+        // Also require basic paths
+        isComplete = isComplete &&
+                    !string.IsNullOrWhiteSpace(configuration.Paths.UploadDirectory) &&
+                    !string.IsNullOrWhiteSpace(configuration.Paths.LogDirectory) &&
+                    !string.IsNullOrWhiteSpace(configuration.Service.WatchDirectory);
+        
+        configuration.Status.IsConfigurationComplete = isComplete;
+        configuration.Status.LastConfigurationSaved = DateTime.Now;
+        
+        _logger.LogDebug("Configuration status updated: IsComplete={IsComplete}, TestingComplete={TestingComplete}", 
+            isComplete, configuration.Status.IsTestingComplete);
     }
 
     public ZLFileRelayConfiguration GetDefaultConfiguration()

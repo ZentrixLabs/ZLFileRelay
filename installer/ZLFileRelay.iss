@@ -1,6 +1,7 @@
 ; ZL File Relay - Inno Setup Installer Script
 ; Self-Contained Deployment with .NET 8 Runtime Included
 ; Compatible with DMZ/OT/Air-Gapped Environments
+; Features: Hybrid Authentication (Entra ID + Local Accounts), Air-Gapped Support
 
 #define MyAppName "ZL File Relay"
 #define MyAppVersion "1.0.0"
@@ -19,6 +20,7 @@ AppPublisherURL={#MyAppURL}
 AppSupportURL={#MyAppURL}
 AppUpdatesURL={#MyAppURL}
 AppCopyright=Copyright (C) 2025 {#MyAppPublisher}
+LicenseFile=..\LICENSE
 
 ; Installation Directories
 DefaultDirName={autopf}\ZLFileRelay
@@ -110,12 +112,17 @@ Source: "..\appsettings.json"; DestDir: "{commonappdata}\ZLFileRelay"; Flags: on
 ; Documentation (selective copy - excludes development & archive folders)
 Source: "..\publish\docs\*"; DestDir: "{app}\docs"; Flags: ignoreversion recursesubdirs createallsubdirs
 
+; SSL Certificate Import Script (optional helper - certificate import is handled by ConfigTool GUI)
+Source: "scripts\Import-SslCertificate.ps1"; DestDir: "{app}\scripts"; Flags: ignoreversion; Components: webportal
+Source: "scripts\Setup-HttpSysUrlReservations.ps1"; DestDir: "{app}\scripts"; Flags: ignoreversion; Components: webportal
+
 [Dirs]
 ; Application directories
 Name: "{app}\Service"
 Name: "{app}\WebPortal"
 Name: "{app}\ConfigTool"
 Name: "{app}\docs"
+Name: "{app}\scripts"
 Name: "{app}\Uninstall"
 
 ; Data directories
@@ -152,7 +159,7 @@ Filename: "sc.exe"; Parameters: "start ZLFileRelay"; StatusMsg: "Starting File T
 ; Install Web Portal Windows Service (Kestrel - NO IIS NEEDED!)
 ; Note: Existing services are stopped in InitializeSetup() for upgrade scenarios
 Filename: "sc.exe"; Parameters: "create ZLFileRelay.WebPortal binPath=""{app}\WebPortal\ZLFileRelay.WebPortal.exe"" start=auto DisplayName=""ZL File Relay - Web Portal"""; StatusMsg: "Installing Web Portal Service..."; Flags: runhidden; Components: webportal; Tasks: installwebservice
-Filename: "sc.exe"; Parameters: "description ZLFileRelay.WebPortal ""Web-based file upload interface (Kestrel on port 8080)"""; Flags: runhidden; Components: webportal; Tasks: installwebservice
+Filename: "sc.exe"; Parameters: "description ZLFileRelay.WebPortal ""Web-based file upload interface with hybrid authentication (Entra ID + Local Accounts) on port 8080/8443"""; Flags: runhidden; Components: webportal; Tasks: installwebservice
 Filename: "sc.exe"; Parameters: "start ZLFileRelay.WebPortal"; StatusMsg: "Starting Web Portal Service..."; Flags: runhidden; Components: webportal; Tasks: installwebservice
 
 ; Configure Windows Firewall for Web Portal
@@ -269,8 +276,10 @@ begin
            'Next steps:' + #13#10 +
            '1. Launch Configuration Tool' + #13#10 +
            '2. Configure SSH keys or SMB credentials' + #13#10 +
-           '3. Test file upload via web portal' + #13#10 +
-           '4. Verify file transfer', 
+           '3. (Optional) Configure SSL certificate for HTTPS via ConfigTool → Web Portal tab → Certificate' + #13#10 +
+           '4. Test file upload via web portal' + #13#10 +
+           '5. Verify file transfer' + #13#10 + #13#10 +
+           'Note: SSL certificate import and HttpSys URL reservations are automatically handled by the Config Tool when saving Web Portal settings (requires Administrator privileges).', 
            mbInformation, MB_OK);
   end;
 end;

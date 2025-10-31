@@ -5,10 +5,11 @@
 ## Security Features
 
 ### Authentication & Authorization
-- **Windows Authentication** - Integrated with Active Directory
-- **Group-Based Access Control** - Configurable user and group permissions
-- **Role-Based Authorization** - Separate controls for upload and management
-- **Session Management** - Secure session handling
+- **Hybrid Authentication** - Entra ID (Azure AD) SSO or Local Accounts
+- **Air-Gapped Support** - Local authentication works offline without cloud dependencies
+- **Role-Based Authorization** - Simple Admin/Uploader roles with email-based admin list
+- **Session Management** - Secure session handling with cookie-based auth
+- **Multi-Factor Support** - Leverages Entra ID MFA when configured
 
 ### Credential Management
 - **DPAPI Encryption** - Windows Data Protection API for credential storage

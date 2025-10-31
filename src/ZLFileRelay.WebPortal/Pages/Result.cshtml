@@ -131,9 +131,31 @@
         connection.start()
             .then(() => {
                 console.log("Connected to transfer status hub");
+                
+                // Set up timeout warnings for transfers that don't update
+                setTimeout(() => {
+                    document.querySelectorAll('.transfer-status').forEach(element => {
+                        const statusText = element.querySelector('.status-text');
+                        if (statusText && statusText.textContent.includes('Queued')) {
+                            // Still queued after 2 minutes - show warning
+                            const small = element.querySelector('small');
+                            const icon = element.querySelector('i');
+                            small.className = 'text-warning';
+                            icon.className = 'fa-solid fa-clock me-1';
+                            statusText.innerHTML = '<span>⚠️ Transfer is taking longer than expected. Check service logs if it continues.</span>';
+                        }
+                    });
+                }, 120000); // 2 minutes
             })
             .catch(err => {
                 console.error("Error connecting to hub:", err);
+                // Show a note that real-time updates aren't available
+                document.querySelectorAll('.transfer-status').forEach(element => {
+                    const statusText = element.querySelector('.status-text');
+                    if (statusText) {
+                        statusText.innerHTML += ' <small class="text-muted">(Real-time updates unavailable)</small>';
+                    }
+                });
             });
 
         function updateTransferStatus(status) {
@@ -172,8 +194,81 @@
                         case 3: // Failed
                             icon.className = 'fa-solid fa-circle-xmark';
                             small.className = 'text-danger';
-                            let errorMsg = status.errorMessage || 'Unknown error';
-                            statusText.textContent = `SCADA transfer failed: ${errorMsg}`;
+                            let errorMsg = status.errorMessage || 'Unknown error occurred during transfer';
+                            
+                            // Format error message for display (handle newlines)
+                            const formattedError = errorMsg.replace(/\\n/g, '\n').trim();
+                            
+                            // Create a more visible error display
+                            statusText.innerHTML = '';
+                            const errorIcon = document.createElement('i');
+                            errorIcon.className = 'fa-solid fa-triangle-exclamation me-1';
+                            statusText.appendChild(errorIcon);
+                            
+                            const errorText = document.createElement('span');
+                            // Show first line or truncate if too long
+                            const firstLine = formattedError.split('\n')[0];
+                            if (firstLine.length > 150) {
+                                errorText.textContent = firstLine.substring(0, 150) + '...';
+                                errorText.title = formattedError; // Full error in tooltip
+                            } else {
+                                errorText.textContent = firstLine;
+                                if (formattedError.includes('\n')) {
+                                    errorText.title = formattedError; // Show full multiline error in tooltip
+                                }
+                            }
+                            statusText.appendChild(errorText);
+
+                            // Details container (hidden by default)
+                            const details = document.createElement('pre');
+                            details.className = 'error-details d-none mt-2 mb-0 p-2 bg-light border rounded';
+                            details.style.whiteSpace = 'pre-wrap';
+                            details.textContent = formattedError;
+                            statusText.appendChild(details);
+
+                            // Action buttons: Show details / Copy error
+                            const actions = document.createElement('div');
+                            actions.className = 'mt-2';
+
+                            const toggleBtn = document.createElement('button');
+                            toggleBtn.type = 'button';
+                            toggleBtn.className = 'btn btn-sm btn-outline-secondary me-2';
+                            toggleBtn.textContent = 'Show details';
+                            toggleBtn.addEventListener('click', () => {
+                                const hidden = details.classList.contains('d-none');
+                                if (hidden) {
+                                    details.classList.remove('d-none');
+                                    toggleBtn.textContent = 'Hide details';
+                                } else {
+                                    details.classList.add('d-none');
+                                    toggleBtn.textContent = 'Show details';
+                                }
+                            });
+
+                            const copyBtn = document.createElement('button');
+                            copyBtn.type = 'button';
+                            copyBtn.className = 'btn btn-sm btn-outline-primary';
+                            copyBtn.textContent = 'Copy error';
+                            copyBtn.addEventListener('click', async () => {
+                                try {
+                                    await navigator.clipboard.writeText(formattedError);
+                                    copyBtn.textContent = 'Copied!';
+                                    setTimeout(() => copyBtn.textContent = 'Copy error', 1500);
+                                } catch (e) {
+                                    copyBtn.textContent = 'Copy failed';
+                                    setTimeout(() => copyBtn.textContent = 'Copy error', 1500);
+                                }
+                            });
+
+                            actions.appendChild(toggleBtn);
+                            actions.appendChild(copyBtn);
+                            statusText.appendChild(actions);
+
+                            // Make the parent element more prominent
+                            element.closest('.list-group-item').classList.add('border-danger', 'border-2');
+                            
+                            // Scroll error into view
+                            element.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
                             break;
                     }
                 }

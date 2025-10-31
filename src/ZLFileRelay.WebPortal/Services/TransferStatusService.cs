@@ -187,12 +187,15 @@ namespace ZLFileRelay.WebPortal.Services
 
         private static string GenerateTransferId(string filePath)
         {
-            // Create a unique ID based on file path and current timestamp
-            // This ensures uniqueness even if same file is uploaded multiple times
-            var pathHash = Path.GetFileName(filePath) + "_" + DateTime.Now.Ticks;
+            // Create a deterministic ID based on file name and the file's last write time
+            // This MUST match the logic in Service.TransferWorker.GenerateTransferId so
+            // that status files written by the service correlate with registrations here.
+            var fileName = Path.GetFileName(filePath);
+            var lastWriteTicks = File.GetLastWriteTime(filePath).Ticks;
+            var pathHash = fileName + "_" + lastWriteTicks;
             return Convert.ToBase64String(
-                System.Security.Cryptography.SHA256.HashData(
-                    System.Text.Encoding.UTF8.GetBytes(pathHash)))
+                    System.Security.Cryptography.SHA256.HashData(
+                        System.Text.Encoding.UTF8.GetBytes(pathHash)))
                 .Replace("/", "_")
                 .Replace("+", "-")
                 .Substring(0, 16);

@@ -159,13 +159,16 @@ Configure the ASP.NET Core web upload portal.
 ```json
 "WebPortal": {
   "Enabled": true,
-  "RequireAuthentication": true,
-  "AuthenticationType": "Windows",
-  "AllowedGroups": [
-    "Domain\\FileUpload_Users",
-    "Domain\\Administrators"
-  ],
-  "AllowedUsers": [],
+  "Authentication": {
+    "EnableEntraId": false,
+    "EnableLocalAccounts": true,
+    "EntraIdTenantId": null,
+    "EntraIdClientId": null,
+    "EntraIdClientSecret": null,
+    "ConnectionString": "Data Source=C:\\ProgramData\\ZLFileRelay\\zlfilerelay.db",
+    "RequireEmailConfirmation": false,
+    "RequireApproval": true
+  },
   "MaxFileSizeBytes": 4294967295,
   "MaxConcurrentUploads": 10,
   "AllowedFileExtensions": [],
@@ -180,11 +183,28 @@ Configure the ASP.NET Core web upload portal.
 }
 ```
 
-**Options:**
-- `RequireAuthentication`: Require user authentication
-- `AuthenticationType`: "Windows", "Forms", or "OpenIdConnect"
-- `AllowedGroups`: AD groups with upload permissions
-- `AllowedUsers`: Specific users with upload permissions (optional)
+**Authentication Options:**
+Authentication supports two modes:
+1. **Local Accounts** (default): SQLite-based user accounts, works offline
+2. **Entra ID**: Microsoft 365/Azure AD SSO, requires internet connectivity
+
+**Important:** When Entra ID is enabled, Local Accounts are automatically disabled. At least one authentication method must always be enabled.
+
+**Authentication Settings:**
+- `Authentication.EnableEntraId`: Enable Azure AD SSO authentication (requires internet)
+  - When enabled, Local Accounts are automatically disabled
+  - Requires `EntraIdTenantId` and `EntraIdClientId`
+- `Authentication.EnableLocalAccounts`: Enable local username/password authentication (works offline)
+  - Default: true
+  - Automatically disabled when Entra ID is enabled
+- `Authentication.EntraIdTenantId`: Azure AD Tenant ID (GUID, required if Entra ID enabled)
+- `Authentication.EntraIdClientId`: Azure AD Application ID (GUID, required if Entra ID enabled)
+- `Authentication.EntraIdClientSecret`: Azure AD Client Secret (stored encrypted in credentials.dat)
+- `Authentication.ConnectionString`: SQLite database path for local accounts
+- `Authentication.RequireEmailConfirmation`: Require email verification for new local accounts
+- `Authentication.RequireApproval`: Require admin approval for new local accounts
+
+**Portal Options:**
 - `MaxFileSizeBytes`: Maximum file size (default: ~4GB)
 - `MaxConcurrentUploads`: Max simultaneous uploads per user
 - `AllowedFileExtensions`: If set, only these extensions allowed

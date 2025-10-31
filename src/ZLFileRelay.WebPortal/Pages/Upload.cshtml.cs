@@ -1,8 +1,8 @@
-using System.Runtime.Versioning;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.RazorPages;
 using Microsoft.AspNetCore.RateLimiting;
+using Microsoft.Extensions.Options;
 using ZLFileRelay.Core.Interfaces;
 using ZLFileRelay.Core.Models;
 using ZLFileRelay.WebPortal.Services;
@@ -10,14 +10,13 @@ using ZLFileRelay.WebPortal.ViewModels;
 
 namespace ZLFileRelay.WebPortal.Pages
 {
-    [SupportedOSPlatform("windows")]
     [Authorize] // Require authentication for upload page
     public class UploadModel : PageModel
     {
         private readonly ILogger<UploadModel> _logger;
         private readonly FileUploadService _uploadService;
         private readonly AuthorizationService _authService;
-        private readonly ZLFileRelayConfiguration _config;
+        private readonly IOptionsMonitor<ZLFileRelayConfiguration> _configMonitor;
 
         [BindProperty]
         public FileUploadViewModel UploadViewModel { get; set; } = new();
@@ -26,18 +25,21 @@ namespace ZLFileRelay.WebPortal.Pages
             ILogger<UploadModel> logger,
             IFileUploadService uploadService,
             AuthorizationService authService,
-            ZLFileRelayConfiguration config)
+            IOptionsMonitor<ZLFileRelayConfiguration> configMonitor)
         {
             _logger = logger ?? throw new ArgumentNullException(nameof(logger));
             _uploadService = (uploadService as FileUploadService) ?? throw new ArgumentNullException(nameof(uploadService));
             _authService = authService ?? throw new ArgumentNullException(nameof(authService));
-            _config = config ?? throw new ArgumentNullException(nameof(config));
+            _configMonitor = configMonitor ?? throw new ArgumentNullException(nameof(configMonitor));
         }
 
-        public IActionResult OnGet()
+        public async Task<IActionResult> OnGetAsync()
         {
-            // Check authorization
-            if (_config.WebPortal.RequireAuthentication && !_authService.IsUserAllowed(User))
+            // Get current config (reloads automatically if config file changed)
+            var config = _configMonitor.CurrentValue;
+            
+            // Check authorization (role-based)
+            if (!await _authService.IsUserAllowedAsync(User))
             {
                 _logger.LogWarning("Unauthorized access attempt by {User}", User.Identity?.Name);
                 return RedirectToPage("/NotAuthorized");
@@ -48,26 +50,27 @@ namespace ZLFileRelay.WebPortal.Pages
             // Initialize the viewmodel
             UploadViewModel = new FileUploadViewModel
             {
-                ShowTransferOption = _config.WebPortal.EnableUploadToTransfer,
+                ShowTransferOption = config.WebPortal.EnableUploadToTransfer,
                 RequiresTransfer = true, // Default to sending to SCADA
-                SiteName = _config.Branding.SiteName,
-                ContactEmail = _config.Branding.SupportEmail,
-                MaxFileSizeBytes = _config.Security.MaxUploadSizeBytes
+                SiteName = config.Branding.SiteName,
+                ContactEmail = config.Branding.SupportEmail,
+                MaxFileSizeBytes = config.Security.MaxUploadSizeBytes
             };
 
             return Page();
         }
 
-        [ValidateAntiForgeryToken]
         [EnableRateLimiting("upload")]
         public async Task<IActionResult> OnPostAsync()
         {
-            // Check authorization
-            if (_config.WebPortal.RequireAuthentication && !_authService.IsUserAllowed(User))
+            // Check authorization (role-based)
+            if (!await _authService.IsUserAllowedAsync(User))
             {
                 _logger.LogWarning("Unauthorized upload attempt by {User}", User.Identity?.Name);
                 return RedirectToPage("/NotAuthorized");
             }
+            
+            var config = _configMonitor.CurrentValue;
 
             if (!ModelState.IsValid)
             {
@@ -103,10 +106,11 @@ namespace ZLFileRelay.WebPortal.Pages
 
         private void RepopulateViewModel()
         {
-            UploadViewModel.ShowTransferOption = _config.WebPortal.EnableUploadToTransfer;
-            UploadViewModel.SiteName = _config.Branding.SiteName;
-            UploadViewModel.ContactEmail = _config.Branding.SupportEmail;
-            UploadViewModel.MaxFileSizeBytes = _config.Security.MaxUploadSizeBytes;
+            var config = _configMonitor.CurrentValue;
+            UploadViewModel.ShowTransferOption = config.WebPortal.EnableUploadToTransfer;
+            UploadViewModel.SiteName = config.Branding.SiteName;
+            UploadViewModel.ContactEmail = config.Branding.SupportEmail;
+            UploadViewModel.MaxFileSizeBytes = config.Security.MaxUploadSizeBytes;
         }
     }
 }

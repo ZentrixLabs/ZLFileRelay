@@ -1,4 +1,8 @@
-﻿@inject ZLFileRelay.Core.Models.ZLFileRelayConfiguration Config
+﻿@using Microsoft.Extensions.Options
+@inject IOptionsMonitor<ZLFileRelay.Core.Models.ZLFileRelayConfiguration> ConfigMonitor
+@{
+    var Config = ConfigMonitor.CurrentValue;
+}
 <!DOCTYPE html>
 <html lang="en">
 <head>
@@ -26,7 +30,18 @@
         <nav class="navbar navbar-expand-sm navbar-toggleable-sm navbar-dark box-shadow mb-3">
             <div class="container">
                 <a class="navbar-brand fw-bold" asp-page="/Index">
-                    <i class="fa-solid fa-network-wired"></i> @Config.Branding.ProductName
+                    @if (!string.IsNullOrWhiteSpace(Config.Branding.LogoPath))
+                    {
+                        <span class="logo-container">
+                            <img src="~/@Config.Branding.LogoPath" alt="@Config.Branding.CompanyName Logo" height="32" class="d-inline-block align-text-top me-2" style="max-height: 32px; object-fit: contain;" onerror="this.style.display='none'; this.nextElementSibling.style.display='inline';" />
+                            <i class="fa-solid fa-network-wired" style="display: none;"></i>
+                        </span>
+                    }
+                    else
+                    {
+                        <i class="fa-solid fa-network-wired"></i>
+                    }
+                    @Config.Branding.ProductName
                 </a>
                 <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target=".navbar-collapse">
                     <span class="navbar-toggler-icon"></span>

@@ -1,5 +1,6 @@
 using Microsoft.AspNetCore.Http;
 using Microsoft.Extensions.Logging;
+using Microsoft.Extensions.Options;
 using ZLFileRelay.Core.Interfaces;
 using ZLFileRelay.Core.Models;
 using ZLFileRelay.Core.Services;
@@ -11,16 +12,18 @@ namespace ZLFileRelay.WebPortal.Services
     /// </summary>
     public class FileUploadService : IFileUploadService
     {
-        private readonly ZLFileRelayConfiguration _config;
+        private readonly IOptionsMonitor<ZLFileRelayConfiguration> _configMonitor;
         private readonly ILogger<FileUploadService> _logger;
         private readonly ITransferStatusService? _transferStatusService;
 
+        private ZLFileRelayConfiguration Config => _configMonitor.CurrentValue;
+
         public FileUploadService(
-            ZLFileRelayConfiguration config,
+            IOptionsMonitor<ZLFileRelayConfiguration> configMonitor,
             ILogger<FileUploadService> logger,
             ITransferStatusService? transferStatusService = null)
         {
-            _config = config ?? throw new ArgumentNullException(nameof(config));
+            _configMonitor = configMonitor ?? throw new ArgumentNullException(nameof(configMonitor));
             _logger = logger ?? throw new ArgumentNullException(nameof(logger));
             _transferStatusService = transferStatusService; // Optional for backward compatibility
         }
@@ -45,16 +48,16 @@ namespace ZLFileRelay.WebPortal.Services
 
                 // SECURITY FIX (MEDIUM-2): Validate file extension FIRST (cheaper check, faster rejection)
                 var extension = Path.GetExtension(fileName).ToLowerInvariant();
-                if (_config.WebPortal.BlockedFileExtensions.Contains(extension))
+                if (IsExtensionBlocked(extension))
                 {
                     throw new InvalidOperationException($"File extension '{extension}' is blocked for security reasons");
                 }
 
                 // Validate file size (after extension check)
-                if (fileStream.Length > _config.Security.MaxUploadSizeBytes)
+                if (fileStream.Length > Config.Security.MaxUploadSizeBytes)
                 {
                     throw new InvalidOperationException(
-                        $"File size ({fileStream.Length} bytes) exceeds maximum allowed size ({_config.Security.MaxUploadSizeBytes} bytes)");
+                        $"File size ({fileStream.Length} bytes) exceeds maximum allowed size ({Config.Security.MaxUploadSizeBytes} bytes)");
                 }
 
                 // Create user-specific subdirectory
@@ -149,9 +152,9 @@ namespace ZLFileRelay.WebPortal.Services
         {
             var destinations = new Dictionary<string, string>();
 
-            if (_config.WebPortal.UploadLocations != null)
+            if (Config.WebPortal.UploadLocations != null)
             {
-                foreach (var kvp in _config.WebPortal.UploadLocations)
+                foreach (var kvp in Config.WebPortal.UploadLocations)
                 {
                     destinations[kvp.Key] = kvp.Value;
                 }
@@ -160,10 +163,10 @@ namespace ZLFileRelay.WebPortal.Services
             // Add default destinations
             if (!destinations.Any())
             {
-                destinations["default"] = _config.Paths.UploadDirectory;
-                if (_config.WebPortal.EnableUploadToTransfer)
+                destinations["default"] = Config.Paths.UploadDirectory;
+                if (Config.WebPortal.EnableUploadToTransfer)
                 {
-                    destinations["transfer"] = _config.Service.WatchDirectory;
+                    destinations["transfer"] = Config.Service.WatchDirectory;
                 }
             }
 
@@ -173,9 +176,9 @@ namespace ZLFileRelay.WebPortal.Services
         public (bool isValid, string? errorMessage) ValidateFile(string fileName, long fileSize)
         {
             // Check file size
-            if (fileSize > _config.Security.MaxUploadSizeBytes)
+            if (fileSize > Config.Security.MaxUploadSizeBytes)
             {
-                return (false, $"File size ({fileSize} bytes) exceeds maximum ({_config.Security.MaxUploadSizeBytes} bytes)");
+                return (false, $"File size ({fileSize} bytes) exceeds maximum ({Config.Security.MaxUploadSizeBytes} bytes)");
             }
 
             // SECURITY FIX (MEDIUM-5): Enhanced file extension validation
@@ -224,7 +227,7 @@ namespace ZLFileRelay.WebPortal.Services
                 // Check if any extension in the chain is blocked
                 foreach (var ext in allExtensions)
                 {
-                    if (_config.WebPortal.BlockedFileExtensions.Contains(ext))
+                    if (IsExtensionBlocked(ext))
                     {
                         _logger.LogWarning("Blocked file upload with multiple extensions, found blocked extension '{Extension}' in: {FileName}", 
                             ext, fileName);
@@ -233,11 +236,11 @@ namespace ZLFileRelay.WebPortal.Services
                 }
 
                 // If allowed list is configured, all extensions must be allowed
-                if (_config.WebPortal.AllowedFileExtensions.Any())
+                if (Config.WebPortal.AllowedFileExtensions.Any())
                 {
                     foreach (var ext in allExtensions)
                     {
-                        if (!_config.WebPortal.AllowedFileExtensions.Contains(ext))
+                        if (!Config.WebPortal.AllowedFileExtensions.Contains(ext))
                         {
                             _logger.LogWarning("File with multiple extensions contains non-allowed extension '{Extension}': {FileName}", 
                                 ext, fileName);
@@ -248,15 +251,15 @@ namespace ZLFileRelay.WebPortal.Services
             }
 
             // Standard extension validation
-            if (_config.WebPortal.BlockedFileExtensions.Contains(extension))
+            if (IsExtensionBlocked(extension))
             {
                 _logger.LogWarning("Blocked file upload with blocked extension '{Extension}': {FileName}", extension, fileName);
                 return (false, $"File extension '{extension}' is not allowed");
             }
 
             // If allowed list is configured, ensure extension is in it
-            if (_config.WebPortal.AllowedFileExtensions.Any() && 
-                !_config.WebPortal.AllowedFileExtensions.Contains(extension))
+            if (Config.WebPortal.AllowedFileExtensions.Any() && 
+                !Config.WebPortal.AllowedFileExtensions.Contains(extension))
             {
                 _logger.LogWarning("File upload rejected, extension '{Extension}' not in allowed list: {FileName}", extension, fileName);
                 return (false, $"File extension '{extension}' is not in the allowed list");
@@ -274,8 +277,8 @@ namespace ZLFileRelay.WebPortal.Services
             // Default: DMZ upload directory (files stay local)
             // If requiresTransfer=true: Watch directory (files go to SCADA)
             var dest = destination ?? (requiresTransfer
-                ? _config.Service.WatchDirectory 
-                : _config.Paths.UploadDirectory);
+                ? Config.Service.WatchDirectory 
+                : Config.Paths.UploadDirectory);
 
             using var stream = file.OpenReadStream();
             return await UploadFileAsync(stream, file.FileName, dest, uploadedBy, 
@@ -334,6 +337,27 @@ namespace ZLFileRelay.WebPortal.Services
                 return "unknown_user";
 
             return cleanUsername;
+        }
+
+        /// <summary>
+        /// Checks if an extension is blocked, respecting the AllowExecutableFiles setting.
+        /// </summary>
+        private bool IsExtensionBlocked(string extension)
+        {
+            // Define executable file extensions
+            var executableExtensions = new HashSet<string>(StringComparer.OrdinalIgnoreCase)
+            {
+                ".exe", ".dll", ".bat", ".cmd", ".ps1", ".vbs", ".com", ".scr", ".msi", ".jar"
+            };
+
+            // If executables are allowed and this is an executable extension, don't block it
+            if (Config.Security.AllowExecutableFiles && executableExtensions.Contains(extension))
+            {
+                return false;
+            }
+
+            // Otherwise, check the standard blocked extensions list
+            return Config.WebPortal.BlockedFileExtensions.Contains(extension);
         }
     }
 }

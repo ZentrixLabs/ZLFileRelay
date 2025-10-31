@@ -4,6 +4,8 @@
 
 This guide provides step-by-step instructions for deploying ZL File Relay in a DMZ environment for secure file transfer to SCADA/OT networks.
 
+**Perfect for Air-Gapped Networks**: ZL File Relay supports local authentication that works completely offline, making it ideal for isolated OT/SCADA environments without internet or domain dependencies.
+
 ---
 
 ## Table of Contents

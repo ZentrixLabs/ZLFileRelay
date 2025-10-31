@@ -1,5 +1,7 @@
 using System.Diagnostics;
 using System.IO;
+using System.Security.AccessControl;
+using System.Security.Principal;
 using System.Threading.Tasks;
 using Microsoft.Extensions.Logging;
 using Renci.SshNet;
@@ -18,18 +20,27 @@ public class SshKeyGenerator
     public async Task<SshKeyPair> GenerateAsync(
         SshKeyType keyType,
         string outputPath,
-        string? passphrase = null)
+        string? passphrase = null,
+        string? serviceAccountName = null)
     {
         try
         {
             // Try using Windows SSH first (ssh-keygen.exe)
+            SshKeyPair keyPair;
             if (File.Exists(@"C:\Windows\System32\OpenSSH\ssh-keygen.exe"))
             {
-                return await GenerateWithSshKeygenAsync(keyType, outputPath, passphrase);
+                keyPair = await GenerateWithSshKeygenAsync(keyType, outputPath, passphrase);
+            }
+            else
+            {
+                // Fallback to SSH.NET library
+                keyPair = await GenerateWithSshNetAsync(keyType, outputPath, passphrase);
             }
 
-            // Fallback to SSH.NET library
-            return await GenerateWithSshNetAsync(keyType, outputPath, passphrase);
+            // Set secure permissions on the private key (SSH requirement)
+            await SetSecureKeyPermissionsAsync(keyPair.PrivateKeyPath, serviceAccountName);
+
+            return keyPair;
         }
         catch (Exception ex)
         {
@@ -133,6 +144,113 @@ public class SshKeyGenerator
         {
             _logger.LogWarning(ex, "SSH key validation failed: {Path}", privateKeyPath);
             return Task.FromResult(false);
+        }
+    }
+
+    /// <summary>
+    /// Sets secure permissions on an SSH private key file (required by SSH - only owner should have access).
+    /// This method grants access only to SYSTEM, Administrators, and optionally a service account.
+    /// </summary>
+    public async Task SetSecureKeyPermissionsAsync(string privateKeyPath, string? serviceAccountName = null)
+    {
+        try
+        {
+            if (!File.Exists(privateKeyPath))
+            {
+                _logger.LogWarning("Private key file not found: {Path}", privateKeyPath);
+                return;
+            }
+
+            var fileInfo = new FileInfo(privateKeyPath);
+            var fileSecurity = fileInfo.GetAccessControl();
+
+            // Remove all inherited permissions
+            fileSecurity.SetAccessRuleProtection(true, false);
+
+            // Remove all existing rules
+            var rules = fileSecurity.GetAccessRules(true, false, typeof(SecurityIdentifier));
+            foreach (FileSystemAccessRule rule in rules)
+            {
+                fileSecurity.RemoveAccessRule(rule);
+            }
+
+            // Determine target owner and ACE: SSH on Windows is strict; only the key owner should have access.
+            if (!string.IsNullOrWhiteSpace(serviceAccountName))
+            {
+                try
+                {
+                    var svcAccount = new NTAccount(serviceAccountName);
+                    var svcSid = (SecurityIdentifier)svcAccount.Translate(typeof(SecurityIdentifier));
+
+                    // Set owner to the service account
+                    fileSecurity.SetOwner(svcSid);
+
+                    // Grant read & execute only to the service account
+                    fileSecurity.AddAccessRule(new FileSystemAccessRule(
+                        svcSid,
+                        FileSystemRights.Read | FileSystemRights.ReadAndExecute,
+                        InheritanceFlags.None,
+                        PropagationFlags.None,
+                        AccessControlType.Allow));
+
+                    _logger.LogInformation("Set SSH key owner to service account and restricted access: {Account}", serviceAccountName);
+                }
+                catch (Exception ex)
+                {
+                    _logger.LogWarning(ex, "Failed to set owner/ACE for service account {Account}", serviceAccountName);
+                }
+            }
+            else
+            {
+                // No service account provided: restrict to current user
+                var currentUser = WindowsIdentity.GetCurrent();
+                if (currentUser.User != null)
+                {
+                    fileSecurity.SetOwner(currentUser.User);
+                    fileSecurity.AddAccessRule(new FileSystemAccessRule(
+                        currentUser.User,
+                        FileSystemRights.Read | FileSystemRights.ReadAndExecute,
+                        InheritanceFlags.None,
+                        PropagationFlags.None,
+                        AccessControlType.Allow));
+                }
+            }
+
+            // Apply the new permissions
+            fileInfo.SetAccessControl(fileSecurity);
+
+            _logger.LogInformation("Set secure permissions on SSH private key: {Path}", privateKeyPath);
+        }
+        catch (UnauthorizedAccessException ex)
+        {
+            _logger.LogError(ex, "Permission denied setting secure permissions on {Path}. Run as Administrator.", privateKeyPath);
+            throw new UnauthorizedAccessException(
+                $"Permission denied setting secure permissions on SSH key. Please run as Administrator. Path: {privateKeyPath}", ex);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Failed to set secure permissions on {Path}", privateKeyPath);
+            throw;
+        }
+
+        await Task.CompletedTask;
+    }
+
+    /// <summary>
+    /// Fixes permissions on an existing SSH private key file.
+    /// This is useful when permissions have become too open and SSH is rejecting the key.
+    /// </summary>
+    public async Task<bool> FixKeyPermissionsAsync(string privateKeyPath, string? serviceAccountName = null)
+    {
+        try
+        {
+            await SetSecureKeyPermissionsAsync(privateKeyPath, serviceAccountName);
+            return true;
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Failed to fix permissions on {Path}", privateKeyPath);
+            return false;
         }
     }
 }

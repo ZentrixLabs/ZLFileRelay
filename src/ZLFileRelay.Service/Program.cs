@@ -6,6 +6,7 @@ using Serilog;
 using ZLFileRelay.Core.Interfaces;
 using ZLFileRelay.Core.Models;
 using ZLFileRelay.Core.Services;
+using ZLFileRelay.Core.Constants;
 using ZLFileRelay.Service.Services;
 
 // Configure Serilog for early initialization
@@ -20,14 +21,34 @@ try
 
     var builder = Host.CreateApplicationBuilder(args);
 
-    // Load configuration FIRST
-    var configuration = builder.Configuration
-        .AddJsonFile("appsettings.json", optional: false, reloadOnChange: true)
-        .AddJsonFile($"appsettings.{builder.Environment.EnvironmentName}.json", optional: true, reloadOnChange: true)
-        .Build();
-
+    // Load configuration from SINGLE shared location
+    // ConfigTool is the ONLY component that writes to this file
+    // Service and WebPortal ONLY read from this location
+    var sharedConfigPath = ApplicationConstants.Configuration.SharedConfigPath;
+    
+    // Ensure directory exists
+    var configDir = Path.GetDirectoryName(sharedConfigPath);
+    if (configDir != null && !Directory.Exists(configDir))
+    {
+        Directory.CreateDirectory(configDir);
+    }
+    
+    if (File.Exists(sharedConfigPath))
+    {
+        Log.Information("Loading configuration from shared location: {Path}", sharedConfigPath);
+        builder.Configuration.AddJsonFile(sharedConfigPath, optional: false, reloadOnChange: true);
+    }
+    else
+    {
+        Log.Warning("Configuration file not found at {Path}. Service will use default values. Run ConfigTool to create configuration.", sharedConfigPath);
+        // Make it optional so service can still start with defaults
+        builder.Configuration.AddJsonFile(sharedConfigPath, optional: true, reloadOnChange: true);
+    }
+    
+    // Configuration is automatically built by the Host builder
+    // Bind configuration section directly
     var appConfig = new ZLFileRelayConfiguration();
-    configuration.GetSection("ZLFileRelay").Bind(appConfig);
+    builder.Configuration.GetSection("ZLFileRelay").Bind(appConfig);
     builder.Services.AddSingleton(appConfig);
 
     // Configure Serilog AFTER config is loaded

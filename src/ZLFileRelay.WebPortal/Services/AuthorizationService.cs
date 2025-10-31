@@ -1,131 +1,99 @@
-using System.Runtime.Versioning;
 using System.Security.Claims;
-using System.Security.Principal;
 using Microsoft.Extensions.Logging;
+using Microsoft.Extensions.Options;
 using ZLFileRelay.Core.Models;
-using ZLFileRelay.Core.Services;
 
 namespace ZLFileRelay.WebPortal.Services
 {
     /// <summary>
-    /// Service for handling Windows AD authorization
+    /// Service for handling simplified authorization (Entra ID + Local Accounts)
     /// </summary>
-    [SupportedOSPlatform("windows")]
     public class AuthorizationService
     {
-        private readonly ZLFileRelayConfiguration _config;
+        private readonly IOptionsMonitor<ZLFileRelayConfiguration> _configMonitor;
         private readonly ILogger<AuthorizationService> _logger;
 
         public AuthorizationService(
-            ZLFileRelayConfiguration config, 
+            IOptionsMonitor<ZLFileRelayConfiguration> configMonitor, 
             ILogger<AuthorizationService> logger)
         {
-            _config = config ?? throw new ArgumentNullException(nameof(config));
+            _configMonitor = configMonitor ?? throw new ArgumentNullException(nameof(configMonitor));
             _logger = logger ?? throw new ArgumentNullException(nameof(logger));
         }
 
-        public bool IsUserInAllowedGroups(ClaimsPrincipal user)
+        /// <summary>
+        /// Check if user is allowed to upload files
+        /// Simplified authorization: All authenticated users are allowed
+        /// - Entra ID: Enterprise App assignment controls access
+        /// - Local Accounts: All authenticated users can upload
+        /// </summary>
+        public Task<bool> IsUserAllowedAsync(ClaimsPrincipal user)
         {
-            var allowedGroups = _config.WebPortal.AllowedGroups;
-
-            if (allowedGroups == null || !allowedGroups.Any())
+            if (!user.Identity?.IsAuthenticated ?? true)
             {
-                _logger.LogWarning("No allowed groups configured - denying access");
-                return false;
+                _logger.LogWarning("User is not authenticated");
+                return Task.FromResult(false);
             }
 
-            var identity = user.Identity as WindowsIdentity;
-            if (identity == null)
-            {
-                _logger.LogWarning("User identity is not WindowsIdentity");
-                return false;
-            }
+            // All authenticated users are allowed to upload
+            var userName = user.Identity?.Name ?? "Unknown";
+            var email = user.FindFirst(ClaimTypes.Email)?.Value ?? 
+                        user.FindFirst("preferred_username")?.Value ?? // Entra ID email claim
+                        user.FindFirst("emails")?.Value; // Alternate Entra ID email claim
 
-            // Get user groups
-            var userGroups = new List<string>();
-            if (identity.Groups != null)
-            {
-                foreach (var group in identity.Groups)
-                {
-                    try
-                    {
-                        var fullGroupName = new SecurityIdentifier(group.Value)
-                            .Translate(typeof(NTAccount)).Value;
-                        userGroups.Add(fullGroupName);
-
-                        // Add short name without domain
-                        if (fullGroupName.Contains("\\"))
-                        {
-                            var shortGroupName = fullGroupName.Split('\\')[1];
-                            userGroups.Add(shortGroupName);
-                        }
-                    }
-                    catch (Exception ex)
-                    {
-                        _logger.LogWarning(ex, "Could not translate group SID {Sid}", group.Value);
-                        userGroups.Add(group.Value);
-                    }
-                }
-            }
-
-            // SECURITY FIX (MEDIUM-1): Sanitize group names to avoid exposing full AD structure
-            _logger.LogDebug("User {User} groups: {Groups}", 
-                LoggingHelper.SanitizeUsername(user.Identity?.Name ?? "unknown"), 
-                LoggingHelper.SanitizeGroupList(userGroups));
-            _logger.LogDebug("Allowed groups: {Groups}", LoggingHelper.SanitizeGroupList(allowedGroups));
-
-            // Compare case-insensitively
-            var matches = userGroups
-                .Select(g => g.ToLowerInvariant())
-                .Intersect(allowedGroups.Select(g => g.ToLowerInvariant()))
-                .ToList();
-
-            if (matches.Any())
-            {
-                _logger.LogInformation("User {User} authorized via groups: {Groups}", 
-                    user.Identity?.Name, string.Join(", ", matches));
-                return true;
-            }
-
-            _logger.LogWarning("User {User} not in any allowed groups", user.Identity?.Name);
-            return false;
+            _logger.LogInformation("✅ User {User} ({Email}) authorized - all authenticated users can upload", userName, email);
+            return Task.FromResult(true);
         }
 
-        public bool IsUserAllowed(ClaimsPrincipal user)
+        /// <summary>
+        /// Check if user has admin privileges
+        /// Note: No separate admin concept in simplified model
+        /// Enterprise App admins control Entra ID access via Azure Portal
+        /// </summary>
+        public bool IsUserAdmin(ClaimsPrincipal user)
         {
-            // SECURITY FIX (HIGH-2): Validate that at least one authorization method is configured
-            var hasAllowedUsers = _config.WebPortal.AllowedUsers?.Any() ?? false;
-            var hasAllowedGroups = _config.WebPortal.AllowedGroups?.Any() ?? false;
-
-            if (!hasAllowedUsers && !hasAllowedGroups)
+            if (!user.Identity?.IsAuthenticated ?? true)
             {
-                _logger.LogError("SECURITY: No authorization rules configured! Both AllowedUsers and AllowedGroups are empty. " +
-                    "Please configure at least one authorization method in appsettings.json. Denying all access.");
                 return false;
             }
 
-            // Check if user is in allowed users list
-            if (hasAllowedUsers)
+            // For now, all authenticated users have the same privileges
+            // Admin functionality is controlled via Enterprise App assignment in Azure Portal
+            return true;
+        }
+
+        /// <summary>
+        /// Get user's display name from claims
+        /// </summary>
+        public string GetUserDisplayName(ClaimsPrincipal user)
+        {
+            if (!user.Identity?.IsAuthenticated ?? true)
             {
-                var userName = user.Identity?.Name?.ToLowerInvariant();
-                if (userName != null && _config.WebPortal.AllowedUsers!
-                    .Any(u => u.Equals(userName, StringComparison.OrdinalIgnoreCase)))
-                {
-                    _logger.LogInformation("User {User} authorized via explicit user list", user.Identity?.Name);
-                    return true;
-                }
+                return "Anonymous";
             }
 
-            // Check group membership (if groups are configured)
-            if (hasAllowedGroups)
+            // Try various claim types for name
+            return user.FindFirst(ClaimTypes.Name)?.Value ??
+                   user.FindFirst("name")?.Value ?? // Entra ID name claim
+                   user.FindFirst(ClaimTypes.Email)?.Value ??
+                   user.FindFirst("preferred_username")?.Value ??
+                   user.Identity?.Name ??
+                   "Unknown User";
+        }
+
+        /// <summary>
+        /// Get user's email from claims
+        /// </summary>
+        public string? GetUserEmail(ClaimsPrincipal user)
+        {
+            if (!user.Identity?.IsAuthenticated ?? true)
             {
-                return IsUserInAllowedGroups(user);
+                return null;
             }
 
-            // User not in allowed list and no groups to check
-            _logger.LogWarning("User {User} not in allowed users list", user.Identity?.Name);
-            return false;
+            return user.FindFirst(ClaimTypes.Email)?.Value ??
+                   user.FindFirst("preferred_username")?.Value ??
+                   user.FindFirst("emails")?.Value;
         }
     }
 }
-

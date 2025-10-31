@@ -74,7 +74,9 @@ Target: Manage multiple Server Core installations
 │  ├─ Kestrel web server                  │
 │  ├─ HTTP: 8080                          │
 │  ├─ HTTPS: 8443 (optional)              │
-│  ├─ Windows Authentication              │
+│  ├─ Hybrid Authentication               │
+│  │  ├─ Entra ID (Azure AD) optional     │
+│  │  └─ Local Accounts (air-gapped)      │
 │  └─ Upload interface                    │
 │                                         │
 │  Optional: ConfigTool (GUI management)  │
@@ -89,6 +91,8 @@ Target: Manage multiple Server Core installations
 - ✅ Self-contained (includes .NET 8 runtime)
 - ✅ Zero external dependencies
 - ✅ Perfect for air-gapped environments
+- ✅ Local authentication works offline (no cloud required)
+- ✅ Entra ID optional for cloud-connected deployments
 
 ---
 
@@ -263,9 +267,11 @@ New-NetFirewallRule -DisplayName "ZL File Relay - SSH Outbound" `
 
 ### Authentication
 
-**Web Portal:** Windows Authentication (NTLM/Kerberos)
-- Automatically uses current user's credentials
-- No passwords transmitted
+**Web Portal:** Hybrid Authentication (Flexible)
+- **Local Accounts** (Air-Gapped): Works offline, no internet required
+- **Entra ID (Azure AD)** (Optional): SSO for cloud-connected environments
+- Role-based authorization (Admin/Uploader)
+- No passwords transmitted (DPAPI-encrypted credentials)
 - Integrated with Active Directory
 
 **File Transfer:** SSH Public Key Authentication
@@ -394,9 +400,9 @@ Get-Content C:\FileRelay\logs\zlrelay-*.log -Tail 50
 
 **Check:**
 1. Service is running
-2. Firewall allows port 8080
-3. Correct URL (http://server:8080)
-4. Windows Authentication working
+2. Firewall allows port 8080 (or 8443 for HTTPS)
+3. Correct URL (http://server:8080 or https://server:8443)
+4. Authentication configured (Local Accounts or Entra ID)
 
 **Test:**
 ```powershell

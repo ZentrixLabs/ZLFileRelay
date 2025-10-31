@@ -19,6 +19,7 @@
 - **Inbound**: Port 443 (HTTPS) for web portal
 - **Outbound**: Port 22 (SSH) or Port 445 (SMB) to SCADA network
 - DNS resolution to SCADA servers
+- **Air-Gapped Support**: Works without internet when using local authentication (no Entra ID/Azure AD required)
 
 ### Permissions Required
 - **Administrative privileges** for installation
@@ -33,8 +34,9 @@
 - [ ] IIS installed and running (for web portal)
 - [ ] Firewall rules configured
 - [ ] Network connectivity to SCADA servers verified
-- [ ] Active Directory groups identified for web portal access
 - [ ] SCADA server SSH access confirmed (or SMB credentials obtained)
+- [ ] For air-gapped environments: Configure local authentication (no cloud dependencies)
+- [ ] For cloud-connected environments: Optional Entra ID/Azure AD setup (see ENTRA_ID_SETUP.md)
 
 ## Installation Steps
 
@@ -97,10 +99,13 @@ Installer will:
    - Test connection
 
 4. **Configure Web Portal**
-   - Set allowed Active Directory groups
-   - Configure upload limits
-   - Set branding (logo, colors)
-   - Configure email notifications
+   - **Authentication**: Choose Entra ID (Azure AD) or Local Accounts
+     - Air-gapped environments: Use Local Accounts (no internet required)
+     - Cloud-connected: Enable Entra ID for SSO
+   - Configure admin email addresses and roles
+   - Set upload limits and file restrictions
+   - Configure branding (logo, colors)
+   - Set up email notifications (optional)
 
 5. **Install and Start Services**
    - Click "Install Service"
@@ -240,9 +245,8 @@ Get-Website | Where-Object {$_.Name -eq "ZLFileRelay"}
 ### Test Web Portal
 1. Open browser
 2. Navigate to `https://your-server/`
-3. Verify Windows Authentication prompt
-4. Login with authorized account
-5. Verify upload page loads
+3. Sign in with credentials (Entra ID or local account)
+4. Verify upload page loads for authorized users
 
 ### Test File Transfer
 1. Place test file in watched directory
@@ -261,9 +265,9 @@ Get-Website | Where-Object {$_.Name -eq "ZLFileRelay"}
 ### Web Portal Not Accessible
 - Verify IIS is running
 - Check bindings in IIS Manager
-- Verify Windows Authentication enabled
+- Verify authentication is configured (Entra ID or Local Accounts)
 - Check firewall rules
-- Review IIS logs
+- Review IIS logs and application logs
 
 ### File Transfer Failing
 - Verify network connectivity to SCADA server

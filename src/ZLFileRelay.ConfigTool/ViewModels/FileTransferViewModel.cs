@@ -1,4 +1,6 @@
 using System.IO;
+using System;
+using System.Windows;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
 using System.Threading.Tasks;
@@ -116,7 +118,7 @@ public partial class FileTransferViewModel : ObservableObject
         }
     }
 
-    private async Task LoadConfigurationAsync()
+    internal async Task LoadConfigurationAsync()
     {
         try
         {
@@ -328,105 +330,152 @@ public partial class FileTransferViewModel : ObservableObject
                               "Please select the PRIVATE key file (without .pub extension) instead.";
                 return;
             }
-            // Warn if they selected a .crt or .cer file (certificate, not private key)
-            else if (selectedFile.EndsWith(".crt", StringComparison.OrdinalIgnoreCase) ||
-                     selectedFile.EndsWith(".cer", StringComparison.OrdinalIgnoreCase))
-            {
-                SshTestResult = "⚠️ Warning: You selected a certificate file (.crt/.cer). " +
-                              "Please select the PRIVATE key file (usually .key or .pem) instead.";
-                return;
-            }
 
-            // Get target location for service account
-            var serviceAccountConfigDir = Path.Combine(
-                _config.Paths.ConfigDirectory ?? @"C:\ProgramData\ZLFileRelay",
-                "ssh_keys");
-
-            Directory.CreateDirectory(serviceAccountConfigDir);
-
-            // Copy the file to the service account's config directory
-            var fileName = Path.GetFileName(selectedFile);
-            var targetPath = Path.Combine(serviceAccountConfigDir, fileName);
-
+            // Copy the key into the application config directory and secure it
             try
             {
-                // If file already exists, use incremental naming (key-1, key-2, etc) to avoid permission issues
-                if (File.Exists(targetPath))
-                {
-                    var fileNameWithoutExt = Path.GetFileNameWithoutExtension(fileName);
-                    var extension = Path.GetExtension(fileName);
-                    var counter = 1;
-                    
-                    do
-                    {
-                        fileName = $"{fileNameWithoutExt}-{counter}{extension}";
-                        targetPath = Path.Combine(serviceAccountConfigDir, fileName);
-                        counter++;
-                    } while (File.Exists(targetPath));
-                    
-                    SshTestResult = $"ℹ️ Existing key file found, using incremental name: {fileName}";
-                }
-
-                // Copy the file to the target location
-                File.Copy(selectedFile, targetPath);
-
-                // Set permissions: Service account read, admin full control
-                var fileInfo = new FileInfo(targetPath);
-                var fileSecurity = fileInfo.GetAccessControl();
-
-                // Add service account with read access
                 var currentServiceAccount = await _serviceAccountManager.GetCurrentServiceAccountAsync();
-                if (!string.IsNullOrWhiteSpace(currentServiceAccount) && 
-                    !_impersonator.IsSystemAccount(currentServiceAccount))
+                var serviceAccountName = (currentServiceAccount != null && !_impersonator.IsSystemAccount(currentServiceAccount))
+                    ? currentServiceAccount
+                    : null;
+
+                // Determine destination folder for managed keys
+                var destDir = Path.Combine(_config.Paths.ConfigDirectory ?? @"C:\ProgramData\ZLFileRelay", "ssh_keys");
+                Directory.CreateDirectory(destDir);
+
+                // Preserve filename; ensure no overwrite by incrementing if needed
+                var fileName = Path.GetFileName(selectedFile);
+                var destPath = Path.Combine(destDir, fileName);
+                if (File.Exists(destPath))
                 {
-                    var serviceAccountIdentity = currentServiceAccount.Replace(".\\", "");
-                    if (currentServiceAccount.Contains("\\"))
+                    var name = Path.GetFileNameWithoutExtension(fileName);
+                    var ext = Path.GetExtension(fileName);
+                    var i = 1;
+                    while (File.Exists(destPath))
                     {
-                        // Domain account
-                        var account = new System.Security.Principal.NTAccount(currentServiceAccount);
-                        var sid = (System.Security.Principal.SecurityIdentifier)account.Translate(typeof(System.Security.Principal.SecurityIdentifier));
-                        fileSecurity.SetAccessRule(new System.Security.AccessControl.FileSystemAccessRule(
-                            sid,
-                            System.Security.AccessControl.FileSystemRights.Read,
-                            System.Security.AccessControl.AccessControlType.Allow));
-                    }
-                    else
-                    {
-                        // Local account
-                        fileSecurity.SetAccessRule(new System.Security.AccessControl.FileSystemAccessRule(
-                            serviceAccountIdentity,
-                            System.Security.AccessControl.FileSystemRights.Read,
-                            System.Security.AccessControl.AccessControlType.Allow));
+                        destPath = Path.Combine(destDir, $"{name}-{i}{ext}");
+                        i++;
                     }
                 }
 
-                // Grant admin full control
-                var adminAccount = System.Security.Principal.WindowsIdentity.GetCurrent().Name;
-                fileSecurity.SetAccessRule(new System.Security.AccessControl.FileSystemAccessRule(
-                    adminAccount,
-                    System.Security.AccessControl.FileSystemRights.FullControl,
-                    System.Security.AccessControl.AccessControlType.Allow));
+                // If we have service account credentials, impersonate to ensure correct file ownership
+                var (saUsername, saPassword) = await GetServiceAccountCredentialsAsync();
+                if (!string.IsNullOrWhiteSpace(saUsername) && !string.IsNullOrWhiteSpace(saPassword) &&
+                    !_impersonator.IsSystemAccount(saUsername))
+                {
+                    await _impersonator.ImpersonateAsync<object>(saUsername, saPassword, async () =>
+                    {
+                        File.Copy(selectedFile, destPath);
+                        // Secure under impersonated context (owner will be service account)
+                        await _sshKeyGenerator.SetSecureKeyPermissionsAsync(destPath, saUsername);
+                        return new object();
+                    });
+                }
+                else
+                {
+                    // Copy without impersonation, then set owner and ACL explicitly
+                    File.Copy(selectedFile, destPath);
+                    await _sshKeyGenerator.SetSecureKeyPermissionsAsync(destPath, serviceAccountName);
+                }
 
-                // Remove inherited permissions and keep only explicit ones
-                fileSecurity.SetAccessRuleProtection(true, false);
+                // Point configuration at the managed copy
+                SshKeyPath = destPath;
 
-                fileInfo.SetAccessControl(fileSecurity);
+                SshTestResult = $"✅ SSH private key imported to application directory:\n{destPath}\n\n" +
+                                $"✅ Secure permissions configured (SYSTEM & Administrators: Full; {(serviceAccountName != null ? serviceAccountName + ": Read & Execute" : "")}).";
 
-                // Set the path to the copied file
-                SshKeyPath = targetPath;
-                
-                SshTestResult = $"✅ SSH key copied to service account location:\n{targetPath}\n\n" +
-                              $"Permissions configured for service account access.";
+                // Show confirmation dialog so the action feels tangible
+                var details =
+                    $"The SSH private key has been imported and secured.\n\n" +
+                    $"Imported to:\n{destPath}\n\n" +
+                    $"Permissions:\n- SYSTEM: Full Control\n- Administrators: Full Control" +
+                    (serviceAccountName != null ? $"\n- {serviceAccountName}: Read & Execute" : string.Empty);
+
+                MessageBox.Show(
+                    details,
+                    "SSH Key Imported",
+                    MessageBoxButton.OK,
+                    MessageBoxImage.Information);
+            }
+            catch (UnauthorizedAccessException ex)
+            {
+                SshTestResult = $"❌ Permission denied importing SSH key: {ex.Message}\n\nRun the Config Tool as Administrator and try again.";
             }
             catch (Exception ex)
             {
-                SshTestResult = $"❌ Error copying SSH key: {ex.Message}\n\n" +
-                              $"Make sure you have permissions to copy the file and the service account exists.";
+                SshTestResult = $"❌ Error importing SSH key: {ex.Message}";
             }
+            
+            return;
         }
         catch (Exception ex)
         {
             SshTestResult = $"❌ Error browsing for SSH key: {ex.Message}";
+        }
+    }
+
+    [RelayCommand]
+    private async Task FixSshKeyPermissionsAsync()
+    {
+        if (string.IsNullOrWhiteSpace(SshKeyPath))
+        {
+            SshTestResult = "❌ No SSH private key path configured. Please select a key file first.";
+            return;
+        }
+
+        if (!File.Exists(SshKeyPath))
+        {
+            SshTestResult = $"❌ SSH private key file not found: {SshKeyPath}";
+            return;
+        }
+
+        try
+        {
+            SshTestResult = "Fixing SSH key permissions...";
+            
+            // Get current service account
+            var currentServiceAccount = await _serviceAccountManager.GetCurrentServiceAccountAsync();
+            var serviceAccountName = (currentServiceAccount != null && !_impersonator.IsSystemAccount(currentServiceAccount))
+                ? currentServiceAccount
+                : null;
+            
+            var success = await _sshKeyGenerator.FixKeyPermissionsAsync(SshKeyPath, serviceAccountName);
+            
+            if (success)
+            {
+                SshTestResult = $"✅ SSH key permissions fixed successfully!\n\n" +
+                              $"Key file: {SshKeyPath}\n\n" +
+                              $"The key now has secure permissions set:\n" +
+                              $"• SYSTEM: Full Control\n" +
+                              $"• Administrators: Full Control\n" +
+                              $"{(serviceAccountName != null ? $"• {serviceAccountName}: Read & Execute\n" : "")}" +
+                              $"• All other access removed\n\n" +
+                              $"SSH should now accept this key file.";
+            }
+            else
+            {
+                SshTestResult = $"❌ Failed to fix SSH key permissions.\n\n" +
+                              $"Key file: {SshKeyPath}\n\n" +
+                              $"Please ensure:\n" +
+                              $"• You are running as Administrator\n" +
+                              $"• The file is not locked by another process\n" +
+                              $"• You have permissions to modify the file\n\n" +
+                              $"You can also fix permissions manually using PowerShell:\n" +
+                              $"  icacls \"{SshKeyPath}\" /inheritance:r\n" +
+                              $"  icacls \"{SshKeyPath}\" /grant \"SYSTEM:F\"\n" +
+                              $"  icacls \"{SshKeyPath}\" /grant \"Administrators:F\"\n" +
+                              $"{(serviceAccountName != null ? $"  icacls \"{SshKeyPath}\" /grant \"{serviceAccountName}:R\"\n" : "")}";
+            }
+        }
+        catch (UnauthorizedAccessException ex)
+        {
+            SshTestResult = $"❌ Permission denied fixing SSH key permissions.\n\n" +
+                          $"Error: {ex.Message}\n\n" +
+                          $"Please run the Config Tool as Administrator and try again.";
+        }
+        catch (Exception ex)
+        {
+            SshTestResult = $"❌ Error fixing SSH key permissions: {ex.Message}";
         }
     }
 
@@ -448,20 +497,34 @@ public partial class FileTransferViewModel : ObservableObject
                 Directory.CreateDirectory(directory);
             }
 
-            var keyPair = await _sshKeyGenerator.GenerateAsync(SshKeyType.ED25519, keyPath);
+            // Get service account to grant it access to the key
+            var currentServiceAccount = await _serviceAccountManager.GetCurrentServiceAccountAsync();
+            var serviceAccountName = (currentServiceAccount != null && !_impersonator.IsSystemAccount(currentServiceAccount))
+                ? currentServiceAccount
+                : null;
+
+            var keyPair = await _sshKeyGenerator.GenerateAsync(SshKeyType.ED25519, keyPath, null, serviceAccountName);
 
             SshKeyPath = keyPair.PrivateKeyPath;
             PublicKey = keyPair.PublicKey;
 
+            // Note: Secure permissions are automatically set by SshKeyGenerator.GenerateAsync
+            var serviceAccountInfo = (serviceAccountName != null)
+                ? $"\n• Service account ({serviceAccountName}) has been granted read access"
+                : "\n• Note: If using a service account, you may need to grant it read access";
+
             SshTestResult = $"✅ SSH key pair generated successfully (ED25519 format)\n\n" +
                            $"🔒 Private key (keep secure): {keyPair.PrivateKeyPath}\n" +
                            $"📤 Public key (deploy to remote): {keyPair.PublicKeyPath}\n\n" +
+                           $"✅ Secure permissions have been automatically configured:\n" +
+                           $"• SYSTEM: Full Control\n" +
+                           $"• Administrators: Full Control{serviceAccountInfo}\n" +
+                           $"• All other access removed (SSH requirement)\n\n" +
                            $"Next Steps:\n" +
                            $"1. The private key path has been automatically filled in above\n" +
                            $"2. Click 'View Public Key' or 'Copy to Clipboard' to get the public key\n" +
                            $"3. Add the public key to your remote server's ~/.ssh/authorized_keys file\n" +
-                           $"4. Grant the service account read access to: {keyPair.PrivateKeyPath}\n" +
-                           $"5. Test the connection\n\n" +
+                           $"4. Test the connection\n\n" +
                            $"⚠️ Important: Never share the private key file! Only deploy the public key (.pub) to remote servers.";
         }
         catch (Exception ex)
@@ -532,10 +595,28 @@ public partial class FileTransferViewModel : ObservableObject
             if (result.Success)
             {
                 SshTestResult = $"✅ {result.Message}\n\n{result.Details}";
+                
+                // Save test result to configuration
+                _config.Status.LastTestDate = DateTime.Now;
+                _config.Status.LastTestResult = "Success";
+                _config.Status.LastTestedMethod = "ssh";
+                _config.Status.IsTestingComplete = true;
+                
+                // Auto-save test result status
+                await _configurationService.SaveAsync(_config);
             }
             else
             {
                 SshTestResult = $"❌ {result.Message}\n\n{result.Details}";
+                
+                // Save failed test result to configuration
+                _config.Status.LastTestDate = DateTime.Now;
+                _config.Status.LastTestResult = "Failed";
+                _config.Status.LastTestedMethod = "ssh";
+                _config.Status.IsTestingComplete = false;
+                
+                // Auto-save test result status
+                await _configurationService.SaveAsync(_config);
             }
         }
         catch (Exception ex)
@@ -561,9 +642,32 @@ public partial class FileTransferViewModel : ObservableObject
 
             var result = await _connectionTester.TestSmbAsync(_config.Transfer.Smb);
 
-            StatusMessage = result.Success 
-                ? $"✅ {result.Message}" 
-                : $"❌ {result.Message}";
+            if (result.Success)
+            {
+                StatusMessage = $"✅ {result.Message}";
+                
+                // Save test result to configuration
+                _config.Status.LastTestDate = DateTime.Now;
+                _config.Status.LastTestResult = "Success";
+                _config.Status.LastTestedMethod = "smb";
+                _config.Status.IsTestingComplete = true;
+                
+                // Auto-save test result status
+                await _configurationService.SaveAsync(_config);
+            }
+            else
+            {
+                StatusMessage = $"❌ {result.Message}";
+                
+                // Save failed test result to configuration
+                _config.Status.LastTestDate = DateTime.Now;
+                _config.Status.LastTestResult = "Failed";
+                _config.Status.LastTestedMethod = "smb";
+                _config.Status.IsTestingComplete = false;
+                
+                // Auto-save test result status
+                await _configurationService.SaveAsync(_config);
+            }
         }
         catch (Exception ex)
         {

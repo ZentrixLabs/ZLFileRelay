@@ -11,6 +11,25 @@ namespace ZLFileRelay.ConfigTool.Views
         public WebPortalView()
         {
             InitializeComponent();
+            
+            // Wire up PasswordBox to ViewModel
+            // PasswordBox doesn't support direct binding for security reasons
+            ClientSecretBox.PasswordChanged += (s, e) =>
+            {
+                if (DataContext is ViewModels.WebPortalViewModel vm)
+                {
+                    vm.EntraIdClientSecret = ClientSecretBox.Password;
+                }
+            };
+            
+            // Store reference in ViewModel for bidirectional updates
+            Loaded += (s, e) =>
+            {
+                if (DataContext is ViewModels.WebPortalViewModel vm)
+                {
+                    vm.SetPasswordBoxReference(ClientSecretBox);
+                }
+            };
         }
 
         private void LogoPathTextBox_GotFocus(object sender, RoutedEventArgs e)

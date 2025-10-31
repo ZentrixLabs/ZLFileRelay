@@ -1,3 +1,5 @@
+using System.IO;
+
 namespace ZLFileRelay.Core.Constants;
 
 /// <summary>
@@ -15,6 +17,7 @@ public static class ApplicationConstants
         public const string SectionName = "ZLFileRelay";
         public const string DefaultConfigFileName = "appsettings.json";
         public const string DefaultConfigDirectory = @"C:\ProgramData\ZLFileRelay";
+        public static string SharedConfigPath => Path.Combine(DefaultConfigDirectory, DefaultConfigFileName);
     }
     
     public static class Paths

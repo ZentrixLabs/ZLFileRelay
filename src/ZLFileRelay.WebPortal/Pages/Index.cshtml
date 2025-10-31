@@ -23,21 +23,42 @@
                 </ul>
 
                 <h4 class="mt-4">Who can use this service?</h4>
-                @if (!string.IsNullOrWhiteSpace(Model.AuthenticationDomain))
+                @if (Model.ShowEntraId && Model.ShowLocalAccounts)
                 {
                     <div class="alert alert-info">
-                        <i class="fa-solid fa-key"></i> <strong>Authentication Required:</strong> You must authenticate with your <strong>@Model.AuthenticationDomain</strong> domain credentials to access the upload service.
+                        <i class="fa-solid fa-key"></i> <strong>Authentication Required:</strong> Sign in with your Microsoft account or create a local account to access the upload service.
+                    </div>
+                }
+                else if (Model.ShowEntraId)
+                {
+                    <div class="alert alert-info">
+                        <i class="fa-solid fa-key"></i> <strong>Authentication Required:</strong> Sign in with your Microsoft account to access the upload service.
+                    </div>
+                }
+                else if (Model.ShowLocalAccounts)
+                {
+                    <div class="alert alert-info">
+                        <i class="fa-solid fa-key"></i> <strong>Authentication Required:</strong> Sign in or create an account to access the upload service.
                     </div>
                 }
                 else
                 {
-                    <p>Access is restricted to authorized security groups and users. If you need access, contact IT Support.</p>
+                    <p>Access is restricted to authorized users. If you need access, contact IT Support.</p>
                 }
 
                 <div class="mt-4">
-                    <a href="/Upload" class="btn btn-primary btn-lg">
-                        <i class="fa-solid fa-cloud-arrow-up"></i> Start File Upload
-                    </a>
+                    @if (Model.IsAuthenticated)
+                    {
+                        <a href="/Upload" class="btn btn-primary btn-lg">
+                            <i class="fa-solid fa-cloud-arrow-up"></i> Start File Upload
+                        </a>
+                    }
+                    else
+                    {
+                        <a href="/Login" class="btn btn-primary btn-lg">
+                            <i class="fa-solid fa-right-to-bracket"></i> Sign In to Upload
+                        </a>
+                    }
                 </div>
             </div>
 
