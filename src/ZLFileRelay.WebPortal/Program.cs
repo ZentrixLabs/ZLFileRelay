@@ -86,10 +86,28 @@ try
         Log.Warning(ex, "Could not load encrypted client secret, will use config value if available");
     }
     
-    Log.Information("Configuration loaded. Company: {CompanyName}, Site: {SiteName}, Config: {ConfigPath}", 
-        initialConfig.Branding?.CompanyName ?? "N/A", 
-        initialConfig.Branding?.SiteName ?? "N/A",
+    Log.Information("✅ Configuration loaded successfully");
+    Log.Information("   📁 Config file: {ConfigPath}", 
         File.Exists(sharedConfigPath) ? sharedConfigPath : "embedded appsettings.json");
+    Log.Information("   🏢 Company: {CompanyName}", initialConfig.Branding?.CompanyName ?? "N/A");
+    Log.Information("   📍 Site: {SiteName}", initialConfig.Branding?.SiteName ?? "N/A");
+    Log.Information("   📦 Max upload size: {MaxSize} bytes ({MaxSizeGB:F2} GB)", 
+        initialConfig.Security.MaxUploadSizeBytes,
+        initialConfig.Security.MaxUploadSizeBytes / 1024.0 / 1024.0 / 1024.0);
+    Log.Information("   🔒 Security settings:");
+    Log.Information("      - Allow executable files: {AllowExec}", initialConfig.Security.AllowExecutableFiles);
+    Log.Information("      - Blocked extensions: {BlockedExts}", 
+        string.Join(", ", initialConfig.WebPortal.BlockedFileExtensions));
+    
+    // Warn if obsolete MaxFileSizeBytes is still in config
+    #pragma warning disable CS0618 // Type or member is obsolete
+    if (initialConfig.WebPortal.MaxFileSizeBytes != 4294967295)
+    {
+        Log.Warning("⚠️ DEPRECATED: WebPortal.MaxFileSizeBytes is set but not used. Please remove it and use Security.MaxUploadSizeBytes instead.");
+        Log.Warning("   Current value in config: {ObsoleteValue} bytes", initialConfig.WebPortal.MaxFileSizeBytes);
+        Log.Warning("   Actual value being used: {ActualValue} bytes (from Security.MaxUploadSizeBytes)", initialConfig.Security.MaxUploadSizeBytes);
+    }
+    #pragma warning restore CS0618 // Type or member is obsolete
     
     // Register as singleton for backward compatibility (services can still inject directly)
     // But IOptionsMonitor<ZLFileRelayConfiguration> will reload automatically
@@ -642,6 +660,34 @@ try
 
     // SECURITY FIX (MEDIUM-4): Enable rate limiting middleware
     app.UseRateLimiter();
+    
+    // Custom middleware to handle file size limit exceeded errors (HTTP 400)
+    // When file upload exceeds limits, ASP.NET Core returns 400 before our validation runs
+    // This middleware catches those 400s and shows a user-friendly error page
+    app.Use(async (context, next) =>
+    {
+        // Capture the original response body stream
+        var originalBodyStream = context.Response.Body;
+        
+        await next();
+        
+        // Check if this is a 400 Bad Request on the upload endpoint
+        if (context.Response.StatusCode == 400 && 
+            context.Request.Path.StartsWithSegments("/Upload") &&
+            context.Request.Method == "POST")
+        {
+            // Check if it's a multipart/form-data request (file upload)
+            if (context.Request.ContentType?.StartsWith("multipart/form-data", StringComparison.OrdinalIgnoreCase) == true)
+            {
+                // Log the error for diagnostics
+                Log.Warning("File upload rejected with HTTP 400 - likely exceeded size limits. Content-Length: {ContentLength}, Path: {Path}", 
+                    context.Request.ContentLength, context.Request.Path);
+                
+                // Redirect to user-friendly error page
+                context.Response.Redirect($"/FileTooLarge?attemptedSize={context.Request.ContentLength ?? 0}");
+            }
+        }
+    });
 
     // Always add auth middleware (pages have [Authorize] attributes)
     // IMPORTANT: Authentication middleware MUST be before authorization middleware

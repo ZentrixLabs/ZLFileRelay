@@ -102,7 +102,13 @@ public class WebPortalSettings
     /// </summary>
     public AuthenticationSettings Authentication { get; set; } = new();
     
+    /// <summary>
+    /// OBSOLETE: Use Security.MaxUploadSizeBytes instead.
+    /// This property is no longer used by the application and will be removed in a future version.
+    /// </summary>
+    [Obsolete("Use Security.MaxUploadSizeBytes instead. This property is not used by the application.")]
     public long MaxFileSizeBytes { get; set; } = 4294967295; // ~4GB
+    
     public int MaxConcurrentUploads { get; set; } = 10;
     public List<string> AllowedFileExtensions { get; set; } = new();
     public List<string> BlockedFileExtensions { get; set; } = new() { ".exe", ".dll", ".bat", ".cmd", ".ps1" };

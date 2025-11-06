@@ -350,14 +350,27 @@ namespace ZLFileRelay.WebPortal.Services
                 ".exe", ".dll", ".bat", ".cmd", ".ps1", ".vbs", ".com", ".scr", ".msi", ".jar"
             };
 
+            bool isExecutable = executableExtensions.Contains(extension);
+            bool allowExecutables = Config.Security.AllowExecutableFiles;
+            bool inBlockedList = Config.WebPortal.BlockedFileExtensions.Contains(extension);
+            
             // If executables are allowed and this is an executable extension, don't block it
-            if (Config.Security.AllowExecutableFiles && executableExtensions.Contains(extension))
+            if (allowExecutables && isExecutable)
             {
+                _logger.LogDebug("Extension {Extension} allowed: is executable and AllowExecutableFiles=true", extension);
                 return false;
             }
 
             // Otherwise, check the standard blocked extensions list
-            return Config.WebPortal.BlockedFileExtensions.Contains(extension);
+            bool isBlocked = inBlockedList;
+            
+            if (isBlocked)
+            {
+                _logger.LogInformation("Extension {Extension} blocked: AllowExecutableFiles={AllowExec}, IsExecutable={IsExec}, InBlockedList={Blocked}", 
+                    extension, allowExecutables, isExecutable, inBlockedList);
+            }
+            
+            return isBlocked;
         }
     }
 }

@@ -137,7 +137,8 @@
                     document.querySelectorAll('.transfer-status').forEach(element => {
                         const statusText = element.querySelector('.status-text');
                         if (statusText && statusText.textContent.includes('Queued')) {
-                            // Still queued after 2 minutes - show warning
+                            // Still queued after 10 minutes - show warning
+                            // (Large files can take time to transfer, especially over slower connections)
                             const small = element.querySelector('small');
                             const icon = element.querySelector('i');
                             small.className = 'text-warning';
@@ -145,7 +146,7 @@
                             statusText.innerHTML = '<span>⚠️ Transfer is taking longer than expected. Check service logs if it continues.</span>';
                         }
                     });
-                }, 120000); // 2 minutes
+                }, 600000); // 10 minutes
             })
             .catch(err => {
                 console.error("Error connecting to hub:", err);
