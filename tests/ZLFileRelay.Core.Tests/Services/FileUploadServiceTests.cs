@@ -3,6 +3,7 @@ using System.IO;
 using System.Text;
 using System.Threading.Tasks;
 using Microsoft.Extensions.Logging.Abstractions;
+using Microsoft.Extensions.Options;
 using Xunit;
 using ZLFileRelay.Core.Models;
 using ZLFileRelay.WebPortal.Services;
@@ -37,7 +38,11 @@ namespace ZLFileRelay.Core.Tests.Services
                 }
             };
 
-            _service = new FileUploadService(_config, NullLogger<FileUploadService>.Instance);
+            // Create a mock IOptionsMonitor for testing
+            var optionsMonitor = Microsoft.Extensions.Options.Options.Create(_config);
+            var optionsMonitorWrapper = new OptionsMonitorWrapper(optionsMonitor);
+            
+            _service = new FileUploadService(optionsMonitorWrapper, NullLogger<FileUploadService>.Instance);
         }
 
         [Fact]
@@ -162,6 +167,28 @@ namespace ZLFileRelay.Core.Tests.Services
                 }
             }
         }
+    }
+
+    // Simple wrapper to convert IOptions to IOptionsMonitor for testing
+    internal class OptionsMonitorWrapper : IOptionsMonitor<ZLFileRelayConfiguration>
+    {
+        private readonly IOptions<ZLFileRelayConfiguration> _options;
+
+        public OptionsMonitorWrapper(IOptions<ZLFileRelayConfiguration> options)
+        {
+            _options = options;
+        }
+
+        public ZLFileRelayConfiguration CurrentValue => _options.Value;
+
+        public ZLFileRelayConfiguration Get(string name) => _options.Value;
+
+        public IDisposable OnChange(Action<ZLFileRelayConfiguration, string> listener) => new EmptyDisposable();
+    }
+
+    internal class EmptyDisposable : IDisposable
+    {
+        public void Dispose() { }
     }
 }
 

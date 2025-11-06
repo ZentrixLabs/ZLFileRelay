@@ -41,7 +41,8 @@ public class ConnectionTester
                 // If we have service account credentials, check if they can access the file
                 if (_impersonator != null && 
                     !string.IsNullOrWhiteSpace(serviceAccountUsername) && 
-                    !string.IsNullOrWhiteSpace(serviceAccountPassword))
+                    !string.IsNullOrWhiteSpace(serviceAccountPassword) &&
+                    !string.IsNullOrWhiteSpace(settings.PrivateKeyPath))
                 {
                     try
                     {

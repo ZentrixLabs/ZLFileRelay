@@ -207,7 +207,7 @@ namespace ZLFileRelay.Service.Services
             return Path.Combine(_config.Transfer.Ssh.DestinationPath, relativePath).Replace('\\', '/');
         }
 
-        private async Task EnsureRemoteDirectory(string remotePath)
+        private Task EnsureRemoteDirectory(string remotePath)
         {
             try
             {
@@ -239,6 +239,8 @@ namespace ZLFileRelay.Service.Services
             {
                 _logger.LogWarning(ex, "Failed to ensure remote directory: {RemotePath}", remotePath);
             }
+
+            return Task.CompletedTask;
         }
 
         private async Task<string> ResolveRemotePathConflict(string remotePath)

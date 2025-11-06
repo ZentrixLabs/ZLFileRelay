@@ -200,16 +200,28 @@ namespace ZLFileRelay.Core.Services
             }
         }
 
+        [System.Runtime.Versioning.SupportedOSPlatform("windows")]
         private static byte[] ProtectData(string data)
         {
+            if (!OperatingSystem.IsWindows())
+            {
+                throw new PlatformNotSupportedException("Credential encryption is only supported on Windows.");
+            }
+
             byte[] dataBytes = Encoding.UTF8.GetBytes(data);
             // SECURITY FIX (HIGH-1): Use LocalMachine scope instead of CurrentUser
             // This allows both ConfigTool (Admin) and Service (service account) to access credentials
             return ProtectedData.Protect(dataBytes, null, DataProtectionScope.LocalMachine);
         }
 
+        [System.Runtime.Versioning.SupportedOSPlatform("windows")]
         private static string UnprotectData(byte[] encryptedData)
         {
+            if (!OperatingSystem.IsWindows())
+            {
+                throw new PlatformNotSupportedException("Credential decryption is only supported on Windows.");
+            }
+
             try
             {
                 // SECURITY FIX (HIGH-1): Use LocalMachine scope instead of CurrentUser

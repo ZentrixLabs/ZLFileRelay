@@ -169,13 +169,15 @@ public partial class DashboardViewModel : ObservableObject
         if (config == null)
         {
             config = _configurationService.GetDefaultConfiguration();
-            // Trigger background reload for next time
-            _ = Task.Run(async () =>
+            // Trigger background reload for next time (fire-and-forget)
+#pragma warning disable CS4014 // Because this call is not awaited, execution of the current method continues before the call is completed.
+            Task.Run(async () =>
             {
                 await _configurationService.LoadAsync();
                 // Update UI on main thread after load completes
                 System.Windows.Application.Current.Dispatcher.BeginInvoke(new Action(UpdateHealthStatus));
             });
+#pragma warning restore CS4014
         }
         
         // Service Health
