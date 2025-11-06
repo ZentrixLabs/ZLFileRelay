@@ -28,8 +28,8 @@ DefaultGroupName={#MyAppName}
 DisableProgramGroupPage=yes
 
 ; Output
-OutputDir=output
-OutputBaseFilename=ZLFileRelay-Setup-v{#MyAppVersion}-SelfContained
+OutputDir=..\artifacts
+OutputBaseFilename=ZLFileRelaySetup
 SetupIconFile=assets\icon.ico
 UninstallDisplayIcon={app}\ConfigTool\{#MyAppExeName}
 

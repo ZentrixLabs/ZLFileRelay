@@ -48,16 +48,27 @@ ZL File Relay is a unified enterprise solution for secure, automated file transf
 │                    ZL File Relay                          │
 ├──────────────────────────────────────────────────────────┤
 │                                                           │
-│  ┌────────────────┐         ┌──────────────────┐        │
-│  │  Web Portal    │         │  Transfer Service│        │
-│  │  (IIS/ASP.NET) │         │  (Windows Service)│        │
-│  └────────┬───────┘         └────────┬─────────┘        │
-│           │                          │                   │
-│           └──────────┬───────────────┘                   │
+│  ┌──────────────────┐      ┌──────────────────┐         │
+│  │  Config Tool     │      │  Web Portal      │         │
+│  │  (WPF App)       │      │  (Kestrel)       │         │
+│  │                  │      │  Windows Service │         │
+│  └────────┬─────────┘      └────────┬─────────┘         │
+│           │                         │                    │
+│           │ writes                  │ reads              │
+│           │                         │                    │
+│           └──────────┬──────────────┘                    │
 │                      │                                   │
 │           ┌──────────▼──────────┐                        │
 │           │  Shared Config      │                        │
 │           │  (appsettings.json) │                        │
+│           │  C:\ProgramData\    │                        │
+│           │  ZLFileRelay\       │                        │
+│           └──────────┬──────────┘                        │
+│                      │                                   │
+│                      │ reads                             │
+│           ┌──────────▼──────────┐                        │
+│           │  Transfer Service  │                        │
+│           │  (Windows Service) │                        │
 │           └─────────────────────┘                        │
 └──────────────────────────────────────────────────────────┘
                       │

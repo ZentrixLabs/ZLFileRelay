@@ -1,15 +1,7 @@
-#requires -version 5.1
-# ZL File Relay - Release Orchestration Script
-# Coordinates build, signing, and installer creation
-
 param(
-    [Parameter(Mandatory=$true)]
-    [string]$Version,
-    
-    [switch]$Sign,
-    [switch]$SkipBuild,
-    [string]$Configuration = "Release",
-    [string]$Runtime = "win-x64"
+	[Parameter(Mandatory=$true)][string]$Version,
+	[switch]$Sign,
+	[switch]$Draft
 )
 
 $ErrorActionPreference = 'Stop'
@@ -18,176 +10,86 @@ $ErrorActionPreference = 'Stop'
 $root = Resolve-Path "$PSScriptRoot\.."
 Set-Location $root
 
-$startTime = Get-Date
+$artifacts = Join-Path $root 'artifacts'
+if (-not (Test-Path $artifacts)) {
+	New-Item -ItemType Directory -Path $artifacts | Out-Null
+}
 
-Write-Host "`n╔════════════════════════════════════════════════════════════════════╗" -ForegroundColor Cyan
-Write-Host "║                                                                    ║" -ForegroundColor Cyan
-Write-Host "║           🚀 ZL FILE RELAY - RELEASE WORKFLOW                     ║" -ForegroundColor Cyan
-Write-Host "║                                                                    ║" -ForegroundColor Cyan
-Write-Host "╚════════════════════════════════════════════════════════════════════╝" -ForegroundColor Cyan
-
-Write-Host "`n📋 Release Configuration:" -ForegroundColor Yellow
-Write-Host "  • Version: $Version" -ForegroundColor White
-Write-Host "  • Configuration: $Configuration" -ForegroundColor White
-Write-Host "  • Runtime: $Runtime" -ForegroundColor White
-Write-Host "  • Code Signing: $(if ($Sign) { 'Enabled' } else { 'Disabled' })" -ForegroundColor White
-Write-Host "  • Skip Build: $(if ($SkipBuild) { 'Yes' } else { 'No' })" -ForegroundColor White
+Write-Host "=== ZL File Relay Release Workflow ===" -ForegroundColor Green
 
 # Step 1: Update version in project files
-Write-Host "`n" + ("═" * 70) -ForegroundColor DarkCyan
-Write-Host "  STEP 1: Update Version" -ForegroundColor Cyan
-Write-Host ("═" * 70) -ForegroundColor DarkCyan
-
-Write-Host "`n🔄 Automatically updating version numbers..." -ForegroundColor Cyan
+Write-Host "`nStep 1: Updating version to $Version..." -ForegroundColor Cyan
 & "$PSScriptRoot\update-version.ps1" -Version $Version
 
-if ($LASTEXITCODE -ne 0) {
-    throw "Version update failed"
-}
-
-Write-Host "`n⚠️  Don't forget to update:" -ForegroundColor Yellow
-Write-Host "  • CHANGELOG.md (add release notes for version $Version)" -ForegroundColor White
-
-Read-Host "`nPress Enter after updating CHANGELOG.md"
-
-# Step 2: Build all components
-if (-not $SkipBuild) {
-    Write-Host "`n" + ("═" * 70) -ForegroundColor DarkCyan
-    Write-Host "  STEP 2: Build All Components" -ForegroundColor Cyan
-    Write-Host ("═" * 70) -ForegroundColor DarkCyan
-    
-    Write-Host "`n🔨 Building all components..." -ForegroundColor Cyan
-    & "$PSScriptRoot\build-app.ps1" -Configuration $Configuration -Runtime $Runtime
-    
-    if ($LASTEXITCODE -ne 0) {
-        throw "Build failed"
-    }
-} else {
-    Write-Host "`n⏭️  Skipping build step (using existing binaries)" -ForegroundColor Yellow
-}
-
-# Step 3: Code signing (if enabled)
 if ($Sign) {
-    Write-Host "`n" + ("═" * 70) -ForegroundColor DarkCyan
-    Write-Host "  STEP 3: Code Signing" -ForegroundColor Cyan
-    Write-Host ("═" * 70) -ForegroundColor DarkCyan
-    
-    Write-Host "`n✍️  Signing executables..." -ForegroundColor Cyan
-    & "$PSScriptRoot\sign-app.ps1" -Configuration $Configuration
-    
-    if ($LASTEXITCODE -ne 0) {
-        throw "Code signing failed"
-    }
+	# Step 2: Build and sign the app
+	Write-Host "`nStep 2: Please build in Visual Studio (Release), then we'll sign the executables..." -ForegroundColor Yellow
+	Read-Host "Press Enter after building in Visual Studio"
+	
+	Write-Host "Signing executables..." -ForegroundColor Yellow
+	& "$PSScriptRoot\sign-app.ps1"
 } else {
-    Write-Host "`n⏭️  Skipping code signing (use -Sign to enable)" -ForegroundColor Yellow
+	# Step 2: Just build
+	Write-Host "`nStep 2: Please build in Visual Studio (Release)..." -ForegroundColor Yellow
+	Read-Host "Press Enter after building in Visual Studio"
 }
 
-# Step 4: Publish self-contained
-Write-Host "`n" + ("═" * 70) -ForegroundColor DarkCyan
-Write-Host "  STEP 4: Publish Self-Contained" -ForegroundColor Cyan
-Write-Host ("═" * 70) -ForegroundColor DarkCyan
+# Step 3: Compile installer in Inno Setup GUI
+Write-Host "`nStep 3: Please compile the installer in Inno Setup GUI..." -ForegroundColor Yellow
+Write-Host "  Open installer/ZLFileRelay.iss and compile it" -ForegroundColor DarkGray
+Write-Host "  The installer will be signed automatically via SignTool (already configured in IDE)" -ForegroundColor DarkGray
+Read-Host "Press Enter after the installer has been generated in 'artifacts' or 'installer/output'"
 
-Write-Host "`n📦 Publishing self-contained builds..." -ForegroundColor Cyan
-& "$PSScriptRoot\publish-selfcontained.ps1" -Configuration $Configuration -Runtime $Runtime
+# Step 4: Find the installer
+$installer = $null
+$searchPaths = @(
+	(Join-Path $artifacts 'ZLFileRelaySetup*.exe'),
+	(Join-Path $artifacts 'ZLFileRelay-Setup*.exe'),
+	(Join-Path (Join-Path $root 'installer') 'output\ZLFileRelaySetup*.exe'),
+	(Join-Path (Join-Path $root 'installer') 'output\ZLFileRelay-Setup*.exe')
+)
 
-if ($LASTEXITCODE -ne 0) {
-    throw "Publish failed"
+foreach ($pattern in $searchPaths) {
+	$found = Get-ChildItem -LiteralPath (Split-Path $pattern -Parent) -Filter (Split-Path $pattern -Leaf) -ErrorAction SilentlyContinue | 
+		Sort-Object LastWriteTime -Descending | 
+		Select-Object -First 1
+	if ($found) {
+		$installer = $found
+		break
+	}
 }
 
-# Step 5: Sign published executables (if signing enabled)
-if ($Sign) {
-    Write-Host "`n" + ("═" * 70) -ForegroundColor DarkCyan
-    Write-Host "  STEP 5: Sign Published Executables" -ForegroundColor Cyan
-    Write-Host ("═" * 70) -ForegroundColor DarkCyan
-    
-    Write-Host "`n✍️  Signing published executables..." -ForegroundColor Yellow
-    Write-Host "⚠️  You may need to manually sign files in the publish directory" -ForegroundColor Yellow
-    Write-Host "   Located at: publish/" -ForegroundColor DarkGray
-    
-    Read-Host "`nPress Enter after signing published files (or skip if not needed)"
+if (-not $installer) { 
+	throw "No installer found. Ensure Inno Setup output is configured to 'artifacts' or 'installer/output'." 
 }
 
-# Step 6: Create Inno Setup installer
-Write-Host "`n" + ("═" * 70) -ForegroundColor DarkCyan
-Write-Host "  STEP 6: Create Installer" -ForegroundColor Cyan
-Write-Host ("═" * 70) -ForegroundColor DarkCyan
+Write-Host "Found installer: $($installer.Name)" -ForegroundColor Green
 
-Write-Host "`n🔧 Please compile the installer in Inno Setup:" -ForegroundColor Yellow
-Write-Host "  1. Open: installer/ZLFileRelay.iss" -ForegroundColor White
-Write-Host "  2. Compile the installer" -ForegroundColor White
-if ($Sign) {
-    Write-Host "  3. Sign the installer using Inno Setup's SignTool integration" -ForegroundColor White
-}
-Write-Host "  Output: installer/output/ZLFileRelaySetup-$Version.exe" -ForegroundColor DarkGray
+# Step 5: Create checksum
+Write-Host "`nStep 4: Creating checksum..." -ForegroundColor Cyan
+$shaFile = "$($installer.FullName).sha256"
+$sha = (Get-FileHash -Algorithm SHA256 $installer.FullName).Hash
+Set-Content -Path $shaFile -NoNewline -Value $sha
+Write-Host "Checksum: $shaFile" -ForegroundColor Green
 
-Read-Host "`nPress Enter after the installer has been created"
+# Step 6: Upload to GitHub
+Write-Host "`nStep 5: Uploading to GitHub..." -ForegroundColor Cyan
+$tag = "v$Version"
+$title = "ZL File Relay $Version"
+$notes = "Release $Version"
 
-# Step 7: Verify installer
-$installerPath = "installer/output/ZLFileRelaySetup-$Version.exe"
-if (-not (Test-Path $installerPath)) {
-    # Try to find any installer in output
-    $installerDir = "installer/output"
-    if (Test-Path $installerDir) {
-        $installer = Get-ChildItem $installerDir -Filter "*.exe" | Sort-Object LastWriteTime -Descending | Select-Object -First 1
-        if ($installer) {
-            $installerPath = $installer.FullName
-            Write-Host "⚠️  Found installer at different path: $installerPath" -ForegroundColor Yellow
-        }
-    }
-}
-
-if (Test-Path $installerPath) {
-    $installer = Get-Item $installerPath
-    $installerSize = $installer.Length / 1MB
-    
-    Write-Host "`n╔════════════════════════════════════════════════════════════════════╗" -ForegroundColor Green
-    Write-Host "║                                                                    ║" -ForegroundColor Green
-    Write-Host "║                   ✅ RELEASE COMPLETE - SUCCESS!                   ║" -ForegroundColor Green
-    Write-Host "║                                                                    ║" -ForegroundColor Green
-    Write-Host "╚════════════════════════════════════════════════════════════════════╝" -ForegroundColor Green
-    
-    $endTime = Get-Date
-    $duration = $endTime - $startTime
-    
-    Write-Host "`n📦 Release Package:" -ForegroundColor Cyan
-    Write-Host "  Version: $Version" -ForegroundColor White
-    Write-Host "  File: $($installer.Name)" -ForegroundColor White
-    Write-Host "  Size: $("{0:N2}" -f $installerSize) MB" -ForegroundColor White
-    Write-Host "  Path: $($installer.FullName)" -ForegroundColor White
-    Write-Host "  Date: $($installer.LastWriteTime.ToString('yyyy-MM-dd HH:mm:ss'))" -ForegroundColor White
-    Write-Host "  Code Signed: $(if ($Sign) { 'Yes' } else { 'No' })" -ForegroundColor White
-    
-    Write-Host "`n⏱️  Total Duration: $($duration.ToString('hh\:mm\:ss'))" -ForegroundColor Cyan
-    
-    # Create checksum
-    Write-Host "`n🔒 Creating checksum..." -ForegroundColor Cyan
-    $shaFile = "$($installer.FullName).sha256"
-    $sha = (Get-FileHash -Algorithm SHA256 $installer.FullName).Hash
-    Set-Content -Path $shaFile -NoNewline -Value $sha
-    Write-Host "  Checksum saved: $shaFile" -ForegroundColor Green
-    Write-Host "  SHA256: $sha" -ForegroundColor DarkGray
-    
-    Write-Host "`n✅ Release artifacts ready for distribution!" -ForegroundColor Green
-    
-    Write-Host "`n📋 Next Steps:" -ForegroundColor Yellow
-    Write-Host "  1. Test installer on clean VM" -ForegroundColor White
-    Write-Host "  2. Verify all components work correctly" -ForegroundColor White
-    Write-Host "  3. Update GitHub release with installer and checksum" -ForegroundColor White
-    Write-Host "  4. Update documentation if needed" -ForegroundColor White
-    
-    Write-Host "`n📂 Installer Location:" -ForegroundColor Cyan
-    Write-Host "  $($installer.FullName)" -ForegroundColor Green
-    
-    # Open the output folder
-    Write-Host "`n💡 Opening installer directory..." -ForegroundColor Gray
-    Start-Process explorer.exe -ArgumentList "/select,`"$($installer.FullName)`""
-    
+if (Test-Path "$PSScriptRoot\upload-release.ps1") {
+	& "$PSScriptRoot\upload-release.ps1" -Version $Version -InstallerPath $installer.FullName -Notes $notes
 } else {
-    Write-Host "`n⚠️  Warning: Installer not found at expected path" -ForegroundColor Yellow
-    Write-Host "  Expected: $installerPath" -ForegroundColor DarkGray
-    Write-Host "  Please verify the installer was created successfully" -ForegroundColor Yellow
+	Write-Host "upload-release.ps1 not found. Skipping GitHub upload." -ForegroundColor Yellow
+	Write-Host "To upload manually, run:" -ForegroundColor Yellow
+	Write-Host "  .\build\upload-release.ps1 -Version $Version -InstallerPath `"$($installer.FullName)`"" -ForegroundColor DarkGray
 }
 
-Write-Host "`n" + ("═" * 70) -ForegroundColor DarkGray
-Write-Host ""
+Write-Host "`n=== Release complete ===" -ForegroundColor Green
+Write-Host "Release: $tag" -ForegroundColor Cyan
+Write-Host "Installer: $($installer.FullName)" -ForegroundColor Cyan
+if ($Draft) {
+	Write-Host "Published as draft release" -ForegroundColor Yellow
+}
 
