@@ -4,7 +4,7 @@
 ; Features: Hybrid Authentication (Entra ID + Local Accounts), Air-Gapped Support
 
 #define MyAppName "ZL File Relay"
-#define MyAppVersion "1.1.2"
+#define MyAppVersion "1.2.0"
 #define MyAppPublisher "ZentrixLabs"
 #define MyAppURL "https://zentrixlabs.com"
 #define MyAppExeName "ZLFileRelay.ConfigTool.exe"

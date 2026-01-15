@@ -1,7 +1,7 @@
 param(
 	[string]$Configuration = "Release",
 	[string]$Thumbprint = $env:CODESIGN_CERT_SHA1,
-	[string]$TimestampUrl = "http://timestamp.sectigo.com/rfc3161",
+	[string]$TimestampUrl = $(if ($env:CODESIGN_TIMESTAMP_URL) { $env:CODESIGN_TIMESTAMP_URL } else { "http://timestamp.sectigo.com/rfc3161" }),
 	[string]$Description = "ZL File Relay",
 	[string]$DescriptionUrl = "https://github.com/ZentrixLabs/ZLFileRelay"
 )
