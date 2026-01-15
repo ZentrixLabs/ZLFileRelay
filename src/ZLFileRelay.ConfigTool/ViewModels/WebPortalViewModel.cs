@@ -24,9 +24,6 @@ public partial class WebPortalViewModel : ObservableObject
     [ObservableProperty] private int _httpsPort = 8443;
     [ObservableProperty] private bool _enableHttps = false;
     
-    // Upload Directories
-    [ObservableProperty] private string _dmzUploadDirectory = @"C:\FileRelay\uploads\dmz";
-    
     // Certificate Configuration - File Path (fallback)
     [ObservableProperty] private string _certificatePath = string.Empty;
     [ObservableProperty] private string _certificatePassword = string.Empty;
@@ -95,7 +92,6 @@ public partial class WebPortalViewModel : ObservableObject
         HttpPort = config.WebPortal.Kestrel.HttpPort;
         HttpsPort = config.WebPortal.Kestrel.HttpsPort;
         EnableHttps = config.WebPortal.Kestrel.EnableHttps;
-        DmzUploadDirectory = config.WebPortal.DmzUploadDirectory ?? @"C:\FileRelay\uploads\dmz";
         CertificatePath = config.WebPortal.Kestrel.CertificatePath ?? string.Empty;
         CertificatePassword = config.WebPortal.Kestrel.CertificatePassword ?? string.Empty;
         
@@ -400,27 +396,6 @@ public partial class WebPortalViewModel : ObservableObject
     }
 
     [RelayCommand]
-    private void BrowseDmzDirectory()
-    {
-        var dialog = new Microsoft.Win32.SaveFileDialog
-        {
-            Title = "Select DMZ Upload Directory",
-            FileName = "Select Folder",
-            Filter = "Folder|*.folder",
-            CheckFileExists = false
-        };
-
-        if (dialog.ShowDialog() == true)
-        {
-            var directory = System.IO.Path.GetDirectoryName(dialog.FileName) ?? string.Empty;
-            if (!string.IsNullOrEmpty(directory))
-            {
-                DmzUploadDirectory = directory;
-            }
-        }
-    }
-
-    [RelayCommand]
     private void BrowseLogo()
     {
         var dialog = new Microsoft.Win32.OpenFileDialog
@@ -671,7 +646,6 @@ public partial class WebPortalViewModel : ObservableObject
             config.WebPortal.Kestrel.HttpPort = HttpPort;
             config.WebPortal.Kestrel.HttpsPort = HttpsPort;
             config.WebPortal.Kestrel.EnableHttps = EnableHttps;
-            config.WebPortal.DmzUploadDirectory = DmzUploadDirectory;
             // Certificate configuration - save based on which method is being used
             // IMPORTANT: If UseCertificateStore is explicitly true (from radio button), always use store mode
             // This ensures that when user selects "Certificate Store" option, we clear file path even if thumbprint not yet selected

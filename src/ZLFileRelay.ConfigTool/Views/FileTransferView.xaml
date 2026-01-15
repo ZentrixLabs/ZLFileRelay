@@ -54,7 +54,7 @@
                             📁 Directory Workflow
                         </TextBlock>
                         <TextBlock TextWrapping="Wrap" FontSize="12" Foreground="#424242">
-                            <Bold>1. Web Portal Upload:</Bold> Users upload files to the main upload directory via the web interface.<LineBreak/>
+                            <Bold>1. Web Portal Upload:</Bold> Users upload files to DMZ Upload Directory (if not transferring) or Watch Directory (if transferring to SCADA).<LineBreak/>
                             <Bold>2. Service Transfer:</Bold> The service monitors the Watch Directory for files to transfer to remote locations.<LineBreak/>
                             <Bold>3. Archive:</Bold> After successful transfer, files are moved to the Archive Directory for storage.
                         </TextBlock>
@@ -73,23 +73,34 @@
                     <Grid.RowDefinitions>
                         <RowDefinition Height="Auto"/>
                         <RowDefinition Height="Auto"/>
+                        <RowDefinition Height="Auto"/>
                     </Grid.RowDefinitions>
                     
-                    <TextBlock Grid.Row="0" Grid.Column="0" Text="Watch Directory:" VerticalAlignment="Center" Margin="0,0,10,5"/>
+                    <TextBlock Grid.Row="0" Grid.Column="0" Text="DMZ Upload Directory:" VerticalAlignment="Center" Margin="0,0,10,5"/>
                     <TextBox Grid.Row="0" Grid.Column="1" 
+                             Text="{Binding DmzUploadDirectory, UpdateSourceTrigger=PropertyChanged}" 
+                             Margin="0,0,5,5"
+                             ToolTip="Directory where files are saved when users upload WITHOUT selecting 'Send to SCADA'. These files stay in the DMZ zone."/>
+                    <Button Grid.Row="0" Grid.Column="2" 
+                            Command="{Binding BrowseDmzDirectoryCommand}"
+                            Content="Browse..." 
+                            Margin="0,0,0,5"/>
+                    
+                    <TextBlock Grid.Row="1" Grid.Column="0" Text="Watch Directory:" VerticalAlignment="Center" Margin="0,0,10,5"/>
+                    <TextBox Grid.Row="1" Grid.Column="1" 
                              Text="{Binding WatchDirectory, UpdateSourceTrigger=PropertyChanged}" 
                              Margin="0,0,5,5"
                              ToolTip="The directory where the service monitors for new files to transfer (typically uploads/transfer)"/>
-                    <Button Grid.Row="0" Grid.Column="2" 
+                    <Button Grid.Row="1" Grid.Column="2" 
                             Command="{Binding BrowseWatchDirectoryCommand}"
                             Content="Browse..." 
                             Margin="0,0,0,5"/>
                     
-                    <TextBlock Grid.Row="1" Grid.Column="0" Text="Archive Directory:" VerticalAlignment="Center" Margin="0,0,10,0"/>
-                    <TextBox Grid.Row="1" Grid.Column="1" 
+                    <TextBlock Grid.Row="2" Grid.Column="0" Text="Archive Directory:" VerticalAlignment="Center" Margin="0,0,10,0"/>
+                    <TextBox Grid.Row="2" Grid.Column="1" 
                              Text="{Binding ArchiveDirectory, UpdateSourceTrigger=PropertyChanged}"
                              ToolTip="Directory where files are moved after successful transfer (if archive option is enabled)"/>
-                    <Button Grid.Row="1" Grid.Column="2" 
+                    <Button Grid.Row="2" Grid.Column="2" 
                             Command="{Binding BrowseArchiveDirectoryCommand}"
                             Content="Browse..."/>
                 </Grid>

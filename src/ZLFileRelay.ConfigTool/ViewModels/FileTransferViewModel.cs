@@ -33,6 +33,7 @@ public partial class FileTransferViewModel : ObservableObject
 
     // Directories
     [ObservableProperty] private string _watchDirectory = @"C:\FileRelay\uploads\transfer";
+    [ObservableProperty] private string _dmzUploadDirectory = @"C:\FileRelay\uploads\dmz";
     [ObservableProperty] private string _archiveDirectory = @"C:\FileRelay\archive";
 
     // SSH Configuration
@@ -139,6 +140,7 @@ public partial class FileTransferViewModel : ObservableObject
 
         // Directories
         WatchDirectory = _config.Service.WatchDirectory;
+        DmzUploadDirectory = _config.WebPortal.DmzUploadDirectory ?? @"C:\FileRelay\uploads\dmz";
         ArchiveDirectory = _config.Service.ArchiveDirectory;
 
         // SSH
@@ -178,6 +180,7 @@ public partial class FileTransferViewModel : ObservableObject
 
         // Directories
         _config.Service.WatchDirectory = WatchDirectory;
+        _config.WebPortal.DmzUploadDirectory = DmzUploadDirectory;
         _config.Service.ArchiveDirectory = ArchiveDirectory;
 
         // SSH
@@ -216,6 +219,13 @@ public partial class FileTransferViewModel : ObservableObject
     {
         var path = SelectFolder("Select Watch Directory", WatchDirectory);
         if (path != null) WatchDirectory = path;
+    }
+
+    [RelayCommand]
+    private void BrowseDmzDirectory()
+    {
+        var path = SelectFolder("Select DMZ Upload Directory", DmzUploadDirectory);
+        if (path != null) DmzUploadDirectory = path;
     }
 
     [RelayCommand]
