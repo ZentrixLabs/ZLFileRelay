@@ -88,51 +88,75 @@ if ($LASTEXITCODE -ne 0) {
 }
 Write-Host "✅ ConfigTool built" -ForegroundColor Green
 
-# Copy built components to publish folder for installer
+# Publish self-contained components to publish folder for installer
 Write-Host "`n━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━" -ForegroundColor DarkGray
-Write-Host "📦 Copying built components to publish folder for installer..." -ForegroundColor Cyan
+Write-Host "📦 Publishing self-contained components for installer..." -ForegroundColor Cyan
+Write-Host "   (Includes .NET 8 runtime - required for installer)" -ForegroundColor DarkGray
 
-# Copy Service
-$serviceSource = "src/ZLFileRelay.Service/bin/$Configuration/net8.0"
-$serviceDest = "publish/Service"
-if (Test-Path $serviceSource) {
-    if (Test-Path $serviceDest) {
-        Remove-Item $serviceDest -Recurse -Force
-    }
-    New-Item -ItemType Directory -Force -Path $serviceDest | Out-Null
-    Copy-Item -Path "$serviceSource\*" -Destination $serviceDest -Recurse -Force
-    Write-Host "✅ Service copied to publish folder" -ForegroundColor Green
-} else {
-    Write-Host "⚠️  Service not found at $serviceSource - skipping" -ForegroundColor Yellow
+# Restore with runtime identifier for self-contained publish
+Write-Host "`n   Restoring packages for runtime $Runtime..." -ForegroundColor Cyan
+dotnet restore "ZLFileRelay.sln" -r $Runtime
+if ($LASTEXITCODE -ne 0) {
+    Write-Host "❌ Restore failed!" -ForegroundColor Red
+    exit 1
 }
 
-# Copy WebPortal
-$webPortalSource = "src/ZLFileRelay.WebPortal/bin/$Configuration/net8.0"
-$webPortalDest = "publish/WebPortal"
-if (Test-Path $webPortalSource) {
-    if (Test-Path $webPortalDest) {
-        Remove-Item $webPortalDest -Recurse -Force
-    }
-    New-Item -ItemType Directory -Force -Path $webPortalDest | Out-Null
-    Copy-Item -Path "$webPortalSource\*" -Destination $webPortalDest -Recurse -Force
-    Write-Host "✅ WebPortal copied to publish folder" -ForegroundColor Green
-} else {
-    Write-Host "⚠️  WebPortal not found at $webPortalSource - skipping" -ForegroundColor Yellow
+# Publish Service (self-contained)
+Write-Host "`n   Publishing Service..." -ForegroundColor Cyan
+dotnet publish "src/ZLFileRelay.Service/ZLFileRelay.Service.csproj" `
+    -c $Configuration `
+    -r $Runtime `
+    --self-contained true `
+    -p:PublishSingleFile=false `
+    -p:PublishTrimmed=false `
+    -p:PublishReadyToRun=true `
+    -o "publish/Service"
+
+if ($LASTEXITCODE -ne 0) {
+    Write-Host "❌ Service publish failed!" -ForegroundColor Red
+    exit 1
+}
+Write-Host "✅ Service published (self-contained)" -ForegroundColor Green
+
+# Publish WebPortal (self-contained)
+Write-Host "`n   Publishing WebPortal..." -ForegroundColor Cyan
+dotnet publish "src/ZLFileRelay.WebPortal/ZLFileRelay.WebPortal.csproj" `
+    -c $Configuration `
+    -r $Runtime `
+    --self-contained true `
+    -p:PublishSingleFile=false `
+    -p:PublishTrimmed=false `
+    -p:PublishReadyToRun=true `
+    -o "publish/WebPortal"
+
+if ($LASTEXITCODE -ne 0) {
+    Write-Host "❌ WebPortal publish failed!" -ForegroundColor Red
+    exit 1
+}
+Write-Host "✅ WebPortal published (self-contained)" -ForegroundColor Green
+
+# Publish ConfigTool (self-contained single file)
+Write-Host "`n   Publishing ConfigTool (single file)..." -ForegroundColor Cyan
+$publishConfigDir = "publish/ConfigTool"
+if (-not (Test-Path $publishConfigDir)) {
+    New-Item -ItemType Directory -Force -Path $publishConfigDir | Out-Null
 }
 
-# Copy ConfigTool
-$configToolSource = "src/ZLFileRelay.ConfigTool/bin/$Configuration/net8.0-windows/ZLFileRelay.ConfigTool.exe"
-$configToolDest = "publish/ConfigTool/ZLFileRelay.ConfigTool.exe"
-if (Test-Path $configToolSource) {
-    $publishConfigDir = "publish/ConfigTool"
-    if (-not (Test-Path $publishConfigDir)) {
-        New-Item -ItemType Directory -Force -Path $publishConfigDir | Out-Null
-    }
-    Copy-Item -Path $configToolSource -Destination $configToolDest -Force
-    Write-Host "✅ ConfigTool copied to publish folder" -ForegroundColor Green
-} else {
-    Write-Host "⚠️  ConfigTool not found at $configToolSource - skipping" -ForegroundColor Yellow
+dotnet publish "src/ZLFileRelay.ConfigTool/ZLFileRelay.ConfigTool.csproj" `
+    -c $Configuration `
+    -r $Runtime `
+    --self-contained true `
+    -p:PublishSingleFile=true `
+    -p:PublishTrimmed=false `
+    -p:PublishReadyToRun=true `
+    -p:IncludeNativeLibrariesForSelfExtract=true `
+    -o $publishConfigDir
+
+if ($LASTEXITCODE -ne 0) {
+    Write-Host "❌ ConfigTool publish failed!" -ForegroundColor Red
+    exit 1
 }
+Write-Host "✅ ConfigTool published (self-contained single file)" -ForegroundColor Green
 
 # Copy appsettings.json if it doesn't exist in publish
 if (-not (Test-Path "publish/appsettings.json")) {
@@ -165,15 +189,21 @@ Write-Host "`n╔═════════════════════
 Write-Host "║  ✅ BUILD COMPLETE - ALL COMPONENTS                         ║" -ForegroundColor Green
 Write-Host "╚══════════════════════════════════════════════════════════════╝" -ForegroundColor Green
 
-Write-Host "`n📂 Output Directories:" -ForegroundColor Cyan
+Write-Host "`n📂 Build Output Directories:" -ForegroundColor Cyan
 Write-Host "  • Service:    src/ZLFileRelay.Service/bin/$Configuration/net8.0/" -ForegroundColor White
 Write-Host "  • WebPortal:  src/ZLFileRelay.WebPortal/bin/$Configuration/net8.0/" -ForegroundColor White
 Write-Host "  • ConfigTool: src/ZLFileRelay.ConfigTool/bin/$Configuration/net8.0-windows/" -ForegroundColor White
 
+Write-Host "`n📦 Published Components (Self-Contained with .NET 8):" -ForegroundColor Cyan
+Get-ChildItem "publish" -Directory | ForEach-Object {
+    $size = (Get-ChildItem $_.FullName -Recurse -File -ErrorAction SilentlyContinue | Measure-Object -Property Length -Sum).Sum / 1MB
+    $fileCount = (Get-ChildItem $_.FullName -Recurse -File -ErrorAction SilentlyContinue | Measure-Object).Count
+    Write-Host ("  • {0,-15} {1,8:N2} MB ({2} files)" -f $_.Name, $size, $fileCount) -ForegroundColor White
+}
+
 Write-Host "`n✅ Ready for code signing!" -ForegroundColor Green
-Write-Host "`n💡 Note: All components copied to publish/ folder for installer" -ForegroundColor Cyan
-Write-Host "   • Service:    publish/Service/" -ForegroundColor DarkGray
-Write-Host "   • WebPortal:  publish/WebPortal/" -ForegroundColor DarkGray
-Write-Host "   • ConfigTool: publish/ConfigTool/" -ForegroundColor DarkGray
+Write-Host "`n💡 Note: All components published as self-contained to publish/ folder" -ForegroundColor Cyan
+Write-Host "   • Includes .NET 8 runtime (no external dependencies)" -ForegroundColor DarkGray
+Write-Host "   • Ready for Inno Setup installer packaging" -ForegroundColor DarkGray
 Write-Host ""
 
