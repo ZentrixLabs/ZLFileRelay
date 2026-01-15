@@ -24,6 +24,7 @@ Write-Host "`nStep 1: Updating version to $Version..." -ForegroundColor Cyan
 if ($Sign) {
 	# Step 2: Build and sign the app
 	Write-Host "`nStep 2: Please build in Visual Studio (Release), then we'll sign the executables..." -ForegroundColor Yellow
+	Write-Host "  (ConfigTool will be auto-copied to publish folder by build script)" -ForegroundColor DarkGray
 	Read-Host "Press Enter after building in Visual Studio"
 	
 	Write-Host "Signing executables..." -ForegroundColor Yellow
@@ -31,6 +32,7 @@ if ($Sign) {
 } else {
 	# Step 2: Just build
 	Write-Host "`nStep 2: Please build in Visual Studio (Release)..." -ForegroundColor Yellow
+	Write-Host "  (ConfigTool will be auto-copied to publish folder by build script)" -ForegroundColor DarkGray
 	Read-Host "Press Enter after building in Visual Studio"
 }
 

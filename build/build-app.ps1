@@ -88,6 +88,28 @@ if ($LASTEXITCODE -ne 0) {
 }
 Write-Host "✅ ConfigTool built" -ForegroundColor Green
 
+# Copy ConfigTool to publish folder for installer
+Write-Host "`n━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━" -ForegroundColor DarkGray
+Write-Host "📦 Copying ConfigTool to publish folder for installer..." -ForegroundColor Cyan
+$configToolSource = "src/ZLFileRelay.ConfigTool/bin/$Configuration/net8.0-windows/ZLFileRelay.ConfigTool.exe"
+$configToolDest = "publish/ConfigTool/ZLFileRelay.ConfigTool.exe"
+
+if (Test-Path $configToolSource) {
+    # Ensure publish/ConfigTool directory exists
+    $publishConfigDir = "publish/ConfigTool"
+    if (-not (Test-Path $publishConfigDir)) {
+        New-Item -ItemType Directory -Force -Path $publishConfigDir | Out-Null
+    }
+    
+    Copy-Item -Path $configToolSource -Destination $configToolDest -Force
+    Write-Host "✅ ConfigTool copied to publish folder" -ForegroundColor Green
+    Write-Host "   Source: $configToolSource" -ForegroundColor DarkGray
+    Write-Host "   Dest:   $configToolDest" -ForegroundColor DarkGray
+} else {
+    Write-Host "⚠️  ConfigTool not found at $configToolSource - skipping copy" -ForegroundColor Yellow
+    Write-Host "   (This is OK if you're only building, not creating installer)" -ForegroundColor DarkGray
+}
+
 # Summary
 Write-Host "`n╔══════════════════════════════════════════════════════════════╗" -ForegroundColor Green
 Write-Host "║  ✅ BUILD COMPLETE - ALL COMPONENTS                         ║" -ForegroundColor Green
@@ -99,5 +121,6 @@ Write-Host "  • WebPortal:  src/ZLFileRelay.WebPortal/bin/$Configuration/net8.
 Write-Host "  • ConfigTool: src/ZLFileRelay.ConfigTool/bin/$Configuration/net8.0-windows/" -ForegroundColor White
 
 Write-Host "`n✅ Ready for code signing!" -ForegroundColor Green
+Write-Host "`n💡 Note: ConfigTool has been copied to publish/ConfigTool/ for installer" -ForegroundColor Cyan
 Write-Host ""
 
