@@ -25,6 +25,7 @@ public partial class ConfigurationViewModel : ObservableObject
 
     // Path Settings
     [ObservableProperty] private string _uploadDirectory = @"C:\FileRelay\uploads";
+    [ObservableProperty] private string _dmzUploadDirectory = @"C:\FileRelay\uploads\dmz";
     [ObservableProperty] private string _transferDirectory = @"C:\FileRelay\uploads\transfer";
     [ObservableProperty] private string _logDirectory = @"C:\FileRelay\logs";
     [ObservableProperty] private string _configDirectory = @"C:\ProgramData\ZLFileRelay";
@@ -109,6 +110,7 @@ public partial class ConfigurationViewModel : ObservableObject
 
         // Paths
         UploadDirectory = _config.Paths.UploadDirectory;
+        DmzUploadDirectory = _config.WebPortal.DmzUploadDirectory ?? @"C:\FileRelay\uploads\dmz";
         TransferDirectory = _config.Paths.TransferDirectory;
         LogDirectory = _config.Paths.LogDirectory;
         ConfigDirectory = _config.Paths.ConfigDirectory;
@@ -161,6 +163,7 @@ public partial class ConfigurationViewModel : ObservableObject
 
         // Paths
         _config.Paths.UploadDirectory = UploadDirectory;
+        _config.WebPortal.DmzUploadDirectory = DmzUploadDirectory;
         _config.Paths.TransferDirectory = TransferDirectory;
         _config.Paths.LogDirectory = LogDirectory;
         _config.Paths.ConfigDirectory = ConfigDirectory;
@@ -249,6 +252,7 @@ public partial class ConfigurationViewModel : ObservableObject
             switch (propertyName)
             {
                 case "Upload": UploadDirectory = directory; break;
+                case "DmzUpload": DmzUploadDirectory = directory; break;
                 case "Transfer": TransferDirectory = directory; break;
                 case "Log": LogDirectory = directory; break;
                 case "Config": ConfigDirectory = directory; break;
