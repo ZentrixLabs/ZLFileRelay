@@ -274,11 +274,26 @@ namespace ZLFileRelay.WebPortal.Services
             string? notes = null, CancellationToken cancellationToken = default)
         {
             // Determine destination based on whether SCADA transfer is required
-            // Default: DMZ upload directory (files stay local)
-            // If requiresTransfer=true: Watch directory (files go to SCADA)
-            var dest = destination ?? (requiresTransfer
-                ? Config.Service.WatchDirectory 
-                : Config.Paths.UploadDirectory);
+            string dest;
+            if (destination != null)
+            {
+                // Explicit destination provided
+                dest = destination;
+            }
+            else if (requiresTransfer)
+            {
+                // Files that need to go to SCADA → Watch directory for transfer
+                dest = Config.Service.WatchDirectory;
+            }
+            else
+            {
+                // Files that stay in DMZ → Use configurable DMZ directory
+                dest = !string.IsNullOrEmpty(Config.WebPortal.DmzUploadDirectory) 
+                    ? Config.WebPortal.DmzUploadDirectory 
+                    : Config.Paths.UploadDirectory;
+                    
+                _logger.LogDebug("Upload destination for DMZ file: {Destination}", dest);
+            }
 
             using var stream = file.OpenReadStream();
             return await UploadFileAsync(stream, file.FileName, dest, uploadedBy, 

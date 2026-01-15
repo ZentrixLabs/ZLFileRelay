@@ -567,6 +567,13 @@ try
     Directory.CreateDirectory(initialConfig.Paths.UploadDirectory);
     Directory.CreateDirectory(initialConfig.Paths.LogDirectory);
 
+    // Create DMZ upload directory if configured
+    if (!string.IsNullOrEmpty(initialConfig.WebPortal.DmzUploadDirectory))
+    {
+        Directory.CreateDirectory(initialConfig.WebPortal.DmzUploadDirectory);
+        Log.Information("✅ DMZ upload directory created: {Directory}", initialConfig.WebPortal.DmzUploadDirectory);
+    }
+
     if (initialConfig.WebPortal.EnableUploadToTransfer)
     {
         Directory.CreateDirectory(initialConfig.Service.WatchDirectory);

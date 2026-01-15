@@ -110,6 +110,14 @@ namespace ZLFileRelay.Service.Services
                     _logger.LogWarning("File outside watch directory detected and ignored: {FilePath}", e.FullPath);
                     return;
                 }
+                
+                // EXCLUDE .status folder files from being transferred to SCADA
+                var statusDirectory = Path.Combine(_config.Service.WatchDirectory, ".status");
+                if (e.FullPath.StartsWith(statusDirectory, StringComparison.OrdinalIgnoreCase))
+                {
+                    _logger.LogDebug("Ignoring status file: {FilePath}", e.FullPath);
+                    return;
+                }
 
                 // Check queue size limit before adding
                 if (_fileQueue.Count >= _config.Service.MaxQueueSize)

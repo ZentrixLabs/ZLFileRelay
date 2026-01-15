@@ -186,17 +186,53 @@ namespace ZLFileRelay.Service.Services
             // Verify the transfer
             result.Verified = await VerifyTransferAsync(sourceFile, finalRemotePath);
 
-            // Delete source file if configured
-            if (_config.Service.DeleteAfterTransfer && result.Verified)
+            // Archive or delete source file after successful transfer
+            if (result.Verified)
             {
-                try
+                if (_config.Service.ArchiveAfterTransfer)
                 {
-                    File.Delete(sourceFile);
-                    _logger.LogInformation("Deleted source file after successful transfer: {FileName}", result.FileName);
+                    try
+                    {
+                        // Move to archive directory preserving folder structure
+                        string relativePath = GetRelativePath(_config.Service.WatchDirectory, sourceFile);
+                        string archivePath = Path.Combine(_config.Service.ArchiveDirectory, relativePath);
+                        
+                        // Ensure archive subdirectory exists
+                        string? archiveDir = Path.GetDirectoryName(archivePath);
+                        if (!string.IsNullOrEmpty(archiveDir))
+                        {
+                            Directory.CreateDirectory(archiveDir);
+                        }
+                        
+                        // Move file to archive (handle duplicates with timestamp)
+                        if (File.Exists(archivePath))
+                        {
+                            string timestamp = DateTime.Now.ToString("yyyyMMdd_HHmmss");
+                            string fileNameWithoutExt = Path.GetFileNameWithoutExtension(archivePath);
+                            string extension = Path.GetExtension(archivePath);
+                            archivePath = Path.Combine(archiveDir!, $"{fileNameWithoutExt}_{timestamp}{extension}");
+                        }
+                        
+                        File.Move(sourceFile, archivePath);
+                        _logger.LogInformation("Archived file after successful transfer: {FileName} → {ArchivePath}", 
+                            result.FileName, archivePath);
+                    }
+                    catch (Exception ex)
+                    {
+                        _logger.LogWarning(ex, "Failed to archive file: {FileName}", result.FileName);
+                    }
                 }
-                catch (Exception ex)
+                else if (_config.Service.DeleteAfterTransfer)
                 {
-                    _logger.LogWarning(ex, "Failed to delete source file: {FileName}", result.FileName);
+                    try
+                    {
+                        File.Delete(sourceFile);
+                        _logger.LogInformation("Deleted source file after successful transfer: {FileName}", result.FileName);
+                    }
+                    catch (Exception ex)
+                    {
+                        _logger.LogWarning(ex, "Failed to delete source file: {FileName}", result.FileName);
+                    }
                 }
             }
         }

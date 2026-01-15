@@ -117,6 +117,12 @@ public class WebPortalSettings
     public bool EnableNotifications { get; set; } = false;
     public string? NotificationEmail { get; set; }
     
+    /// <summary>
+    /// Default upload directory for files that stay in DMZ (when NOT transferring to SCADA).
+    /// If not specified, falls back to Paths.UploadDirectory
+    /// </summary>
+    public string? DmzUploadDirectory { get; set; }
+    
     // Kestrel Server Settings (for Windows Service deployment)
     public KestrelSettings Kestrel { get; set; } = new();
 }
