@@ -142,6 +142,24 @@ if (-not (Test-Path "publish/appsettings.json")) {
     }
 }
 
+# Copy docs folder (excluding archive and development folders)
+$docsSource = "docs"
+$docsDest = "publish/docs"
+if (Test-Path $docsSource) {
+    if (Test-Path $docsDest) {
+        Remove-Item $docsDest -Recurse -Force
+    }
+    New-Item -ItemType Directory -Force -Path $docsDest | Out-Null
+    
+    # Copy all .md files from docs root, excluding archive folder
+    Get-ChildItem -Path $docsSource -Filter "*.md" -File | ForEach-Object {
+        Copy-Item -Path $_.FullName -Destination $docsDest -Force
+    }
+    Write-Host "✅ Documentation copied to publish folder (excluding archive)" -ForegroundColor Green
+} else {
+    Write-Host "⚠️  Docs folder not found at $docsSource - skipping" -ForegroundColor Yellow
+}
+
 # Summary
 Write-Host "`n╔══════════════════════════════════════════════════════════════╗" -ForegroundColor Green
 Write-Host "║  ✅ BUILD COMPLETE - ALL COMPONENTS                         ║" -ForegroundColor Green
