@@ -1,6 +1,6 @@
 # ZL File Relay
 
-**ZentrixLabs File Relay** - Enterprise File Transfer Solution for DMZ to SCADA Networks
+**ZentrixLabs File Relay** - Enterprise File Transfer Solution for Segmented DMZ to Isolated Network Environments
 
 ## Overview
 
@@ -9,6 +9,8 @@ ZL File Relay is a unified enterprise solution for secure, automated file transf
 1. **🔄 File Transfer Service** - Automated Windows Service that watches directories and securely transfers files via SSH/SCP or SMB
 2. **🌐 Web Upload Portal** - User-friendly web interface with hybrid authentication (Entra ID + Local Accounts)
 3. **⚙️ Configuration Tool** - Intuitive WPF application for unified configuration and service management
+
+Designed to solve secure file movement across strict network trust boundaries without breaking segmentation policy.
 
 ## Key Features
 
@@ -67,6 +69,7 @@ ZL File Relay is a unified enterprise solution for secure, automated file transf
           │   SCADA File Server   │
           └───────────────────────┘
 ```
+Architecture supports strict separation between intake zone and destination network, with configuration shared across components via encrypted configuration store.
 
 ## Quick Start
 
@@ -160,6 +163,17 @@ C:\ProgramData\ZLFileRelay\appsettings.json
 ```
 
 See [Configuration Reference](docs/configuration/CONFIGURATION.md) for complete details.
+
+## Design Principles
+•	Explicit trust boundaries
+
+•	Least-privilege service execution
+
+•	Deterministic file transfer behavior
+
+•	Auditable operations
+
+•	Secure defaults over convenience
 
 ## Security Features
 
@@ -262,7 +276,6 @@ dotnet run --project src/ZLFileRelay.WebPortal
 ## Support
 
 For technical support:
-- 📧 Email: zlfilerelay_help@zentrixlabs.net
 - 📖 Documentation: See `docs/` folder
 - 🐛 Issues: GitHub Issues
 - 📝 Logs: Check `C:\FileRelay\logs` or Windows Event Log
