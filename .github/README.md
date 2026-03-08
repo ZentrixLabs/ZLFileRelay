@@ -2,6 +2,8 @@
 
 **ZentrixLabs File Relay** - Enterprise File Transfer Solution for Segmented DMZ to Isolated Network Environments
 
+**This project is now deprecated, and a Linux version has been developed with many improvements. Please head over to [N24 Data Relay](https://github.com/Network24Labs/n24-data-relay)
+
 ## Overview
 
 ZL File Relay is a unified enterprise solution for secure, automated file transfer between DMZ and SCADA networks. It combines three powerful components into a single deployable package:
